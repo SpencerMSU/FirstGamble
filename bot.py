@@ -2,7 +2,8 @@ import os
 import logging
 import redis
 import asyncio
-
+import json
+from aiohttp import web
 from aiogram import Bot, Dispatcher
 from aiogram.filters import Command
 from aiogram.types import (
@@ -55,6 +56,9 @@ dp = Dispatcher()
 async def cmd_start(message):
     user_id = str(message.from_user.id)
     username = message.from_user.username or "друг"
+    points_key = f"points:{user_id}"
+    if r.get(points_key) is None:
+        r.set(points_key, 0)
 
     # если нет ключа — создаём
     if r.get(user_id) is None:
@@ -116,6 +120,38 @@ async def on_confirm(callback_query):
         reply_markup=keyboard
     )
 
+# ---------------- API для миниаппки ----------------
+async def api_balance(request: web.Request):
+    # CORS чтобы Vercel мог дергать
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "GET, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+    if request.method == "OPTIONS":
+        return web.Response(status=200, headers=headers)
+
+    user_id = request.query.get("user_id")
+    if not user_id:
+        return web.json_response({"error": "no user_id"}, status=400, headers=headers)
+
+    points_key = f"points:{user_id}"
+    bal = r.get(points_key)
+    bal = int(bal) if bal is not None else 0
+
+    return web.json_response({"user_id": user_id, "balance": bal}, headers=headers)
+
+
+async def start_api_server():
+    app = web.Application()
+    app.router.add_route("GET", "/api/balance", api_balance)
+    app.router.add_route("OPTIONS", "/api/balance", api_balance)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8080)  # порт можно другой
+    await site.start()
+    logging.info("API server started on port 8080")
 
 # ---------- reject ----------
 @dp.callback_query(lambda c: c.data == "reject")
@@ -132,6 +168,7 @@ async def on_reject(callback_query):
 
 
 async def main():
+    await start_api_server()
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

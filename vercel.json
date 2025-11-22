@@ -7,7 +7,6 @@
     { "source": "/rpg",     "destination": "/rpg.html" },
     { "source": "/shop",    "destination": "/shop.html" },
     { "source": "/raffles", "destination": "/raffles.html" },
-
     { "source": "/",        "destination": "/index.html" }
   ]
 }

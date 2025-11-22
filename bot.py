@@ -1,10 +1,28 @@
-import asyncio
+import os
 import logging
 import redis
+import asyncio
 from aiogram import Bot, Dispatcher
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.filters import Command
-from config import API_TOKEN, REDIS_HOST, REDIS_PORT, REDIS_DB  # или через tokens.txt
+
+# Функция для чтения данных из tokens.txt
+def load_tokens(filename="tokens.txt"):
+    tokens = {}
+    if os.path.exists(filename):
+        with open(filename, "r") as file:
+            for line in file:
+                if line.strip() and "=" in line:
+                    key, value = line.strip().split("=", 1)
+                    tokens[key.strip()] = value.strip()
+    return tokens
+
+# Загружаем токены из файла
+tokens = load_tokens()
+API_TOKEN = tokens.get("API_TOKEN")
+REDIS_HOST = tokens.get("REDIS_HOST", "localhost")
+REDIS_PORT = int(tokens.get("REDIS_PORT", 6379))
+REDIS_DB = int(tokens.get("REDIS_DB", 0))
 
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
@@ -33,7 +51,11 @@ async def cmd_start(message):
             [InlineKeyboardButton(text="Подтвердить", callback_data="confirm")],
             [InlineKeyboardButton(text="Отклонить", callback_data="reject")]
         ])
-        await message.answer("Привет! Чтобы продолжить, нажмите кнопку ниже.", reply_markup=keyboard)
+        sent_message = await message.answer("Привет! Чтобы продолжить, нажмите кнопку ниже.", reply_markup=keyboard)
+
+        # Удаляем сообщение через 5 секунд (или сразу после нажатия на кнопку)
+        await asyncio.sleep(5)  # Задержка на 5 секунд, если хочешь сразу — можно убрать эту строку
+        await sent_message.delete()
 
 @dp.callback_query(lambda c: c.data == "confirm")
 async def on_confirm(callback_query):

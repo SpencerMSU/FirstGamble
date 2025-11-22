@@ -140,35 +140,6 @@ async def api_balance(request: web.Request):
     bal = int(bal) if bal is not None else 0
 
     return web.json_response({"user_id": user_id, "balance": bal}, headers=headers)
-
-
-async def start_api_server():
-    app = web.Application()
-    app.router.add_route("GET", "/api/balance", api_balance)
-    app.router.add_route("OPTIONS", "/api/balance", api_balance)
-    app.router.add_route("POST", "/api/add_point", api_add_point)
-    app.router.add_route("OPTIONS", "/api/add_point", api_add_point)
-
-    runner = web.AppRunner(app)
-    await runner.setup()
-    site = web.TCPSite(runner, "0.0.0.0", 8080)  # порт можно другой
-    await site.start()
-    logging.info("API server started on port 8080")
-
-# ---------- reject ----------
-@dp.callback_query(lambda c: c.data == "reject")
-async def on_reject(callback_query):
-    await callback_query.answer("Доступ отклонён.")
-    try:
-        await callback_query.message.delete()
-    except Exception:
-        pass
-    await bot.send_message(
-        callback_query.from_user.id,
-        "Ок, без подтверждения мини-аппка недоступна."
-    )
-
-# POST /api/add_point  body: {"user_id":"123","delta":1}
 async def api_add_point(request: web.Request):
     headers = {
         "Access-Control-Allow-Origin": "*",
@@ -194,6 +165,40 @@ async def api_add_point(request: web.Request):
     r.set(key, bal)
 
     return web.json_response({"ok": True, "user_id": user_id, "balance": bal}, headers=headers)
+
+
+async def start_api_server():
+    app = web.Application()
+
+    # balance
+    app.router.add_route("GET", "/api/balance", api_balance)
+    app.router.add_route("OPTIONS", "/api/balance", api_balance)
+
+    # add point (ВАЖНО: POST!)
+    app.router.add_route("POST", "/api/add_point", api_add_point)
+    app.router.add_route("OPTIONS", "/api/add_point", api_add_point)
+
+    runner = web.AppRunner(app)
+    await runner.setup()
+    site = web.TCPSite(runner, "0.0.0.0", 8080)
+    await site.start()
+    logging.info("API server started on port 8080")
+
+
+# ---------- reject ----------
+@dp.callback_query(lambda c: c.data == "reject")
+async def on_reject(callback_query):
+    await callback_query.answer("Доступ отклонён.")
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    await bot.send_message(
+        callback_query.from_user.id,
+        "Ок, без подтверждения мини-аппка недоступна."
+    )
+
+# POST /api/add_point  body: {"user_id":"123","delta":1}
 
 async def main():
     await start_api_server()

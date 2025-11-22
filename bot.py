@@ -45,16 +45,18 @@ async def cmd_start(message):
 
     # Проверяем статус пользователя
     if r.get(user_id) == "confirmed":
-        await message.answer("Вы уже подтвердили доступ и можете использовать мини‑приложение!")
+        # Пользователь уже подтвердил
+        await message.answer(f"Привет, {username}! Ты уже подтвердил доступ и можешь использовать мини‑приложение!")
     else:
+        # Новый пользователь или не подтвержденный
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Подтвердить", callback_data="confirm")],
             [InlineKeyboardButton(text="Отклонить", callback_data="reject")]
         ])
         sent_message = await message.answer("Привет! Чтобы продолжить, нажмите кнопку ниже.", reply_markup=keyboard)
 
-        # Удаляем сообщение через 5 секунд (или сразу после нажатия на кнопку)
-        await asyncio.sleep(5)  # Задержка на 5 секунд, если хочешь сразу — можно убрать эту строку
+        # Удаляем сообщение через 5 секунд
+        await asyncio.sleep(5)  # Задержка на 5 секунд перед удалением
         await sent_message.delete()
 
 @dp.callback_query(lambda c: c.data == "confirm")

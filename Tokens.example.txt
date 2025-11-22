@@ -1,0 +1,15 @@
+# Заполните этот файл и сохраните как Tokens.txt (не коммитьте реальные значения)
+
+# Telegram Bot API токен
+BOT_TOKEN=7003663862:REPLACE_ME
+
+# Домен/URL мини-аппки
+WEBAPP_URL=https://firstgamble.ru
+FRONTEND_URL=https://firstgamble.ru
+
+# Строка подключения к БД (PostgreSQL)
+DATABASE_URL=postgresql+asyncpg://firstgamble:changeme@localhost:5432/firstgamble
+
+# Vercel/CI переменные (пример)
+VERCEL_PROJECT_ID=REPLACE_ME
+VERCEL_API_TOKEN=REPLACE_ME

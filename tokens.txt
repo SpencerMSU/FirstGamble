@@ -2,4 +2,4 @@ API_TOKEN=7003663862:AAGuAciOQh746pVXCzZTYPQbFNhFpjLQGzA
 REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
-WEBAPP_URL=https://first-gamble.vercel.app/
+WEBAPP_URL=https://firstgamble.ru/

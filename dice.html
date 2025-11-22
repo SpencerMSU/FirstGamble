@@ -301,9 +301,8 @@ function showToast(t){
   if(!uid){
     tgWarn.textContent =
       "⚠️ TG id не пришёл.\n" +
-      "1) Открой миниаппку ТОЛЬКО через кнопку web_app в боте.\n" +
-      "2) В BotFather добавь домен в /setdomain (first-gamble.vercel.app и firstgamble.ru).\n" +
-      "3) Если нужно — можно передавать uid параметром: ?uid=ТВОЙ_ID";
+      "1) Тут нет сохранений,это чисто дебаг тема для разработчиков\n" +
+
   }else{
     tgWarn.textContent = "TG id: " + uid;
   }

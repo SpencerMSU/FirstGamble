@@ -4,9 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init">
-      <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" afterPath="$PROJECT_DIR$/bot.py" afterDir="false" />
-    </list>
+    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -140,7 +138,23 @@
       <option name="project" value="LOCAL" />
       <updated>1763829187524</updated>
     </task>
-    <option name="localTasksCounter" value="10" />
+    <task id="LOCAL-00010" summary="Init">
+      <option name="closed" value="true" />
+      <created>1763829277938</created>
+      <option name="number" value="00010" />
+      <option name="presentableId" value="LOCAL-00010" />
+      <option name="project" value="LOCAL" />
+      <updated>1763829277938</updated>
+    </task>
+    <task id="LOCAL-00011" summary="Init">
+      <option name="closed" value="true" />
+      <created>1763829488012</created>
+      <option name="number" value="00011" />
+      <option name="presentableId" value="LOCAL-00011" />
+      <option name="project" value="LOCAL" />
+      <updated>1763829488012</updated>
+    </task>
+    <option name="localTasksCounter" value="12" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

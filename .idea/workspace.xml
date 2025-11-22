@@ -4,7 +4,9 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init" />
+    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init">
+      <change beforePath="$PROJECT_DIR$/dice.html" beforeDir="false" afterPath="$PROJECT_DIR$/dice.html" afterDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -307,7 +309,15 @@
       <option name="project" value="LOCAL" />
       <updated>1763844192601</updated>
     </task>
-    <option name="localTasksCounter" value="30" />
+    <task id="LOCAL-00030" summary="Init">
+      <option name="closed" value="true" />
+      <created>1763846749379</created>
+      <option name="number" value="00030" />
+      <option name="presentableId" value="LOCAL-00030" />
+      <option name="project" value="LOCAL" />
+      <updated>1763846749379</updated>
+    </task>
+    <option name="localTasksCounter" value="31" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

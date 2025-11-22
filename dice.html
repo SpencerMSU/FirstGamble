@@ -4,8 +4,6 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Кости — FirstClub</title>
-
-  <!-- Telegram WebApp SDK -->
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
@@ -16,7 +14,8 @@
       --stroke-2: rgba(100,160,255,.25);
       --blue:#3b82f6; --blue-2:#1d4ed8;
       --text:#e6edf3; --muted:#98a2b3;
-      --shadow: 0 0 0 1px var(--stroke), 0 8px 30px rgba(0,0,0,.6);
+      --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+      --radius:18px; --shadow: 0 0 0 1px var(--stroke), 0 8px 30px rgba(0,0,0,.6);
     }
     html[data-theme="light"]{
       --bg:#f4f7fb; --bg-2:#eef2f7; --panel:#ffffff;
@@ -106,7 +105,7 @@
     .die.rolling{animation: roll .5s ease-in-out infinite;}
     @keyframes roll{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
     .result{font-size:16px;font-weight:900;margin-top:10px;}
-    .result.win{color:#22c55e;} .result.lose{color:#ef4444;} .result.draw{color:#f59e0b;}
+    .result.win{color:var(--green);} .result.lose{color:var(--red);} .result.draw{color:var(--amber);}
     .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;white-space:pre-wrap;}
     .toast{
       position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);
@@ -142,7 +141,7 @@
         <button id="rollBtn" class="btn">Бросить 🎲</button>
       </div>
       <div id="tgWarn" class="note"></div>
-</section>
+    </section>
 
     <section class="section arena">
       <div class="player-box">
@@ -171,18 +170,16 @@
   <div id="toast" class="toast">Ок</div>
 
 <script>
+  // ===== Telegram + Theme + UID fallback =====
   function isColorDark(hex){
     if(!hex || hex[0] !== "#") return false;
     const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
     return (0.299*r + 0.587*g + 0.114*b)/255 < 0.5;
   }
-
   function initTelegram(){
     const tg = window.Telegram && window.Telegram.WebApp;
     if(!tg) return null;
-    tg.ready();
-    tg.expand();
-
+    tg.ready(); tg.expand();
     const p = tg.themeParams || {};
     if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
     if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
@@ -195,49 +192,37 @@
     tg.setBackgroundColor(p.bg_color || "#0a0d12");
     return tg;
   }
-
   const tg = initTelegram();
   if(!tg){
     const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
     document.documentElement.setAttribute("data-theme", prefersLight ? "light" : "dark");
   }
-
   function getUidFromUrl(){
-    try{
-      const u = new URL(location.href);
-      return u.searchParams.get("uid");
-    }catch(e){ return null; }
+    try{ return new URL(location.href).searchParams.get("uid"); }catch(e){ return null; }
   }
-
   function getTgUserId(){
-    try{
-      if(tg && tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id){
-        return tg.initDataUnsafe.user.id;
-      }
-      const urlUid = getUidFromUrl();
-      if(urlUid) return urlUid;
-      return null;
-    }catch(e){ return null; }
+    try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); }
   }
 
+  // ===== API =====
   const API_BASE = "https://api.firstgamble.ru";
 
   async function loadBalance(){
     const userId = getTgUserId();
-    const valEl = document.getElementById("balanceValue");
-    if(!valEl) return;
+    const el = document.getElementById("balanceValue");
+    if(!el) return;
 
     if(!userId){
-      valEl.textContent = localStorage.getItem("balance_local") || "0";
+      el.textContent = localStorage.getItem("balance_local") || "0";
       return;
     }
     try{
       const res = await fetch(API_BASE + "/api/balance?user_id=" + userId);
       const data = await res.json();
-      valEl.textContent = data.balance ?? 0;
-      localStorage.setItem("balance_local", valEl.textContent);
+      el.textContent = data.balance ?? 0;
+      localStorage.setItem("balance_local", el.textContent);
     }catch(e){
-      valEl.textContent = localStorage.getItem("balance_local") || "0";
+      el.textContent = localStorage.getItem("balance_local") || "0";
     }
   }
 
@@ -250,14 +235,24 @@
         body
       });
       const text = await res.text();
-      let json;
-      try{ json = JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
-      return json;
+      try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
     }catch(err){
       return {ok:false, error:String(err)};
     }
   }
 
+  async function reportGame(userId, game, result){
+    try{
+      const body = JSON.stringify({ user_id:String(userId), game:String(game), result:String(result) });
+      await fetch(API_BASE + "/api/report_game", {
+        method:"POST",
+        headers:{ "Content-Type":"application/json" },
+        body
+      });
+    }catch(e){}
+  }
+
+  // ===== UI helpers =====
   const diceCountEl = document.getElementById("diceCount");
   const rollBtn = document.getElementById("rollBtn");
   const youDiceEl = document.getElementById("youDice");
@@ -268,13 +263,13 @@
   const awardTextEl = document.getElementById("awardText");
   const toast = document.getElementById("toast");
   const tgWarn = document.getElementById("tgWarn");
-function showToast(t){
+
+  function showToast(t){
     toast.textContent = t;
     toast.classList.add("show");
     clearTimeout(showToast._t);
     showToast._t = setTimeout(()=>toast.classList.remove("show"), 1400);
   }
-
   function clampDice(n){
     n = Number(n);
     if(!Number.isFinite(n)) n = 1;
@@ -297,17 +292,19 @@ function showToast(t){
       die.textContent = rolls[i];
     });
   }
+
+  // ===== init =====
   const uid = getTgUserId();
   if(!uid){
     tgWarn.textContent =
-      "⚠️ TG id не пришёл.\n" +
-      "1) Тут нет сохранений,это чисто дебаг тема для разработчиков\n" +
+      "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
 
   }else{
     tgWarn.textContent = "TG id: " + uid;
   }
-loadBalance();
+  loadBalance();
 
+  // ===== game =====
   rollBtn.addEventListener("click", async ()=>{
     const n = clampDice(diceCountEl.value);
     diceCountEl.value = n;
@@ -334,14 +331,13 @@ loadBalance();
     youSumEl.textContent = youSum;
     botSumEl.textContent = botSum;
 
+    const userId = getTgUserId();
+
     if(youSum > botSum){
       resultTextEl.textContent = `Ты победил! ${youSum} против ${botSum}`;
       resultTextEl.classList.add("win");
-
-      const userId = getTgUserId();
-      if(!userId){
-        awardTextEl.textContent = "⚠️ Нет TG id — очко не начислено.";
-      }else{
+      if(userId){
+        await reportGame(userId, "dice", "win");
         const res = await sendPoint(userId, 1);
         if(res.ok){
           awardTextEl.textContent = "✅ +1 очко за победу добавлено";
@@ -351,17 +347,21 @@ loadBalance();
         }else{
           awardTextEl.textContent = "⚠️ Сервер не принял очко: " + (res.error || "unknown");
         }
+      }else{
+        awardTextEl.textContent = "⚠️ Нет TG id — очко не начислено.";
       }
     }else if(youSum < botSum){
       resultTextEl.textContent = `Ты проиграл. ${youSum} против ${botSum}`;
       resultTextEl.classList.add("lose");
+      if(userId) await reportGame(userId, "dice", "lose");
     }else{
       resultTextEl.textContent = `Ничья! ${youSum} = ${botSum}`;
       resultTextEl.classList.add("draw");
+      if(userId) await reportGame(userId, "dice", "draw");
     }
 
     rollBtn.disabled = false;
-});
+  });
 </script>
 </body>
 </html>

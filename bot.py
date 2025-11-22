@@ -1,8 +1,6 @@
 import asyncio
 import logging
 import redis
-import os
-
 from aiogram import Bot, Dispatcher
 from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
 from aiogram.filters import Command
@@ -11,10 +9,10 @@ from config import API_TOKEN, REDIS_HOST, REDIS_PORT, REDIS_DB  # или чер�
 # Настройка логирования
 logging.basicConfig(level=logging.INFO)
 
-# Настройка Redis
+# Подключение к Redis
 r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 
-# Создаём бот и диспетчер
+# Создание объекта бота и диспетчера
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
@@ -23,10 +21,11 @@ async def cmd_start(message):
     user_id = str(message.from_user.id)
     username = message.from_user.username
 
-    # Добавляем пользователя, если нет
+    # Добавляем пользователя, если его нет
     if r.get(user_id) is None:
         r.set(user_id, "not_confirmed")
 
+    # Проверяем статус пользователя
     if r.get(user_id) == "confirmed":
         await message.answer("Вы уже подтвердили доступ и можете использовать мини‑приложение!")
     else:
@@ -48,8 +47,10 @@ async def on_reject(callback_query):
     await callback_query.answer("Доступ отклонен.")
     await bot.send_message(callback_query.from_user.id, "Вы отклонили доступ.")
 
+# Основная функция для запуска бота
 async def main():
     await dp.start_polling(bot)
 
+# Запуск бота
 if __name__ == "__main__":
     asyncio.run(main())

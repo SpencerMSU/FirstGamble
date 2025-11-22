@@ -2,7 +2,7 @@ import asyncio
 import logging
 from pathlib import Path
 from typing import Dict, Optional, List, Tuple
-
+from aiohttp import web
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
 from aiogram.types import (
@@ -147,7 +147,17 @@ async def confirm_no(call: CallbackQuery):
 
 # ========= HTTP API (aiohttp) =========
 routes = web.RouteTableDef()
+@web.middleware
+async def cors_middleware(request: web.Request, handler):
+    if request.method == "OPTIONS":
+        resp = web.Response(status=204)
+    else:
+        resp = await handler(request)
 
+    resp.headers["Access-Control-Allow-Origin"] = "*"
+    resp.headers["Access-Control-Allow-Methods"] = "GET,POST,OPTIONS"
+    resp.headers["Access-Control-Allow-Headers"] = "Content-Type"
+    return resp
 def json_error(msg: str, status: int = 400):
     return web.json_response({"ok": False, "error": msg}, status=status)
 
@@ -311,7 +321,7 @@ async def api_leaderboard(request: web.Request):
     return web.json_response({"ok": True, "game": game, "sort": sort, "rows": rows[:limit]})
 
 async def run_api(app_host="0.0.0.0", app_port=8080):
-    app = web.Application()
+    app = web.Application(middlewares=[cors_middleware])
     app.add_routes(routes)
     runner = web.AppRunner(app)
     await runner.setup()

@@ -115,8 +115,6 @@
       opacity:0;transition:.2s ease;box-shadow: var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;
     }
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-    details.debug{margin-top:8px}
-    details.debug summary{cursor:pointer;color:var(--muted)}
     @media (max-width: 720px){.arena{grid-template-columns:1fr;}}
   </style>
 </head>
@@ -144,11 +142,7 @@
         <button id="rollBtn" class="btn">Бросить 🎲</button>
       </div>
       <div id="tgWarn" class="note"></div>
-      <details class="debug">
-        <summary>Debug (открой если TG id не виден)</summary>
-        <div id="debugInfo" class="note"></div>
-      </details>
-    </section>
+</section>
 
     <section class="section arena">
       <div class="player-box">
@@ -274,9 +268,7 @@
   const awardTextEl = document.getElementById("awardText");
   const toast = document.getElementById("toast");
   const tgWarn = document.getElementById("tgWarn");
-  const debugInfo = document.getElementById("debugInfo");
-
-  function showToast(t){
+function showToast(t){
     toast.textContent = t;
     toast.classList.add("show");
     clearTimeout(showToast._t);
@@ -305,18 +297,6 @@
       die.textContent = rolls[i];
     });
   }
-
-  function fillDebug(){
-    const lines = [];
-    lines.push("telegram_present: " + Boolean(window.Telegram && window.Telegram.WebApp));
-    lines.push("tg_object: " + (tg ? "ok" : "null"));
-    lines.push("initData length: " + (tg?.initData?.length || 0));
-    lines.push("initDataUnsafe: " + JSON.stringify(tg?.initDataUnsafe || {}));
-    lines.push("platform: " + (tg?.platform || "unknown"));
-    lines.push("url_uid: " + (getUidFromUrl() || "null"));
-    debugInfo.textContent = lines.join("\n");
-  }
-
   const uid = getTgUserId();
   if(!uid){
     tgWarn.textContent =
@@ -327,8 +307,7 @@
   }else{
     tgWarn.textContent = "TG id: " + uid;
   }
-  fillDebug();
-  loadBalance();
+loadBalance();
 
   rollBtn.addEventListener("click", async ()=>{
     const n = clampDice(diceCountEl.value);
@@ -383,8 +362,7 @@
     }
 
     rollBtn.disabled = false;
-    fillDebug();
-  });
+});
 </script>
 </body>
 </html>

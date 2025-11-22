@@ -29,6 +29,14 @@
     {
       "source": "/",
       "destination": "/index.html"
+    },
+    { "source": "/bj",
+      "destination": "/bj.html"
+    },
+    {
+      "source": "/slot",
+      "destination": "/slot.html"
     }
+
   ]
 }

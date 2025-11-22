@@ -51,48 +51,45 @@
     .title span{font-size:12px;color:var(--muted);}
     .back{
       display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
-      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
       border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
       cursor:pointer;transition:.15s ease;
     }
     .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
     .balance-pill{
       display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
-      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
       border:1px solid var(--stroke);box-shadow:var(--shadow);min-width:64px;justify-content:center;
     }
     .section{
-      background:linear-gradient(180deg,var(--panel) 0%, color-mix(in oklab, var(--panel) 92%, transparent) 100%);
+      background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);
       border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;
     }
-    .table{
-      display:grid; grid-template-columns:1fr; gap:12px;
-    }
+    .table{display:grid;grid-template-columns:1fr;gap:12px;}
     .row{
-      display:grid; grid-template-columns:1fr auto; gap:10px; align-items:start;
+      display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;
       background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
-      border:1px solid var(--stroke); border-radius:14px; padding:12px;
+      border:1px solid var(--stroke);border-radius:14px;padding:12px;
     }
-    .row h2{margin:0 0 8px 0; font-size:16px; font-weight:900;}
-    .hands{display:flex; flex-wrap:wrap; gap:8px; min-height:92px;}
+    .row h2{margin:0 0 8px 0;font-size:16px;font-weight:900;}
+    .hands{display:flex;flex-wrap:wrap;gap:8px;min-height:92px;}
     .score{
-      font-weight:900; font-size:15px; padding:6px 10px; border-radius:999px;
-      border:1px solid var(--stroke); background:color-mix(in oklab, var(--panel) 75%, transparent);
-      min-width:92px; text-align:center;
+      font-weight:900;font-size:15px;padding:6px 10px;border-radius:999px;
+      border:1px solid var(--stroke);background:color-mix(in oklab,var(--panel) 75%,transparent);
+      min-width:92px;text-align:center;
     }
-    .controls{display:flex; flex-wrap:wrap; gap:8px;}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;}
     .btn{
       padding:10px 14px;border-radius:12px;border:1px solid var(--stroke2);
-      background:linear-gradient(180deg,var(--blue) 0%, var(--blue2) 100%);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
       color:white;font-weight:900;cursor:pointer;transition:.15s ease;
       box-shadow:0 6px 18px rgba(37,99,235,.35);
     }
     .btn.secondary{
-      background:linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
-      color:var(--text); border-color:var(--stroke);
-      box-shadow:none;
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      color:var(--text);border-color:var(--stroke);box-shadow:none;
     }
-    .btn:disabled{opacity:.6; cursor:not-allowed; transform:none;}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
     .btn:hover{transform:translateY(-1px);}
 
     /* Cards */
@@ -129,9 +126,7 @@
     }
     .card-ui.fresh{transform:translateY(-6px);}
 
-    .status{
-      font-size:15px; font-weight:900; margin:0;
-    }
+    .status{font-size:15px; font-weight:900; margin:0;}
     .status.win{color:var(--green);}
     .status.lose{color:var(--red);}
     .status.draw{color:var(--amber);}
@@ -158,9 +153,7 @@
         <h1>Блэкджек</h1>
         <span>Без ставок. Победа = +1 очко</span>
       </div>
-      <div class="balance-pill">
-        <span>🪙</span><span id="balanceValue">0</span>
-      </div>
+      <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
     </header>
 
     <section class="section table">
@@ -250,7 +243,12 @@
       try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
     }catch(err){ return {ok:false, error:String(err)}; }
   }
-
+  async function reportGame(uid, game, result){
+    try{
+      const body=JSON.stringify({user_id:String(uid), game:String(game), result:String(result)});
+      await fetch(API_BASE+"/api/report_game", {method:"POST", headers:{"Content-Type":"application/json"}, body});
+    }catch(e){}
+  }
   function showToast(t){
     const toast=document.getElementById("toast");
     toast.textContent=t;
@@ -279,7 +277,6 @@
         deck.push({rank:rank.r, value:rank.v, suit:suit.s, color:suit.color});
       }
     }
-    // shuffle
     for(let i=deck.length-1;i>0;i--){
       const j=Math.floor(Math.random()*(i+1));
       [deck[i],deck[j]]=[deck[j],deck[i]];
@@ -334,9 +331,7 @@
   function updateUI(){
     dealerHandEl.innerHTML="";
     playerHandEl.innerHTML="";
-    dealerHand.forEach((c,i)=>{
-      dealerHandEl.appendChild(renderCard(c, dealerHidden && i===0));
-    });
+    dealerHand.forEach((c,i)=>dealerHandEl.appendChild(renderCard(c, dealerHidden && i===0)));
     playerHand.forEach(c=>playerHandEl.appendChild(renderCard(c)));
     dealerScoreEl.textContent = dealerHidden ? "?" : handValue(dealerHand);
     playerScoreEl.textContent = handValue(playerHand);
@@ -359,6 +354,7 @@
     const uid=getTgUserId();
     if(!uid){
       awardTextEl.textContent="⚠️ Нет TG id — очко не начислено.";
+      pointGiven=false;
       return;
     }
     const res=await sendPoint(uid, 1);
@@ -373,7 +369,7 @@
     }
   }
 
-  function endRound(result){
+  async function endRound(result){
     inRound=false;
     dealerHidden=false;
     updateUI();
@@ -381,18 +377,24 @@
 
     const p=handValue(playerHand);
     const d=handValue(dealerHand);
+    const uid=getTgUserId();
 
     if(result==="player_bust"){
+      if(uid) await reportGame(uid,"bj","lose");
       setStatus(`Перебор. Ты проиграл (${p})`, "lose");
     }else if(result==="dealer_bust"){
+      if(uid) await reportGame(uid,"bj","win");
       setStatus(`Дилер перебрал. Ты победил! (${p} против ${d})`, "win");
-      givePointIfWin();
+      await givePointIfWin();
     }else if(result==="player_win"){
+      if(uid) await reportGame(uid,"bj","win");
       setStatus(`Ты победил! (${p} против ${d})`, "win");
-      givePointIfWin();
+      await givePointIfWin();
     }else if(result==="dealer_win"){
+      if(uid) await reportGame(uid,"bj","lose");
       setStatus(`Ты проиграл (${p} против ${d})`, "lose");
     }else{
+      if(uid) await reportGame(uid,"bj","draw");
       setStatus(`Ничья (${p} = ${d})`, "draw");
     }
   }
@@ -413,6 +415,10 @@
   }
 
   function startRound(){
+    if(inRound){
+      showToast("Сначала доиграй раунд ✋");
+      return; // lock restart mid-round
+    }
     deck=newDeck();
     dealerHand=[deck.pop(), deck.pop()];
     playerHand=[deck.pop(), deck.pop()];
@@ -425,7 +431,6 @@
     updateUI();
     const p=handValue(playerHand);
     if(p===21){
-      // natural blackjack
       dealerHidden=false;
       updateUI();
       const d=handValue(dealerHand);

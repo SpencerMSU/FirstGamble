@@ -39,16 +39,13 @@ API_TOKEN  = tokens.get("API_TOKEN")
 REDIS_HOST = tokens.get("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(tokens.get("REDIS_PORT", 6379))
 REDIS_DB   = int(tokens.get("REDIS_DB", 0))
-WEBAPP_URL = tokens.get("WEBAPP_URL")  # ссылка на Vercel миниаппки
+WEBAPP_URL = tokens.get("WEBAPP_URL")
 
 if not API_TOKEN:
     raise RuntimeError("В tokens.txt нет API_TOKEN=...")
 if not WEBAPP_URL or not WEBAPP_URL.startswith("https://"):
     raise RuntimeError("В tokens.txt нет WEBAPP_URL=https://... (обязательно https)")
 
-# =========================
-#  LOGGING + REDIS
-# =========================
 logging.basicConfig(level=logging.INFO)
 
 r = redis.Redis(
@@ -61,65 +58,87 @@ r = redis.Redis(
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-# =========================
-#  AIOHTTP API (8080)
-# =========================
+# ============================================================
+#                   AIOHTTP API  (8080)
+# ============================================================
+
+CORS_HEADERS = {
+    "Access-Control-Allow-Origin": "*",
+    "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type",
+}
+
+def _j(resp, status=200):
+    return web.json_response(resp, status=status, headers=CORS_HEADERS)
 
 # ---- GET /api/balance?user_id=123
 async def api_balance(request: web.Request):
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "GET, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    }
-
     if request.method == "OPTIONS":
-        return web.Response(status=200, headers=headers)
+        return web.Response(status=200, headers=CORS_HEADERS)
 
     user_id = request.query.get("user_id", "").strip()
     if not user_id:
-        return web.json_response({"error": "user_id required"}, status=400, headers=headers)
+        return _j({"error": "user_id required"}, status=400)
 
     key = f"points:{user_id}"
     balance = int(r.get(key) or 0)
 
-    return web.json_response({"user_id": user_id, "balance": balance}, headers=headers)
+    return _j({"user_id": user_id, "balance": balance})
 
 
-# ---- POST /api/add_point  body: {"user_id":"123","delta":1}
+# ---- POST /api/add_point  body or query or form:
+# { "user_id":"123", "delta":1 }
 async def api_add_point(request: web.Request):
-    headers = {
-        "Access-Control-Allow-Origin": "*",
-        "Access-Control-Allow-Methods": "POST, OPTIONS",
-        "Access-Control-Allow-Headers": "Content-Type",
-    }
-
     if request.method == "OPTIONS":
-        return web.Response(status=200, headers=headers)
+        return web.Response(status=200, headers=CORS_HEADERS)
 
+    # 1) пробуем json
+    data = None
     try:
         data = await request.json()
-    except:
-        data = {}
+    except Exception:
+        data = None
+
+    # 2) если json не пришёл — пытаемся читать raw текст
+    raw_text = ""
+    if data is None:
+        try:
+            raw_text = await request.text()
+            if raw_text:
+                # пробуем распарсить вручную как json
+                import json
+                data = json.loads(raw_text)
+        except Exception:
+            data = None
+
+    # 3) если всё ещё None — берём form/query
+    if data is None:
+        try:
+            form = await request.post()
+            data = dict(form)
+        except Exception:
+            data = {}
+
+    # fallback на query string
+    if not data:
+        data = dict(request.query)
+
+    logging.info(f"[api_add_point] raw={raw_text!r} data={data}")
 
     user_id = str(data.get("user_id", "")).strip()
-    delta   = int(data.get("delta", 0))
+    try:
+        delta = int(data.get("delta", 0))
+    except Exception:
+        delta = 0
 
     if not user_id or delta == 0:
-        return web.json_response(
-            {"ok": False, "error": "bad data"},
-            status=400,
-            headers=headers
-        )
+        return _j({"ok": False, "error": "bad data"}, status=400)
 
     key = f"points:{user_id}"
     balance = int(r.get(key) or 0) + delta
     r.set(key, balance)
 
-    return web.json_response(
-        {"ok": True, "user_id": user_id, "balance": balance},
-        headers=headers
-    )
+    return _j({"ok": True, "user_id": user_id, "balance": balance})
 
 
 async def start_api_server():
@@ -140,9 +159,9 @@ async def start_api_server():
     logging.info("API started on http://0.0.0.0:8080")
 
 
-# =========================
-#  TELEGRAM BOT LOGIC
-# =========================
+# ============================================================
+#                   TELEGRAM BOT LOGIC
+# ============================================================
 
 confirm_kb = InlineKeyboardMarkup(
     inline_keyboard=[
@@ -170,19 +189,17 @@ async def cmd_start(msg: Message):
 
     ckey = user_confirm_key(user_id)
 
-    # если уже подтвердил — сразу даём кнопку MiniApp
+    # если уже подтвердил — даём кнопку MiniApp
     if r.get(ckey) == "1":
         kb = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Открыть мини-аппку", web_app=WebAppInfo(url=WEBAPP_URL))]
         ])
         await msg.answer(
-            f"Привет, {username}! Доступ уже подтверждён ✅\n"
-            f"Жми кнопку ниже:",
+            f"Привет, {username}! Доступ уже подтверждён ✅\nЖми кнопку ниже:",
             reply_markup=kb
         )
         return
 
-    # иначе просим подтверждение
     await msg.answer(
         "Привет! Чтобы продолжить, подтверди условия:",
         reply_markup=confirm_kb
@@ -193,18 +210,15 @@ async def cmd_start(msg: Message):
 async def on_confirm(call):
     user_id = str(call.from_user.id)
     ckey = user_confirm_key(user_id)
-
     r.set(ckey, "1")
 
     await call.answer("Доступ получен ✅")
 
-    # удаляем старое сообщение с кнопками
     try:
         await call.message.delete()
     except Exception:
         pass
 
-    # шлём кнопку открытия мини-аппки
     kb = InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Открыть мини-аппку", web_app=WebAppInfo(url=WEBAPP_URL))]
     ])
@@ -227,11 +241,10 @@ async def on_reject(call):
     await bot.send_message(call.from_user.id, "Ок, без подтверждения мини-аппка недоступна.")
 
 
-# =========================
-#  MAIN
-# =========================
+# ============================================================
+#                   MAIN
+# ============================================================
 async def main():
-    # запускаем API и бота вместе
     api_task = asyncio.create_task(start_api_server())
     bot_task = asyncio.create_task(dp.start_polling(bot))
     await asyncio.gather(api_task, bot_task)

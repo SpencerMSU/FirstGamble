@@ -1,21 +1,315 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Мини-приложение</title>
-    <link rel="stylesheet" href="style.css">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>FirstClub — MiniApp</title>
+
+  <style>
+    :root{
+      --bg: #0a0d12;
+      --bg-2:#0e1117;
+      --card:#111722;
+      --card-2:#0f1520;
+      --stroke: rgba(255,255,255,.06);
+      --stroke-2: rgba(100,160,255,.25);
+      --blue:#3b82f6;
+      --blue-2:#1d4ed8;
+      --text:#e6edf3;
+      --muted:#98a2b3;
+      --glow: 0 0 0 1px var(--stroke), 0 8px 30px rgba(0,0,0,.6);
+      --radius:18px;
+    }
+
+    *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1200px 700px at 10% -10%, rgba(29,78,216,.35), transparent 60%),
+        radial-gradient(900px 600px at 110% 0%, rgba(59,130,246,.25), transparent 55%),
+        linear-gradient(180deg, #06080b 0%, #0a0d12 100%);
+      min-height:100vh;
+      display:flex;
+      align-items:flex-start;
+      justify-content:center;
+      padding:16px;
+    }
+
+    .app{
+      width:min(1100px, 100%);
+      background: linear-gradient(180deg, rgba(255,255,255,.02), rgba(255,255,255,0));
+      border:1px solid var(--stroke);
+      border-radius:20px;
+      box-shadow: var(--glow);
+      padding:14px;
+    }
+
+    header{
+      display:flex;
+      align-items:center;
+      justify-content:space-between;
+      padding:10px 12px 14px 12px;
+    }
+
+    .title{
+      display:flex; flex-direction:column; gap:2px;
+    }
+    .title h1{
+      margin:0;
+      font-size:20px;
+      font-weight:800;
+      letter-spacing:.2px;
+      color:#cfe3ff;
+      text-shadow:0 0 18px rgba(59,130,246,.35);
+    }
+    .title span{
+      font-size:12px;
+      color:var(--muted);
+    }
+
+    .grid{
+      display:grid;
+      grid-template-columns: 1.15fr .85fr;
+      gap:12px;
+      padding:0 4px 8px 4px;
+    }
+
+    .col{
+      display:grid;
+      grid-template-columns: 1fr;
+      gap:12px;
+    }
+
+    .card-btn{
+      position:relative;
+      background:
+        radial-gradient(600px 220px at 10% -30%, rgba(59,130,246,.18), transparent 60%),
+        linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border:1px solid var(--stroke);
+      border-radius: var(--radius);
+      padding:16px 16px;
+      min-height:96px;
+      cursor:pointer;
+      transition: .18s ease;
+      box-shadow: inset 0 0 0 1px rgba(255,255,255,.02);
+      overflow:hidden;
+    }
+
+    .card-btn:hover{
+      transform: translateY(-1px);
+      border-color: var(--stroke-2);
+      box-shadow:
+        0 0 0 1px rgba(59,130,246,.25),
+        0 12px 30px rgba(8,12,18,.9);
+    }
+
+    .card-btn.active{
+      outline: none;
+      border-color: rgba(59,130,246,.55);
+      box-shadow:
+        0 0 0 1px rgba(59,130,246,.45),
+        0 0 40px rgba(59,130,246,.18) inset;
+    }
+
+    .card-row{
+      display:flex;
+      gap:12px;
+      align-items:flex-start;
+    }
+
+    .icon{
+      width:40px; height:40px;
+      display:grid; place-items:center;
+      background: rgba(59,130,246,.10);
+      border:1px solid rgba(59,130,246,.25);
+      border-radius:12px;
+      font-size:20px;
+      flex:0 0 auto;
+      box-shadow: inset 0 0 20px rgba(59,130,246,.15);
+    }
+
+    .card-text h3{
+      margin:0 0 4px 0;
+      font-size:16px; font-weight:800;
+    }
+
+    .card-text p{
+      margin:0;
+      font-size:12.5px;
+      color:var(--muted);
+    }
+
+    .shine{
+      position:absolute; inset:-40% -20% auto auto;
+      width:220px; height:220px;
+      background: radial-gradient(closest-side, rgba(59,130,246,.35), transparent 70%);
+      transform: translate(25%, -25%);
+      filter: blur(18px);
+      opacity:.7;
+      pointer-events:none;
+    }
+
+    .footer{
+      padding:10px 12px 6px 12px;
+      text-align:center;
+      font-size:11px;
+      color:#7c8596;
+      border-top:1px dashed var(--stroke);
+      margin-top:8px;
+      line-height:1.6;
+    }
+
+    /* mobile */
+    @media (max-width: 720px){
+      .grid{
+        grid-template-columns: 1fr;
+      }
+      .card-btn{ min-height:86px; }
+    }
+
+    /* toast */
+    .toast{
+      position:fixed;
+      left:50%; bottom:18px;
+      transform:translateX(-50%) translateY(20px);
+      background: rgba(11,16,24,.95);
+      border:1px solid var(--stroke-2);
+      color:var(--text);
+      padding:10px 14px;
+      border-radius:12px;
+      font-size:13px;
+      opacity:0;
+      transition:.2s ease;
+      box-shadow: var(--glow);
+      z-index:9999;
+      pointer-events:none;
+      white-space:nowrap;
+    }
+    .toast.show{
+      opacity:1;
+      transform:translateX(-50%) translateY(0);
+    }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>Добро пожаловать в Мини-приложение!</h1>
-        <div class="buttons-container">
-            <button id="button1" class="app-button">Кнопка 1</button>
-            <button id="button2" class="app-button">Кнопка 2</button>
-            <button id="button3" class="app-button">Кнопка 3</button>
-            <button id="button4" class="app-button">Кнопка 4</button>
-        </div>
+  <div class="app">
+    <header>
+      <div class="title">
+        <h1>FirstClub</h1>
+        <span>Выбери раздел</span>
+      </div>
+    </header>
+
+    <main class="grid">
+      <!-- левый столбец -->
+      <section class="col">
+        <button class="card-btn active" data-key="ludka">
+          <div class="shine"></div>
+          <div class="card-row">
+            <div class="icon">🎰</div>
+            <div class="card-text">
+              <h3>Лудка</h3>
+              <p>Мини-игры</p>
+            </div>
+          </div>
+        </button>
+
+        <button class="card-btn" data-key="rpg">
+          <div class="card-row">
+            <div class="icon">🗺️</div>
+            <div class="card-text">
+              <h3>RPG</h3>
+              <p>Прокачка, квесты, статистика</p>
+            </div>
+          </div>
+        </button>
+
+        <button class="card-btn" data-key="raffles">
+          <div class="card-row">
+            <div class="icon">🎁</div>
+            <div class="card-text">
+              <h3>Розыгрыши</h3>
+              <p>Анимация и тизер “Скоро”</p>
+            </div>
+          </div>
+        </button>
+      </section>
+
+      <!-- правый столбец -->
+      <section class="col">
+        <button class="card-btn" data-key="prices">
+          <div class="card-row">
+            <div class="icon">🪙</div>
+            <div class="card-text">
+              <h3>Цены</h3>
+              <p>Прайс-листы, справочник, поиск</p>
+            </div>
+          </div>
+        </button>
+
+        <button class="card-btn" data-key="shop">
+          <div class="card-row">
+            <div class="icon">🛒</div>
+            <div class="card-text">
+              <h3>Магазин</h3>
+              <p>Товары, покупки, бонусы</p>
+            </div>
+          </div>
+        </button>
+      </section>
+    </main>
+
+    <div class="footer">
+      v0.2 — тестовый билд<br/>
+      За идею спасибо Con_Serve(aka romanespit)<br/>
+      Сделано специально для семьи First|07<br/>
+      First Forever!
     </div>
-    <script src="app.js"></script>
+  </div>
+
+  <div id="toast" class="toast">Скоро будет доступно 👀</div>
+
+  <script>
+    // Заглушки: 클릭 -> показать тост
+    const toast = document.getElementById("toast");
+    let t;
+
+    function showToast(text){
+      toast.textContent = text;
+      toast.classList.add("show");
+      clearTimeout(t);
+      t = setTimeout(()=> toast.classList.remove("show"), 1400);
+    }
+
+    document.querySelectorAll(".card-btn").forEach(btn=>{
+      btn.addEventListener("click", ()=>{
+        // активная подсветка
+        document.querySelectorAll(".card-btn").forEach(b=>b.classList.remove("active"));
+        btn.classList.add("active");
+
+        const key = btn.dataset.key;
+        const names = {
+          ludka: "Лудка",
+          prices: "Цены",
+          rpg: "RPG",
+          shop: "Магазин",
+          raffles: "Розыгрыши"
+        };
+        showToast(`${names[key]} — раздел в разработке`);
+      });
+    });
+
+    // Telegram WebApp (если открылось внутри тг)
+    try {
+      if (window.Telegram?.WebApp) {
+        Telegram.WebApp.ready();
+        Telegram.WebApp.expand();
+        Telegram.WebApp.setHeaderColor("#0a0d12");
+        Telegram.WebApp.setBackgroundColor("#0a0d12");
+      }
+    } catch (e) {}
+  </script>
 </body>
 </html>

@@ -1,7 +1,9 @@
 {
-  "$schema": "https://openapi.vercel.sh/vercel.json",
-  "cleanUrls": true,
   "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
     {
       "source": "/ludka",
       "destination": "/ludka.html"
@@ -27,16 +29,16 @@
       "destination": "/dice.html"
     },
     {
-      "source": "/",
-      "destination": "/index.html"
-    },
-    { "source": "/bj",
+      "source": "/bj",
       "destination": "/bj.html"
     },
     {
       "source": "/slot",
       "destination": "/slot.html"
+    },
+    {
+      "source": "/rating",
+      "destination": "/rating.html"
     }
-
   ]
 }

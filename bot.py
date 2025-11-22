@@ -1,7 +1,7 @@
 import asyncio
 import logging
 from pathlib import Path
-from typing import Dict, Optional
+from typing import Dict, Optional, List, Tuple
 
 from aiogram import Bot, Dispatcher, F
 from aiogram.filters import CommandStart
@@ -45,6 +45,20 @@ def key_confirmed(user_id: int) -> str:
 def key_balance(user_id: int) -> str:
     return f"user:{user_id}:balance"
 
+def key_profile(user_id: int) -> str:
+    return f"user:{user_id}:profile"   # hash: name, username
+
+def key_stats(user_id: int) -> str:
+    return f"user:{user_id}:stats"     # hash: wins, losses, draws, games_total
+
+def key_gamestats(user_id: int, game: str) -> str:
+    return f"user:{user_id}:game:{game}"  # hash: wins, losses, draws, games_total
+
+USERS_ZSET = "leaderboard:points"      # zset: user_id -> points
+USERS_SET = "users:all"               # set of user_ids
+
+ALLOWED_GAMES = {"dice", "bj", "slot"}
+
 # ========= globals =========
 rds: Optional[redis.Redis] = None
 
@@ -61,14 +75,32 @@ def kb_start() -> InlineKeyboardMarkup:
     ])
 
 def kb_open_webapp(user_id: int) -> InlineKeyboardMarkup:
-    # Fallback uid in URL, even if initData is empty.
     url = f"{WEBAPP_URL}?uid={user_id}"
     return InlineKeyboardMarkup(inline_keyboard=[
         [InlineKeyboardButton(text="Открыть мини-аппку", web_app=WebAppInfo(url=url))]
     ])
 
+async def ensure_user(user: Message | CallbackQuery):
+    """Create all default fields so rating works for new users."""
+    uid = user.from_user.id
+    name = user.from_user.full_name or ""
+    username = user.from_user.username or ""
+
+    pipe = rds.pipeline()
+    pipe.sadd(USERS_SET, uid)
+    pipe.hsetnx(key_profile(uid), "name", name)
+    pipe.hsetnx(key_profile(uid), "username", username)
+    pipe.setnx(key_balance(uid), "0")
+    pipe.zadd(USERS_ZSET, {uid: 0}, nx=True)
+    pipe.hsetnx(key_stats(uid), "wins", 0)
+    pipe.hsetnx(key_stats(uid), "losses", 0)
+    pipe.hsetnx(key_stats(uid), "draws", 0)
+    pipe.hsetnx(key_stats(uid), "games_total", 0)
+    await pipe.execute()
+
 @dp.message(CommandStart())
 async def start_cmd(message: Message):
+    await ensure_user(message)
     user_id = message.from_user.id
     name = message.from_user.full_name
 
@@ -87,17 +119,12 @@ async def start_cmd(message: Message):
 
 @dp.callback_query(F.data == "confirm_yes")
 async def confirm_yes(call: CallbackQuery):
+    await ensure_user(call)
     user_id = call.from_user.id
     name = call.from_user.full_name
 
-    # Mark confirmed
     await rds.set(key_confirmed(user_id), "1")
-    # Ensure balance key exists
-    bal = await rds.get(key_balance(user_id))
-    if bal is None:
-        await rds.set(key_balance(user_id), "0")
 
-    # Remove old message (so "Привет чтобы продолжить" disappears)
     try:
         await call.message.delete()
     except Exception:
@@ -124,16 +151,25 @@ routes = web.RouteTableDef()
 def json_error(msg: str, status: int = 400):
     return web.json_response({"ok": False, "error": msg}, status=status)
 
+def safe_int(x, default=0):
+    try:
+        return int(x)
+    except Exception:
+        return default
+
 @routes.get("/api/balance")
 async def api_balance(request: web.Request):
     user_id = request.query.get("user_id")
     if not user_id:
         return json_error("user_id required")
-    bal = await rds.get(key_balance(int(user_id)))
+    uid = safe_int(user_id)
+    bal = await rds.get(key_balance(uid))
     if bal is None:
         bal = "0"
-        await rds.set(key_balance(int(user_id)), bal)
-    return web.json_response({"user_id": str(user_id), "balance": int(bal)})
+        await rds.set(key_balance(uid), bal)
+        await rds.zadd(USERS_ZSET, {uid: 0}, nx=True)
+        await rds.sadd(USERS_SET, uid)
+    return web.json_response({"user_id": str(uid), "balance": int(bal)})
 
 @routes.post("/api/add_point")
 async def api_add_point(request: web.Request):
@@ -147,19 +183,132 @@ async def api_add_point(request: web.Request):
 
     if user_id is None:
         return json_error("user_id required")
-    try:
-        uid_int = int(user_id)
-        delta_int = int(delta)
-    except Exception:
+    uid_int = safe_int(user_id, None)
+    delta_int = safe_int(delta, None)
+    if uid_int is None or delta_int is None:
         return json_error("bad data")
 
-    # Ensure confirmed users only (optional gate)
     confirmed = await rds.get(key_confirmed(uid_int))
     if confirmed != "1":
         return json_error("not confirmed", status=403)
 
+    await rds.sadd(USERS_SET, uid_int)
     new_bal = await rds.incrby(key_balance(uid_int), delta_int)
+    await rds.zadd(USERS_ZSET, {uid_int: new_bal})
     return web.json_response({"ok": True, "user_id": str(uid_int), "balance": int(new_bal)})
+
+@routes.post("/api/report_game")
+async def api_report_game(request: web.Request):
+    """
+    Body:
+      { "user_id": "123", "game": "dice|bj|slot", "result": "win|lose|draw" }
+    """
+    try:
+        data = await request.json()
+    except Exception:
+        return json_error("bad json")
+
+    uid = safe_int(data.get("user_id"))
+    game = (data.get("game") or "").strip().lower()
+    result = (data.get("result") or "").strip().lower()
+
+    if not uid:
+        return json_error("user_id required")
+    if game not in ALLOWED_GAMES:
+        return json_error("bad game")
+    if result not in ("win", "lose", "draw"):
+        return json_error("bad result")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await rds.sadd(USERS_SET, uid)
+
+    # update overall stats
+    pipe = rds.pipeline()
+    pipe.hincrby(key_stats(uid), "games_total", 1)
+    if result == "win":
+        pipe.hincrby(key_stats(uid), "wins", 1)
+    elif result == "lose":
+        pipe.hincrby(key_stats(uid), "losses", 1)
+    else:
+        pipe.hincrby(key_stats(uid), "draws", 1)
+
+    # update game stats
+    gkey = key_gamestats(uid, game)
+    pipe.hincrby(gkey, "games_total", 1)
+    if result == "win":
+        pipe.hincrby(gkey, "wins", 1)
+    elif result == "lose":
+        pipe.hincrby(gkey, "losses", 1)
+    else:
+        pipe.hincrby(gkey, "draws", 1)
+
+    await pipe.execute()
+    return web.json_response({"ok": True})
+
+@routes.get("/api/leaderboard")
+async def api_leaderboard(request: web.Request):
+    """
+    Query:
+      limit=50
+      sort=points|wins|winrate|games
+      game=dice|bj|slot|all
+    """
+    limit = safe_int(request.query.get("limit"), 50)
+    sort = (request.query.get("sort") or "points").lower()
+    game = (request.query.get("game") or "all").lower()
+
+    if game != "all" and game not in ALLOWED_GAMES:
+        return json_error("bad game")
+
+    user_ids: List[int] = [safe_int(x) for x in await rds.smembers(USERS_SET)]
+    user_ids = [u for u in user_ids if u]
+
+    rows: List[dict] = []
+    for uid in user_ids:
+        profile = await rds.hgetall(key_profile(uid))
+        name = profile.get("name") or f"User {uid}"
+        username = profile.get("username") or ""
+
+        points = safe_int(await rds.get(key_balance(uid)))
+
+        if game == "all":
+            stats = await rds.hgetall(key_stats(uid))
+        else:
+            stats = await rds.hgetall(key_gamestats(uid, game))
+
+        wins = safe_int(stats.get("wins"))
+        losses = safe_int(stats.get("losses"))
+        draws = safe_int(stats.get("draws"))
+        games_total = safe_int(stats.get("games_total"))
+        winrate = (wins / games_total) if games_total > 0 else 0.0
+
+        rows.append({
+            "user_id": uid,
+            "name": name,
+            "username": username,
+            "points": points,
+            "wins": wins,
+            "losses": losses,
+            "draws": draws,
+            "games_total": games_total,
+            "winrate": winrate
+        })
+
+    if sort == "points":
+        rows.sort(key=lambda r: (r["points"], r["wins"]), reverse=True)
+    elif sort == "wins":
+        rows.sort(key=lambda r: (r["wins"], r["points"]), reverse=True)
+    elif sort == "winrate":
+        rows.sort(key=lambda r: (r["winrate"], r["wins"], r["games_total"]), reverse=True)
+    elif sort == "games":
+        rows.sort(key=lambda r: (r["games_total"], r["wins"]), reverse=True)
+    else:
+        return json_error("bad sort")
+
+    return web.json_response({"ok": True, "game": game, "sort": sort, "rows": rows[:limit]})
 
 async def run_api(app_host="0.0.0.0", app_port=8080):
     app = web.Application()
@@ -174,10 +323,7 @@ async def main():
     global rds
     rds = redis.Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
 
-    # Start API in background task in same process
     await run_api()
-
-    # Start polling
     await dp.start_polling(bot)
 
 if __name__ == "__main__":

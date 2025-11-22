@@ -4,7 +4,7 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Кости — FirstClub</title>
-
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <style>
     :root{
       --bg:#0a0d12; --bg-2:#0e1117; --panel:#0d1117;
@@ -205,9 +205,17 @@
     const API_BASE = "https://api.firstgamble.ru";
 
     function getTgUserId(){
-      try { return window.Telegram?.WebApp?.initDataUnsafe?.user?.id || null; }
-      catch(e){ return null; }
-    }
+  try {
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if (!tg) return null;
+
+    tg.ready();
+    return tg.initDataUnsafe?.user?.id || null;
+  } catch (e) {
+    return null;
+  }
+}
+
 
     async function loadBalance(){
       const userId = getTgUserId();

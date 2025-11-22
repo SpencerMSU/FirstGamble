@@ -146,6 +146,8 @@ async def start_api_server():
     app = web.Application()
     app.router.add_route("GET", "/api/balance", api_balance)
     app.router.add_route("OPTIONS", "/api/balance", api_balance)
+    app.router.add_route("POST", "/api/add_point", api_add_point)
+    app.router.add_route("OPTIONS", "/api/add_point", api_add_point)
 
     runner = web.AppRunner(app)
     await runner.setup()
@@ -166,6 +168,32 @@ async def on_reject(callback_query):
         "Ок, без подтверждения мини-аппка недоступна."
     )
 
+# POST /api/add_point  body: {"user_id":"123","delta":1}
+async def api_add_point(request: web.Request):
+    headers = {
+        "Access-Control-Allow-Origin": "*",
+        "Access-Control-Allow-Methods": "POST, OPTIONS",
+        "Access-Control-Allow-Headers": "Content-Type",
+    }
+    if request.method == "OPTIONS":
+        return web.Response(status=200, headers=headers)
+
+    try:
+        data = await request.json()
+    except:
+        data = {}
+
+    user_id = str(data.get("user_id", "")).strip()
+    delta = int(data.get("delta", 0))
+
+    if not user_id or delta == 0:
+        return web.json_response({"ok": False, "error": "bad data"}, status=400, headers=headers)
+
+    key = f"points:{user_id}"
+    bal = int(r.get(key) or 0) + delta
+    r.set(key, bal)
+
+    return web.json_response({"ok": True, "user_id": user_id, "balance": bal}, headers=headers)
 
 async def main():
     await start_api_server()

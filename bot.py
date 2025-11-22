@@ -2,79 +2,137 @@ import os
 import logging
 import redis
 import asyncio
-from aiogram import Bot, Dispatcher
-from aiogram.types import InlineKeyboardButton, InlineKeyboardMarkup
-from aiogram.filters import Command
 
-# Функция для чтения данных из tokens.txt
+from aiogram import Bot, Dispatcher
+from aiogram.filters import Command
+from aiogram.types import (
+    InlineKeyboardButton,
+    InlineKeyboardMarkup,
+    WebAppInfo,
+)
+
+# ---------- загрузка tokens.txt ----------
 def load_tokens(filename="tokens.txt"):
     tokens = {}
     if os.path.exists(filename):
-        with open(filename, "r") as file:
-            for line in file:
-                if line.strip() and "=" in line:
-                    key, value = line.strip().split("=", 1)
-                    tokens[key.strip()] = value.strip()
+        with open(filename, "r", encoding="utf-8") as f:
+            for line in f:
+                line = line.strip()
+                if line and "=" in line and not line.startswith("#"):
+                    k, v = line.split("=", 1)
+                    tokens[k.strip()] = v.strip()
     return tokens
 
-# Загружаем токены из файла
 tokens = load_tokens()
-API_TOKEN = tokens.get("API_TOKEN")
+
+API_TOKEN  = tokens.get("API_TOKEN")
 REDIS_HOST = tokens.get("REDIS_HOST", "localhost")
 REDIS_PORT = int(tokens.get("REDIS_PORT", 6379))
-REDIS_DB = int(tokens.get("REDIS_DB", 0))
+REDIS_DB   = int(tokens.get("REDIS_DB", 0))
+WEBAPP_URL = tokens.get("WEBAPP_URL")  # ссылка на Vercel
 
-# Настройка логирования
+if not API_TOKEN:
+    raise RuntimeError("Нет API_TOKEN в tokens.txt")
+if not WEBAPP_URL or not WEBAPP_URL.startswith("https://"):
+    raise RuntimeError("WEBAPP_URL должен быть в tokens.txt и начинаться с https://")
+
+# ---------- логирование + редис ----------
 logging.basicConfig(level=logging.INFO)
 
-# Подключение к Redis
-r = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+r = redis.StrictRedis(
+    host=REDIS_HOST,
+    port=REDIS_PORT,
+    db=REDIS_DB,
+    decode_responses=True
+)
 
-# Создание объекта бота и диспетчера
 bot = Bot(token=API_TOKEN)
 dp = Dispatcher()
 
-@dp.message(Command(commands=["start"]))
+
+# ---------- /start ----------
+@dp.message(Command("start"))
 async def cmd_start(message):
     user_id = str(message.from_user.id)
-    username = message.from_user.username
+    username = message.from_user.username or "друг"
 
-    # Добавляем пользователя, если его нет
+    # если нет ключа — создаём
     if r.get(user_id) is None:
         r.set(user_id, "not_confirmed")
 
-    # Проверяем статус пользователя
     if r.get(user_id) == "confirmed":
-        # Пользователь уже подтвердил
-        await message.answer(f"Привет, {username}! Ты уже подтвердил доступ и можешь использовать мини‑приложение!")
+        # уже подтверждён
+        keyboard = InlineKeyboardMarkup(inline_keyboard=[
+            [InlineKeyboardButton(
+                text="Открыть мини-аппку",
+                web_app=WebAppInfo(url=WEBAPP_URL)
+            )]
+        ])
+        await message.answer(
+            f"Привет, {username}! Ты уже подтвердил доступ ✅\n"
+            f"Жми кнопку ниже и заходи в мини-приложение:",
+            reply_markup=keyboard
+        )
     else:
-        # Новый пользователь или не подтвержденный
+        # ещё не подтверждён
         keyboard = InlineKeyboardMarkup(inline_keyboard=[
             [InlineKeyboardButton(text="Подтвердить", callback_data="confirm")],
             [InlineKeyboardButton(text="Отклонить", callback_data="reject")]
         ])
-        sent_message = await message.answer("Привет! Чтобы продолжить, нажмите кнопку ниже.", reply_markup=keyboard)
+        await message.answer(
+            "Привет! Чтобы продолжить, нажми кнопку ниже:",
+            reply_markup=keyboard
+        )
 
-        # Удаляем сообщение через 5 секунд
-        await asyncio.sleep(5)  # Задержка на 5 секунд перед удалением
-        await sent_message.delete()
 
+# ---------- confirm ----------
 @dp.callback_query(lambda c: c.data == "confirm")
 async def on_confirm(callback_query):
     user_id = str(callback_query.from_user.id)
-    r.set(user_id, "confirmed")
-    await callback_query.answer("Доступ к мини‑приложению получен!")
-    await bot.send_message(callback_query.from_user.id, "Теперь ты можешь использовать мини‑приложение!")
 
+    # сохраняем подтверждение
+    r.set(user_id, "confirmed")
+
+    # ответ на нажатие (чтобы не крутилось колесо)
+    await callback_query.answer("Доступ получен ✅")
+
+    # удаляем старое сообщение с кнопками подтверждения
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass  # если удалить не удалось — не критично
+
+    # отправляем кнопку открытия миниаппа
+    keyboard = InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(
+            text="Открыть мини-аппку",
+            web_app=WebAppInfo(url=WEBAPP_URL)
+        )]
+    ])
+
+    await bot.send_message(
+        callback_query.from_user.id,
+        "Готово! Нажми кнопку ниже, чтобы открыть мини-приложение:",
+        reply_markup=keyboard
+    )
+
+
+# ---------- reject ----------
 @dp.callback_query(lambda c: c.data == "reject")
 async def on_reject(callback_query):
-    await callback_query.answer("Доступ отклонен.")
-    await bot.send_message(callback_query.from_user.id, "Вы отклонили доступ.")
+    await callback_query.answer("Доступ отклонён.")
+    try:
+        await callback_query.message.delete()
+    except Exception:
+        pass
+    await bot.send_message(
+        callback_query.from_user.id,
+        "Ок, без подтверждения мини-аппка недоступна."
+    )
 
-# Основная функция для запуска бота
+
 async def main():
     await dp.start_polling(bot)
 
-# Запуск бота
 if __name__ == "__main__":
     asyncio.run(main())

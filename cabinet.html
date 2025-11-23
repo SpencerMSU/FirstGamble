@@ -1,0 +1,119 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1.0">
+<title>Личный кабинет — FirstClub</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+/* те же переменные/стиль, что в rpg/ludka */
+:root{
+  --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+  --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+  --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+  --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+  --radius:18px;
+}
+*{box-sizing:border-box}
+body{
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+  background:
+    radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+    radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+    linear-gradient(180deg,var(--bg2),var(--bg));
+  min-height:100vh;display:flex;justify-content:center;padding:16px;
+}
+.app{
+  width:min(900px,100%);
+  border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+.back{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
+}
+.balance-pill{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--stroke);font-weight:800;font-size:14px;min-width:88px;justify-content:center;
+}
+.section{background:linear-gradient(180deg,var(--panel),transparent);border:1px solid var(--stroke);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+.tickets{
+  display:flex;flex-wrap:wrap;gap:8px;
+}
+.ticket{
+  width:70px;height:44px;border-radius:10px;border:1px solid var(--stroke2);
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  display:flex;align-items:center;justify-content:center;font-weight:900;font-size:12px;
+}
+.muted{color:var(--muted);font-size:12px;font-weight:700;}
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a class="back" href="/">← Назад</a>
+    <div style="font-weight:900;font-size:18px;">Личный кабинет</div>
+    <div class="balance-pill"><span>🪙</span><span id="bal">0</span></div>
+  </header>
+
+  <section class="section">
+    <div style="font-weight:900;margin-bottom:6px;">Telegram ID</div>
+    <div id="tgid" style="font-size:20px;font-weight:900;">—</div>
+    <div class="muted">Это твой уникальный ID в системе FirstGamble.</div>
+  </section>
+
+  <section class="section">
+    <div style="font-weight:900;margin-bottom:6px;">Твои билеты розыгрыша</div>
+    <div id="tickets" class="tickets"></div>
+    <div id="empty" class="muted">Билетов пока нет.</div>
+  </section>
+</div>
+
+<script>
+const API_BASE="https://api.firstgamble.ru";
+let uid=null;
+
+function initTelegram(){
+  const tg = window.Telegram && window.Telegram.WebApp;
+  if(!tg) return null;
+  tg.ready();
+  if(!window._tgExpanded){ try{tg.expand()}catch(e){} window._tgExpanded=true; }
+  uid = new URLSearchParams(location.search).get("uid")
+        || tg.initDataUnsafe?.user?.id
+        || null;
+  return tg;
+}
+initTelegram();
+
+async function apiGet(path){
+  const r=await fetch(API_BASE+path,{cache:"no-store"});
+  return r.json();
+}
+
+async function loadCabinet(){
+  if(!uid){ return; }
+  const cab = await apiGet(`/api/cabinet?user_id=${uid}`);
+  if(!cab.ok){ alert(cab.error||"cabinet error"); return; }
+
+  document.getElementById("tgid").textContent = cab.user_id;
+  document.getElementById("bal").textContent = cab.balance ?? 0;
+
+  const wrap=document.getElementById("tickets");
+  wrap.innerHTML="";
+  const list=cab.tickets||[];
+  document.getElementById("empty").style.display = list.length? "none":"block";
+
+  list.forEach(t=>{
+    const d=document.createElement("div");
+    d.className="ticket";
+    d.textContent = "#"+t;
+    wrap.appendChild(d);
+  });
+}
+loadCabinet();
+</script>
+</body>
+</html>

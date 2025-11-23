@@ -14,4 +14,5 @@ document.getElementById("button3").addEventListener("click", function() {
 
 document.getElementById("button4").addEventListener("click", function() {
     console.log("Кнопка 4 нажата");
-});
+});app.get("/cabinet", (req,res) => res.sendFile(path.join(__dirname, "cabinet.html")));
+

@@ -39,6 +39,10 @@
     {
       "source": "/rating",
       "destination": "/rating.html"
+    },
+    {
+      "source": "/cabinet",
+      "destination": "/cabinet.html"
     }
   ]
 }

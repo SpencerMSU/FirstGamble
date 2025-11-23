@@ -45,6 +45,12 @@ def key_confirmed(user_id: int) -> str:
 def key_balance(user_id: int) -> str:
     return f"user:{user_id}:balance"
 
+def key_ticket_counter() -> str:
+    return "raffle:ticket:counter"  # глобальный счётчик
+
+def key_user_tickets(uid: int) -> str:
+    return f"user:{uid}:raffle:tickets"  # список билетов пользователя
+
 def key_profile(user_id: int) -> str:
     return f"user:{user_id}:profile"   # hash: name, username
 
@@ -90,10 +96,19 @@ RPG_TOOLS = {
 }
 
 RPG_BAGS = {
-    "bag1": {"name": "Мешок из ткани", "cost": 3, "cap_add": 50},
-    "bag2": {"name": "Сумка старателя", "cost": 6, "cap_add": 100},
-    "bag3": {"name": "Рюкзак шахтёра", "cost": 12, "cap_add": 200},
+    "bag1": {"name": "Мешок из ткани",         "cost": 3,  "cap_add": 50},
+    "bag2": {"name": "Сумка старателя",        "cost": 6,  "cap_add": 100},
+    "bag3": {"name": "Рюкзак шахтёра",         "cost": 12, "cap_add": 200},
+
+    "bag4": {"name": "Укреплённый рюкзак",     "cost": 18, "cap_add": 300},
+    "bag5": {"name": "Экспедиционный мешок",  "cost": 25, "cap_add": 450},
+    "bag6": {"name": "Каркасная сумка",       "cost": 33, "cap_add": 650},
+    "bag7": {"name": "Горный баул",           "cost": 42, "cap_add": 900},
+    "bag8": {"name": "Сумка инженера",        "cost": 55, "cap_add": 1200},
+    "bag9": {"name": "Артефактный рюкзак",    "cost": 70, "cap_add": 1600},
+    "bag10":{"name": "Легендарный контейнер", "cost": 95, "cap_add": 2200},
 }
+
 
 RPG_SELL_VALUES = {"wood": 1, "stone": 2, "iron": 5, "silver": 8, "gold": 12, "crystal": 20}
 RPG_CHAIN = [("wood", "stone"), ("stone", "iron"), ("iron", "silver"), ("silver", "gold"), ("gold", "crystal")]
@@ -301,6 +316,71 @@ async def api_balance(request: web.Request):
         await rds.zadd(USERS_ZSET, {uid: 0}, nx=True)
         await rds.sadd(USERS_SET, uid)
     return web.json_response({"user_id": str(uid), "balance": int(bal)})
+@routes.post("/api/raffle/buy_ticket")
+async def api_buy_ticket(request: web.Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return json_error("bad json")
+
+    uid = safe_int(data.get("user_id"), None)
+    if uid is None:
+        return json_error("user_id required")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    PRICE = 500
+    bal = safe_int(await rds.get(key_balance(uid)))
+    if bal < PRICE:
+        return json_error("not enough points")
+
+    # получаем новый номер билета
+    num = await rds.incr(key_ticket_counter()) - 1  # первый будет 0
+    ticket = str(num).zfill(8)  # "00000000", "00000001", ...
+
+    pipe = rds.pipeline()
+    pipe.incrby(key_balance(uid), -PRICE)
+    pipe.zadd(USERS_ZSET, {uid: bal - PRICE})
+    pipe.rpush(key_user_tickets(uid), ticket)
+    await pipe.execute()
+
+    tickets = await rds.lrange(key_user_tickets(uid), 0, -1)
+    new_bal = bal - PRICE
+
+    return web.json_response({
+        "ok": True,
+        "ticket": ticket,
+        "balance": new_bal,
+        "tickets": tickets
+    })
+@routes.get("/api/cabinet")
+async def api_cabinet(request: web.Request):
+    user_id = request.query.get("user_id")
+    if not user_id:
+        return json_error("user_id required")
+    uid = safe_int(user_id, None)
+    if uid is None:
+        return json_error("bad user_id")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    bal = safe_int(await rds.get(key_balance(uid)))
+    tickets = await rds.lrange(key_user_tickets(uid), 0, -1)
+
+    return web.json_response({
+        "ok": True,
+        "user_id": str(uid),
+        "balance": bal,
+        "tickets": tickets
+    })
 
 @routes.post("/api/add_point")
 async def api_add_point(request: web.Request):

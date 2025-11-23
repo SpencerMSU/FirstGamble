@@ -58,6 +58,46 @@ USERS_ZSET = "leaderboard:points"      # zset: user_id -> points
 USERS_SET = "users:all"               # set of user_ids
 
 ALLOWED_GAMES = {"dice", "bj", "slot"}
+# ========= RPG config =========
+RPG_RESOURCES = {
+    "wood":    {"name": "Дерево",   "max": 999},
+    "stone":   {"name": "Камень",   "max": 999},
+    "iron":    {"name": "Железо",   "max": 999},
+    "silver":  {"name": "Серебро",  "max": 999},
+    "gold":    {"name": "Золото",   "max": 999},
+    "crystal": {"name": "Кристалл", "max": 999},
+}
+
+# рецепты крафта (должны совпадать с rpg.html)
+RPG_CRAFT = {
+    "tools": {
+        "axe1":   {"name": "Топор I",    "req": {"wood": 20, "stone": 10}},
+        "pick2":  {"name": "Кирка II",   "req": {"wood": 40, "iron": 15}},
+        "drill3": {"name": "Бур III",    "req": {"iron": 40, "silver": 10, "gold": 5}},
+    },
+    "accessories": {
+        "ring1":   {"name": "Кольцо удачи",   "req": {"silver": 10, "gold": 2}},
+        "amulet2": {"name": "Амулет добычи",  "req": {"gold": 8, "crystal": 3}},
+    },
+    "bags": {
+        "bag1": {"name": "Сумка I (+50)",  "req": {"wood": 60, "iron": 10}},
+        "bag2": {"name": "Сумка II (+150)","req": {"iron": 30, "silver": 10}},
+    }
+}
+
+# преобразования (курс)
+RPG_TRANSFORM = {
+    "t1": {"from": "stone",  "to": "iron",    "rate": 10},
+    "t2": {"from": "iron",   "to": "silver",  "rate": 10},
+    "t3": {"from": "silver", "to": "gold",    "rate": 10},
+    "t4": {"from": "gold",   "to": "crystal", "rate": 10},
+}
+
+def key_rpg_resources(user_id: int) -> str:
+    return f"user:{user_id}:rpg:resources"  # hash: wood, stone, iron...
+
+def key_rpg_items(user_id: int) -> str:
+    return f"user:{user_id}:rpg:items"      # hash: crafted item_id -> count
 
 # ========= globals =========
 rds: Optional[redis.Redis] = None
@@ -166,6 +206,22 @@ def safe_int(x, default=0):
         return int(x)
     except Exception:
         return default
+async def ensure_user_api(uid: int):
+    """Гарантирует, что у юзера есть нужные ключи (balance + RPG)."""
+    await rds.sadd(USERS_SET, uid)
+
+    bal = await rds.get(key_balance(uid))
+    if bal is None:
+        await rds.set(key_balance(uid), "0")
+        await rds.zadd(USERS_ZSET, {uid: 0}, nx=True)
+
+    # если ресурсов нет — создаём нулевые
+    rkey = key_rpg_resources(uid)
+    if not await rds.exists(rkey):
+        pipe = rds.pipeline()
+        for rid in RPG_RESOURCES.keys():
+            pipe.hset(rkey, rid, 0)
+        await pipe.execute()
 
 @routes.get("/api/balance")
 async def api_balance(request: web.Request):
@@ -206,6 +262,154 @@ async def api_add_point(request: web.Request):
     new_bal = await rds.incrby(key_balance(uid_int), delta_int)
     await rds.zadd(USERS_ZSET, {uid_int: new_bal})
     return web.json_response({"ok": True, "user_id": str(uid_int), "balance": int(new_bal)})
+@routes.get("/api/rpg/inventory")
+async def api_rpg_inventory(request: web.Request):
+    user_id = request.query.get("user_id")
+    if not user_id:
+        return json_error("user_id required")
+    uid = safe_int(user_id)
+    if not uid:
+        return json_error("bad user_id")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    data = await rds.hgetall(key_rpg_resources(uid))
+    resources = {}
+    for rid, meta in RPG_RESOURCES.items():
+        cur = safe_int(data.get(rid, 0))
+        resources[rid] = {"cur": cur, "max": meta["max"], "name": meta["name"]}
+
+    items = await rds.hgetall(key_rpg_items(uid))
+    crafted = {iid: safe_int(cnt) for iid, cnt in items.items()}
+
+    return web.json_response({"ok": True, "user_id": str(uid), "resources": resources, "items": crafted})
+@routes.post("/api/rpg/gather")
+async def api_rpg_gather(request: web.Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return json_error("bad json")
+
+    uid = safe_int(data.get("user_id"))
+    if not uid:
+        return json_error("user_id required")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    # рандом добычи как в фронте
+    import random
+    gain = {
+        "wood":  5 + random.randint(0, 5),
+        "stone": 3 + random.randint(0, 4),
+        "iron":  1 if random.random() < 0.35 else 0
+    }
+
+    rkey = key_rpg_resources(uid)
+    pipe = rds.pipeline()
+    for rid, amt in gain.items():
+        if amt > 0:
+            pipe.hincrby(rkey, rid, amt)
+    await pipe.execute()
+
+    # вернуть обновлённый инвентарь
+    return await api_rpg_inventory(request.clone(rel_url=request.rel_url.with_query({"user_id": str(uid)})))
+@routes.post("/api/rpg/transform")
+async def api_rpg_transform(request: web.Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return json_error("bad json")
+
+    uid = safe_int(data.get("user_id"))
+    tid = (data.get("transform_id") or "").strip()
+    amount = safe_int(data.get("amount", 1), 1)
+    if not uid or tid not in RPG_TRANSFORM:
+        return json_error("bad data")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    t = RPG_TRANSFORM[tid]
+    frm, to, rate = t["from"], t["to"], t["rate"]
+    need = rate * amount
+
+    rkey = key_rpg_resources(uid)
+    have = safe_int(await rds.hget(rkey, frm), 0)
+    if have < need:
+        return json_error("not enough resources")
+
+    pipe = rds.pipeline()
+    pipe.hincrby(rkey, frm, -need)
+    pipe.hincrby(rkey, to, amount)
+
+    # Награда монетами за преобразование (1 монета за 1 редкий ресурс)
+    pipe.incrby(key_balance(uid), amount)
+    await pipe.execute()
+
+    # обновим leaderboard
+    new_bal = safe_int(await rds.get(key_balance(uid)))
+    await rds.zadd(USERS_ZSET, {uid: new_bal})
+
+    return await api_rpg_inventory(request.clone(rel_url=request.rel_url.with_query({"user_id": str(uid)})))
+@routes.post("/api/rpg/craft")
+async def api_rpg_craft(request: web.Request):
+    try:
+        data = await request.json()
+    except Exception:
+        return json_error("bad json")
+
+    uid = safe_int(data.get("user_id"))
+    item_id = (data.get("item_id") or "").strip()
+    amount = safe_int(data.get("amount", 1), 1)
+    if not uid or not item_id:
+        return json_error("bad data")
+
+    confirmed = await rds.get(key_confirmed(uid))
+    if confirmed != "1":
+        return json_error("not confirmed", status=403)
+
+    await ensure_user_api(uid)
+
+    # найти рецепт
+    recipe = None
+    for group in RPG_CRAFT.values():
+        if item_id in group:
+            recipe = group[item_id]
+            break
+    if not recipe:
+        return json_error("unknown item")
+
+    req = recipe["req"]
+    rkey = key_rpg_resources(uid)
+
+    # проверить ресурсы
+    cur = await rds.hgetall(rkey)
+    for rid, need_one in req.items():
+        if rid not in RPG_RESOURCES:
+            return json_error("bad recipe")
+        have = safe_int(cur.get(rid, 0))
+        if have < need_one * amount:
+            return json_error("not enough resources")
+
+    # списать и добавить предмет
+    pipe = rds.pipeline()
+    for rid, need_one in req.items():
+        pipe.hincrby(rkey, rid, -(need_one * amount))
+    pipe.hincrby(key_rpg_items(uid), item_id, amount)
+    await pipe.execute()
+
+    return await api_rpg_inventory(request.clone(rel_url=request.rel_url.with_query({"user_id": str(uid)})))
 
 @routes.post("/api/report_game")
 async def api_report_game(request: web.Request):

@@ -2,341 +2,369 @@
 <html lang="ru">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Кости — FirstGamble</title>
-
-  <!-- Telegram WebApp SDK -->
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Кости — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
     :root{
-      --bg:#0a0d12; --bg2:#0e1117; --card:#111722;
-      --text:#e6ebf4; --muted:#9aa4b2;
-      --accent:#4da3ff; --accent2:#1f6feb;
-      --win:#2ecc71; --lose:#ff6b6b; --draw:#f1c40f;
+      --bg:#0a0d12; --bg-2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card-2:#0f1520;
       --stroke: rgba(255,255,255,.06);
-      --shadow: 0 0 0 1px var(--stroke), 0 10px 26px rgba(0,0,0,.45);
+      --stroke-2: rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue-2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+      --radius:18px; --shadow: 0 0 0 1px var(--stroke), 0 8px 30px rgba(0,0,0,.6);
     }
-    body.light{
-      --bg:#f4f6fb; --bg2:#ffffff; --card:#ffffff;
-      --text:#0e1520; --muted:#607086;
-      --stroke: rgba(0,0,0,.08);
-      --shadow: 0 0 0 1px var(--stroke), 0 8px 20px rgba(0,0,0,.10);
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg-2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card-2:#f6f8fb;
+      --stroke: rgba(10,20,40,.08);
+      --stroke-2: rgba(59,130,246,.35);
+      --blue:#2563eb; --blue-2:#1d4ed8;
+      --text:#0b1220; --muted:#52607a;
+      --shadow: 0 0 0 1px var(--stroke), 0 10px 26px rgba(10,20,40,.08);
     }
     *{box-sizing:border-box}
     body{
-      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial;
-      background:radial-gradient(1200px 600px at 10% -10%, #13233a 0%, transparent 60%), var(--bg);
+      margin:0;
+      font-family: system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
       color:var(--text);
-      min-height:100vh;
-      display:flex; justify-content:center; padding:16px;
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+        radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+        linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%);
+      min-height:100vh; display:flex; justify-content:center; padding:16px;
     }
-    .wrap{width:100%; max-width:720px}
-    header{
-      display:flex; align-items:center; gap:12px; margin-bottom:12px;
-    }
-    a.back{
-      text-decoration:none; color:var(--text);
-      background:var(--card); border-radius:12px; padding:8px 12px;
-      box-shadow:var(--shadow); border:1px solid var(--stroke);
-      font-weight:600;
-    }
-    .title h1{font-size:22px; margin:0}
-    .title span{font-size:13px; color:var(--muted)}
-
-    .panel{
-      background:var(--card);
+    .app{
+      width:min(1000px,100%);
       border:1px solid var(--stroke);
-      border-radius:16px;
-      padding:14px;
-      box-shadow:var(--shadow);
-      margin-bottom:12px;
+      border-radius:20px; box-shadow: var(--shadow);
+      padding:14px; background: linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
     }
-    .row{
-      display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .balance-pill{
+      display:flex;align-items:center;gap:8px;
+      padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border:1px solid var(--stroke);box-shadow: var(--shadow);
+      min-width:64px; justify-content:center;
     }
-    .badge{
-      font-size:14px; color:var(--muted);
+    .back{
+      display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
+      cursor:pointer;transition:.15s ease;
     }
-    .balance{
-      font-weight:800; font-size:18px;
-      color:var(--accent);
-    }
-    .warn{
-      font-size:13px; color:#ffb347; margin-top:6px; white-space:pre-line;
-    }
-
-    .dice-area{
-      display:grid; grid-template-columns:1fr 1fr; gap:12px;
-      margin-top:8px;
-    }
-    .player{
-      background:var(--bg2);
+    .back:hover{border-color:var(--stroke-2);transform:translateY(-1px);}
+    .section{
+      background: linear-gradient(180deg, var(--panel) 0%, color-mix(in oklab, var(--panel) 92%, transparent) 100%);
       border:1px solid var(--stroke);
-      border-radius:14px;
-      padding:12px;
-      text-align:center;
+      border-radius:16px;padding:14px;box-shadow: var(--shadow);margin-bottom:12px;
     }
-    .player h3{
-      margin:0 0 8px 0; font-size:16px;
+    .controls{display:flex;flex-wrap:wrap;gap:10px;align-items:center;}
+    .input{
+      display:flex;align-items:center;gap:8px;
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border:1px solid var(--stroke);padding:8px 10px;border-radius:12px;
+      font-weight:700;font-size:14px;
     }
-    .dice-box{
-      display:flex; justify-content:center; gap:10px; margin-bottom:8px;
+    .input input{
+      width:70px;padding:6px 8px;border-radius:8px;border:1px solid var(--stroke);
+      background: transparent;color:var(--text);font-weight:800;font-size:15px;outline:none;text-align:center;
     }
-    .die{
-      width:64px; height:64px; border-radius:12px;
-      background:var(--card);
-      display:grid; place-items:center;
-      font-size:30px; font-weight:900;
-      border:1px solid var(--stroke);
-      box-shadow:var(--shadow);
-      transition:transform .15s ease;
+    .btn{
+      padding:10px 14px;border-radius:12px;border:1px solid var(--stroke-2);
+      background: linear-gradient(180deg, var(--blue) 0%, var(--blue-2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;
+      box-shadow: 0 6px 18px rgba(37,99,235,.35);
     }
-    .rolling .die{ transform:rotate(8deg) scale(1.06); }
-
+    .btn:hover{transform:translateY(-1px);}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
+    .arena{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+    .player-box{
+      background: linear-gradient(180deg, var(--card) 0%, var(--card-2) 100%);
+      border:1px solid var(--stroke);border-radius:14px;padding:12px;min-height:170px;
+    }
+    .player-head{display:flex;align-items:center;justify-content:space-between;margin-bottom:8px;}
+    .player-head h3{margin:0;font-size:16px;font-weight:900;}
     .sum{
-      font-size:15px; color:var(--muted);
+      font-weight:900;font-size:16px;padding:4px 8px;border-radius:999px;border:1px solid var(--stroke);
+      background: color-mix(in oklab, var(--panel) 75%, transparent);
     }
-
-    button#rollBtn{
-      width:100%; height:50px; border:none; border-radius:14px;
-      background:linear-gradient(135deg,var(--accent2),var(--accent));
-      color:white; font-size:16px; font-weight:800;
-      cursor:pointer; box-shadow:0 10px 18px rgba(77,163,255,.25);
-      margin-top:10px;
+    .dice-row{display:flex;flex-wrap:wrap;gap:8px;}
+    .die{
+      width:52px;height:52px;border-radius:12px;display:grid;place-items:center;
+      font-size:22px;font-weight:900;background: rgba(59,130,246,.10);
+      border:1px solid rgba(59,130,246,.28);box-shadow: inset 0 0 14px rgba(59,130,246,.18);
     }
-    button#rollBtn:disabled{
-      opacity:.6; cursor:not-allowed;
+    .die.rolling{animation: roll .5s ease-in-out infinite;}
+    @keyframes roll{0%{transform:translateY(0)}50%{transform:translateY(-4px)}100%{transform:translateY(0)}}
+    .result{font-size:16px;font-weight:900;margin-top:10px;}
+    .result.win{color:var(--green);} .result.lose{color:var(--red);} .result.draw{color:var(--amber);}
+    .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;white-space:pre-wrap;}
+    .toast{
+      position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);
+      background: rgba(11,16,24,.95);border:1px solid var(--stroke-2);
+      color:var(--text);padding:10px 14px;border-radius:12px;font-size:13px;
+      opacity:0;transition:.2s ease;box-shadow: var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;
     }
-
-    .result{
-      font-size:18px; font-weight:900; text-align:center; margin-top:10px;
-    }
-    .result.win{ color:var(--win); }
-    .result.lose{ color:var(--lose); }
-    .result.draw{ color:var(--draw); }
-
-    footer{
-      text-align:center; font-size:12px; color:var(--muted); margin-top:8px;
-    }
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    @media (max-width: 720px){.arena{grid-template-columns:1fr;}}
   </style>
 </head>
 <body>
-  <div class="wrap">
+  <div class="app">
     <header>
       <a class="back" href="/ludka">← Назад</a>
       <div class="title">
         <h1>Кости</h1>
-        <span>Брось кости и победи бота</span>
+        <span>Кто больше — тот победил</span>
+      </div>
+      <div class="balance-pill">
+        <span>🪙</span>
+        <span id="balanceValue">0</span>
       </div>
     </header>
 
-    <div class="panel">
-      <div class="row">
-        <div class="badge">Ваши монеты:</div>
-        <div class="balance"><span id="balance">0</span>💠</div>
+    <section class="section">
+      <h2>Настройки</h2>
+      <div class="controls">
+        <label class="input">
+          🧊 Кубиков:
+          <input id="diceCount" type="number" min="1" max="5" value="1" />
+        </label>
+        <button id="rollBtn" class="btn">Бросить 🎲</button>
       </div>
-      <div id="tgWarn" class="warn"></div>
-    </div>
+      <div id="tgWarn" class="note"></div>
+    </section>
 
-    <div class="panel">
-      <div class="dice-area" id="diceArea">
-        <div class="player" id="youBlock">
+    <section class="section arena">
+      <div class="player-box">
+        <div class="player-head">
           <h3>Ты</h3>
-          <div class="dice-box">
-            <div class="die" id="youD1">?</div>
-            <div class="die" id="youD2">?</div>
-          </div>
           <div class="sum">Сумма: <span id="youSum">0</span></div>
         </div>
-
-        <div class="player" id="botBlock">
-          <h3>Бот</h3>
-          <div class="dice-box">
-            <div class="die" id="botD1">?</div>
-            <div class="die" id="botD2">?</div>
-          </div>
-          <div class="sum">Сумма: <span id="botSum">0</span></div>
-        </div>
+        <div id="youDice" class="dice-row"></div>
       </div>
 
-      <button id="rollBtn">🎲 Бросить кости</button>
-      <div id="resultText" class="result"></div>
-    </div>
+      <div class="player-box">
+        <div class="player-head">
+          <h3>Бот</h3>
+          <div class="sum">Сумма: <span id="botSum">0</span></div>
+        </div>
+        <div id="botDice" class="dice-row"></div>
+      </div>
+    </section>
 
-    <footer>FirstGamble • Dice</footer>
+    <section class="section">
+      <div id="resultText" class="result">Выбери количество кубиков и бросай.</div>
+      <div id="awardText" class="note"></div>
+    </section>
   </div>
 
+  <div id="toast" class="toast">Ок</div>
+
 <script>
-  const TG = window.Telegram?.WebApp;
+  // ===== Telegram + Theme + UID fallback =====
+  function isColorDark(hex){
+    if(!hex || hex[0] !== "#") return false;
+    const r = parseInt(hex.slice(1,3),16), g = parseInt(hex.slice(3,5),16), b = parseInt(hex.slice(5,7),16);
+    return (0.299*r + 0.587*g + 0.114*b)/255 < 0.5;
+  }
+  function initTelegram(){
+    const tg = window.Telegram && window.Telegram.WebApp;
+    if(!tg) return null;
+    tg.ready(); tg.expand();
+    const p = tg.themeParams || {};
+    if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+    if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+    if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+    if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+    if(p.text_color){
+      document.documentElement.setAttribute("data-theme", isColorDark(p.text_color) ? "light" : "dark");
+    }
+    tg.setHeaderColor(p.bg_color || "#0a0d12");
+    tg.setBackgroundColor(p.bg_color || "#0a0d12");
+    return tg;
+  }
+  const tg = initTelegram();
+  if(!tg){
+    const prefersLight = window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
+    document.documentElement.setAttribute("data-theme", prefersLight ? "light" : "dark");
+  }
+  function getUidFromUrl(){
+    try{ return new URL(location.href).searchParams.get("uid"); }catch(e){ return null; }
+  }
+  function getTgUserId(){
+    try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); }
+  }
+
+  // ===== API =====
   const API_BASE = "https://api.firstgamble.ru";
 
-  // --- TG init + theme ---
-  if (TG) {
-    TG.ready();
-    TG.expand();
-    applyTheme(TG.colorScheme);
-    TG.onEvent("themeChanged", () => applyTheme(TG.colorScheme));
-  } else {
-    applyTheme("dark");
-  }
+  async function loadBalance(){
+    const userId = getTgUserId();
+    const el = document.getElementById("balanceValue");
+    if(!el) return;
 
-  function applyTheme(scheme){
-    document.body.classList.toggle("light", scheme === "light");
-  }
-
-  function getTgUserId(){
-    try {
-      const uid = TG?.initDataUnsafe?.user?.id;
-      if (uid) return String(uid);
-    } catch(e){}
-    const p = new URLSearchParams(location.search);
-    return p.get("uid") || null;
-  }
-
-  // --- API ---
-  async function loadBalance() {
-    const uid = getTgUserId();
-    const el = document.getElementById("balance");
-    if (!uid) {
-      el.textContent = "0";
+    if(!userId){
+      el.textContent = localStorage.getItem("balance_local") || "0";
       return;
     }
     try{
-      const r = await fetch(`${API_BASE}/api/balance?user_id=${encodeURIComponent(uid)}`);
-      const d = await r.json();
-      el.textContent = (d.balance ?? 0);
-      localStorage.setItem("balance", String(d.balance ?? 0));
-    } catch(e){
-      el.textContent = localStorage.getItem("balance") || "0";
+      const res = await fetch(API_BASE + "/api/balance?user_id=" + userId);
+      const data = await res.json();
+      el.textContent = data.balance ?? 0;
+      localStorage.setItem("balance_local", el.textContent);
+    }catch(e){
+      el.textContent = localStorage.getItem("balance_local") || "0";
     }
   }
 
-  async function sendPoint(uid, delta=1){
-    const r = await fetch(`${API_BASE}/api/add_point`,{
-      method:"POST",
-      headers:{ "Content-Type":"application/json" },
-      body: JSON.stringify({ user_id: uid, delta })
-    });
-    const d = await r.json();
-    if(!r.ok) throw new Error(d?.error || "add_point failed");
-    document.getElementById("balance").textContent = d.balance;
-    localStorage.setItem("balance", String(d.balance));
+  async function sendPoint(userId, delta){
+    try{
+      const body = JSON.stringify({ user_id: String(userId), delta: Number(delta) });
+      const res = await fetch(API_BASE + "/api/add_point", {
+        method: "POST",
+        headers: { "Content-Type":"application/json" },
+        body
+      });
+      const text = await res.text();
+      try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
+    }catch(err){
+      return {ok:false, error:String(err)};
+    }
   }
 
-  async function reportGame(uid, game, result){
+  async function reportGame(userId, game, result){
     try{
-      const r = await fetch(`${API_BASE}/api/report_game`,{
+      const body = JSON.stringify({ user_id:String(userId), game:String(game), result:String(result) });
+      await fetch(API_BASE + "/api/report_game", {
         method:"POST",
         headers:{ "Content-Type":"application/json" },
-        body: JSON.stringify({ user_id: uid, game, result })
+        body
       });
-      // если что-то не так — просто лог, игру не валим
-      if(!r.ok){
-        const d = await r.json().catch(()=>({}));
-        console.warn("report_game failed:", d);
-      }
-    }catch(e){
-      console.warn("report_game error:", e);
-    }
+    }catch(e){}
   }
 
-  // --- Game ---
+  // ===== UI helpers =====
+  const diceCountEl = document.getElementById("diceCount");
   const rollBtn = document.getElementById("rollBtn");
-  const tgWarn = document.getElementById("tgWarn");
-  const resultText = document.getElementById("resultText");
-
-  const youD1 = document.getElementById("youD1");
-  const youD2 = document.getElementById("youD2");
-  const botD1 = document.getElementById("botD1");
-  const botD2 = document.getElementById("botD2");
+  const youDiceEl = document.getElementById("youDice");
+  const botDiceEl = document.getElementById("botDice");
   const youSumEl = document.getElementById("youSum");
   const botSumEl = document.getElementById("botSum");
-  const diceArea = document.getElementById("diceArea");
+  const resultTextEl = document.getElementById("resultText");
+  const awardTextEl = document.getElementById("awardText");
+  const toast = document.getElementById("toast");
+  const tgWarn = document.getElementById("tgWarn");
 
-  const uid = getTgUserId();
-  if(!uid){
-    tgWarn.textContent =
-      "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
-      "Если тестируешь в браузере — добавь ?uid=123 в адресную строку.";
-    rollBtn.disabled = true;
-  } else {
-    tgWarn.textContent = "TG id: " + uid;
-    rollBtn.disabled = false;
+  function showToast(t){
+    toast.textContent = t;
+    toast.classList.add("show");
+    clearTimeout(showToast._t);
+    showToast._t = setTimeout(()=>toast.classList.remove("show"), 1400);
   }
-  loadBalance();
-
-  function randDie(){ return 1 + Math.floor(Math.random()*6); }
-
-  let rollingTimer = null;
-
-  function startRolling(){
-    diceArea.classList.add("rolling");
-    rollingTimer = setInterval(()=>{
-      youD1.textContent = randDie();
-      youD2.textContent = randDie();
-      botD1.textContent = randDie();
-      botD2.textContent = randDie();
-    }, 90);
+  function clampDice(n){
+    n = Number(n);
+    if(!Number.isFinite(n)) n = 1;
+    return Math.max(1, Math.min(5, Math.floor(n)));
   }
+  function rollOne(){ return 1 + Math.floor(Math.random()*6); }
 
-  function stopRolling(final){
-    clearInterval(rollingTimer);
-    rollingTimer = null;
-    diceArea.classList.remove("rolling");
-
-    youD1.textContent = final.you1;
-    youD2.textContent = final.you2;
-    botD1.textContent = final.bot1;
-    botD2.textContent = final.bot2;
-
-    youSumEl.textContent = final.youSum;
-    botSumEl.textContent = final.botSum;
+  function renderRolling(container, count){
+    container.innerHTML = "";
+    for(let i=0;i<count;i++){
+      const d = document.createElement("div");
+      d.className = "die rolling";
+      d.textContent = "•";
+      container.appendChild(d);
+    }
+  }
+  function stopRolling(container, rolls){
+    [...container.children].forEach((die, i)=>{
+      die.classList.remove("rolling");
+      die.textContent = rolls[i];
+    });
   }
 
+  // ===== init =====
+const uid = getTgUserId();
+if(!uid){
+  tgWarn.textContent =
+    "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
+    "Если тестируешь в браузере — добавь ?uid=123 в адресную строку.";
+  rollBtn.disabled = true;
+} else {
+  tgWarn.textContent = "TG id: " + uid;
+  rollBtn.disabled = false;
+}
+
+loadBalance();
+
+
+  // ===== game =====
   rollBtn.addEventListener("click", async ()=>{
-    if(rollingTimer) return;
+    const n = clampDice(diceCountEl.value);
+    diceCountEl.value = n;
+
     rollBtn.disabled = true;
-    resultText.textContent = "";
-    resultText.className = "result";
+    resultTextEl.textContent = "Бросаем кубики...";
+    resultTextEl.className = "result";
+    awardTextEl.textContent = "";
 
-    startRolling();
+    renderRolling(youDiceEl, n);
+    renderRolling(botDiceEl, n);
 
-    // имитация анимации 1.2 сек
-    setTimeout(async ()=>{
-      const fin = {
-        you1: randDie(),
-        you2: randDie(),
-        bot1: randDie(),
-        bot2: randDie(),
-      };
-      fin.youSum = fin.you1 + fin.you2;
-      fin.botSum = fin.bot1 + fin.bot2;
+    const youRolls = Array.from({length:n}, rollOne);
+    const botRolls = Array.from({length:n}, rollOne);
 
-      stopRolling(fin);
+    await new Promise(r=>setTimeout(r, 1100));
 
-      if(fin.youSum > fin.botSum){
-        resultText.textContent = `Победа! ${fin.youSum} против ${fin.botSum}`;
-        resultText.classList.add("win");
-        try{
-          await sendPoint(uid, 1);
-        }catch(e){
-          console.warn(e);
-          TG?.showAlert?.("Сервер не принял очко: " + e.message);
+    stopRolling(youDiceEl, youRolls);
+    stopRolling(botDiceEl, botRolls);
+
+    const youSum = youRolls.reduce((a,b)=>a+b,0);
+    const botSum = botRolls.reduce((a,b)=>a+b,0);
+
+    youSumEl.textContent = youSum;
+    botSumEl.textContent = botSum;
+
+    const userId = getTgUserId();
+
+    if(youSum > botSum){
+      resultTextEl.textContent = `Ты победил! ${youSum} против ${botSum}`;
+      resultTextEl.classList.add("win");
+      if(userId){
+        await reportGame(userId, "dice", "win");
+        const res = await sendPoint(userId, 1);
+        if(res.ok){
+          awardTextEl.textContent = "✅ +1 очко за победу добавлено";
+          document.getElementById("balanceValue").textContent = res.balance;
+          localStorage.setItem("balance_local", res.balance);
+          showToast("+1 очко!");
+        }else{
+          awardTextEl.textContent = "⚠️ Сервер не принял очко: " + (res.error || "unknown");
         }
-        await reportGame(uid, "dice", "win");
-      } else if (fin.youSum < fin.botSum){
-        resultText.textContent = `Ты проиграл. ${fin.youSum} против ${fin.botSum}`;
-        resultText.classList.add("lose");
-        await reportGame(uid, "dice", "lose");
-      } else {
-        resultText.textContent = `Ничья! ${fin.youSum} = ${fin.botSum}`;
-        resultText.classList.add("draw");
-        await reportGame(uid, "dice", "draw");
+      }else{
+        awardTextEl.textContent = "⚠️ Нет TG id — очко не начислено.";
       }
+    }else if(youSum < botSum){
+      resultTextEl.textContent = `Ты проиграл. ${youSum} против ${botSum}`;
+      resultTextEl.classList.add("lose");
+      if(userId) await reportGame(userId, "dice", "lose");
+    }else{
+      resultTextEl.textContent = `Ничья! ${youSum} = ${botSum}`;
+      resultTextEl.classList.add("draw");
+      if(userId) await reportGame(userId, "dice", "draw");
+    }
 
-      rollBtn.disabled = false;
-    }, 1200);
+    rollBtn.disabled = false;
   });
 </script>
 </body>

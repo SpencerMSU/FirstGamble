@@ -22,6 +22,8 @@
       color:var(--text);
       background:linear-gradient(180deg,var(--bg2),var(--bg));
       min-height:100vh; padding:14px; display:flex; justify-content:center;
+      position:relative;
+      overflow:hidden;
     }
     .app{
       width:min(900px,100%);
@@ -30,6 +32,18 @@
       border:1px solid var(--stroke);
       background:var(--bg2);
       box-shadow:var(--shadow);
+      position:relative;
+      overflow:hidden;
+    }
+    .app::before{
+      content:"";
+      position:absolute;
+      top:-120px;left:50%;transform:translateX(-50%);
+      width:780px;height:260px;
+      background:radial-gradient(320px 180px at 50% 100%, rgba(59,130,246,.35), transparent 65%);
+      filter:blur(18px);
+      opacity:.8;
+      pointer-events:none;
     }
     header{
       display:flex;align-items:center;justify-content:space-between;

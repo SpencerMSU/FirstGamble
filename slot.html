@@ -210,13 +210,15 @@
   }
 
   // ===== Slot machine =====
+  // Weights scaled from target odds: 6%, 5%, 4%, 3.38%, 2.25%, 1.13%, 0.56%.
   const SYMBOLS = [
-    {ch:"🍒", w:4},
-    {ch:"🍋", w:4},
-    {ch:"🍇", w:3},
-    {ch:"🔔", w:2},
-    {ch:"💎", w:2},
-    {ch:"7️⃣", w:1}
+    {ch:"🍺", w:600},
+    {ch:"🍒", w:500},
+    {ch:"🤡", w:400},
+    {ch:"🧀", w:338},
+    {ch:"💎", w:225},
+    {ch:"👽", w:113},
+    {ch:"🍀", w:56}
   ];
   function pickSymbol(){
     const total = SYMBOLS.reduce((a,s)=>a+s.w,0);

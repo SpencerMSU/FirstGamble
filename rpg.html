@@ -6,30 +6,44 @@
 <title>RPG — FirstClub</title>
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <style>
-:root{--bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;--stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);--blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;--shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);}
-html[data-theme="light"]{--bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;--stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);--blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;--shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);}
-*{box-sizing:border-box} body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
-background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
-radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
-linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);min-height:100vh;display:flex;justify-content:center;padding:16px;}
-.app{width:min(1000px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
-background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));}
+:root{--bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;--stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);--blue:#3b82f6;--blue2:#1d4ed8;--green:#22c55e;--text:#e6edf3;--muted:#98a2b3;--shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);}
+html[data-theme="light"]{--bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;--stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);--blue:#2563eb;--blue2:#1d4ed8;--green:#16a34a;--text:#0b1220;--muted:#52607a;--shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);} 
+*{box-sizing:border-box}
+body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);min-height:100vh;display:flex;justify-content:center;padding:16px;}
+.app{width:min(1100px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
 .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
 .title h1{margin:0;font-size:20px;font-weight:800;} .title span{font-size:12px;color:var(--muted);}
-.back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
-border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
-.back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
-.balance-pill{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
-background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--stroke);box-shadow:var(--shadow);min-width:64px;justify-content:center;}
-.section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
-border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;}
+.back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
+.back:hover{border-color:var(--stroke2);transform:translateY(-1px);} 
+.balance-pill{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--stroke);box-shadow:var(--shadow);min-width:64px;justify-content:center;}
+.section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;}
+.section h2{margin:0 0 8px;font-size:16px;font-weight:800;}
 .grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;}
-.cardbtn{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:14px;border:1px solid var(--stroke);
-background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:pointer;transition:.15s ease;text-decoration:none;color:var(--text);}
-.cardbtn:hover{border-color:var(--stroke2);transform:translateY(-1px);} .cardbtn h3{margin:0;font-size:16px;font-weight:900;}
-.cardbtn p{margin:4px 0 0;font-size:12px;color:var(--muted);}
-@media (max-width:720px){.grid{grid-template-columns:1fr;}}
+@media (max-width:900px){.grid{grid-template-columns:1fr;}}
+.cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;}
+.card{border:1px solid var(--stroke);border-radius:14px;padding:12px;display:flex;flex-direction:column;gap:6px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);position:relative;overflow:hidden;}
+.card small{color:var(--muted);}
+.card .label{font-weight:700;font-size:14px;display:flex;align-items:center;gap:8px;}
+.card .value{font-weight:900;font-size:20px;}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:12px;background:color-mix(in oklab,var(--card) 86%,transparent);border:1px solid var(--stroke);font-size:12px;font-weight:700;color:var(--muted);}
+.action-btn{width:100%;padding:14px;border:none;border-radius:14px;font-weight:800;font-size:16px;color:white;background:linear-gradient(120deg,var(--blue) 0%,var(--blue2) 100%);box-shadow:0 10px 30px rgba(59,130,246,.35);cursor:pointer;transition:.15s ease;display:flex;align-items:center;justify-content:center;gap:10px;}
+.action-btn[disabled]{opacity:.6;cursor:not-allowed;box-shadow:none;}
+.split{display:grid;grid-template-columns:2fr 1.4fr;gap:10px;} @media (max-width:820px){.split{grid-template-columns:1fr;}}
+.list{display:flex;flex-direction:column;gap:8px;}
+.list-item{border:1px solid var(--stroke);border-radius:12px;padding:10px 12px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);display:flex;flex-direction:column;gap:6px;}
+.list-item header{display:flex;align-items:center;gap:10px;justify-content:space-between;padding:0;}
+.requirements{display:flex;gap:8px;flex-wrap:wrap;font-size:12px;color:var(--muted);}
+.tag{padding:4px 8px;border-radius:10px;border:1px solid var(--stroke);background:color-mix(in oklab,var(--card) 70%,transparent);font-weight:700;font-size:12px;display:inline-flex;align-items:center;gap:6px;}
+.btn{padding:8px 12px;border-radius:10px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);font-weight:800;cursor:pointer;transition:.12s ease;}
+.btn:disabled{opacity:.5;cursor:not-allowed;} .btn.primary{background:linear-gradient(120deg,var(--blue) 0%,var(--blue2) 100%);color:white;border-color:transparent;box-shadow:0 10px 20px rgba(59,130,246,.25);} .btn.success{background:linear-gradient(120deg,var(--green) 0%,#15803d 100%);color:white;border-color:transparent;}
+.bars{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:8px;}
+.progress{position:relative;height:46px;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);overflow:hidden;display:flex;align-items:center;padding:0 12px;gap:10px;}
+.progress .bar{position:absolute;left:0;top:0;bottom:0;width:0;background:linear-gradient(120deg,rgba(59,130,246,.18) 0%,rgba(29,78,216,.28) 100%);}
+.progress span{position:relative;font-weight:800;}
+.alert{padding:10px 12px;border-radius:12px;border:1px solid var(--stroke2);background:color-mix(in oklab,var(--blue) 12%,var(--card));color:var(--text);font-weight:700;}
+.pulse{animation:pop .5s ease;}
+@keyframes pop{0%{transform:scale(1);}50%{transform:scale(1.01);}100%{transform:scale(1);}}
 </style>
 </head>
 <body>
@@ -38,31 +52,155 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 <a class="back" href="/">← Назад</a>
 <div class="title">
 <h1>RPG</h1>
-<span>Раздел в разработке</span>
+<span id="subtitle">Экспедиция пустошей</span>
 </div>
 <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
 </header>
-<section class='section'><p>Здесь будет RPG‑контент: квесты, прогресс, статистика.</p></section>
+<section class="section">
+<div class="grid">
+<div class="cards">
+<div class="card">
+<div class="label">✨ Очки гильдии</div>
+<div class="value" id="pointsValue">0</div>
+<small>Обменивайте ресурсы, чтобы усилить аккаунт.</small>
 </div>
-
+<div class="card">
+<div class="label">⏱️ Кулдаун добычи</div>
+<div class="value"><span id="cooldownValue">5:00</span></div>
+<div class="badge" id="cooldownBonus">Базовый 5 мин</div>
+</div>
+<div class="card">
+<div class="label">⚙️ Экипировка</div>
+<div class="value" id="equipmentValue">Нет</div>
+<small>Аксессуары дают бонусы к добыче и кд.</small>
+</div>
+</div>
+<div class="section" style="margin:0;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);">
+<h2>Добыча</h2>
+<p class="alert" id="gatherInfo">Добывайте ресурсы только здесь. Между нажатиями — 5 минут, бонусы от экипировки учитываются.</p>
+<button class="action-btn" id="gatherBtn">⛏️ Добыть ресурсы</button>
+<div class="bars" style="margin-top:10px;">
+<div class="progress"><div class="bar" id="cdBar"></div><span id="cdLabel">Готово к добыче</span></div>
+</div>
+</div>
+</div>
+</section>
+<section class="section">
+<h2>Ресурсы</h2>
+<div class="cards" id="resourceCards"></div>
+</section>
+<section class="section split">
+<div>
+<h2>Конвертация в очки</h2>
+<div class="list">
+<div class="list-item">
+<header><div class="label">🔄 Курсы обмена</div><span class="badge">Динамика</span></header>
+<div class="requirements" id="ratesList"></div>
+<div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap;">
+<button class="btn primary" id="convertAll">Преобразовать всё</button>
+<span class="tag" id="convertPreview">Потенциал: 0 очков</span>
+</div>
+</div>
+</div>
+<h2>Крафт</h2>
+<div class="list" id="craftList"></div>
+</section>
+<section class="section split">
+<div>
+<h2>Инвентарь</h2>
+<div class="list" id="inventoryList"></div>
+</div>
+<div>
+<h2>Экипировка</h2>
+<div class="list">
+<div class="list-item" id="equippedCard">
+<header><div class="label">🎽 Слот аксессуара</div><span class="badge" id="equipStatus">Пусто</span></header>
+<p id="equipDescription">Наденьте изготовленный предмет, чтобы ускорить добычу или увеличить прибыль.</p>
+<button class="btn" id="unequipBtn" disabled>Снять</button>
+</div>
+</div>
+</div>
+</section>
+</div>
 <script>
-function isColorDark(hex){ if(!hex||hex[0]!=="#") return false; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16);
-return (0.299*r+0.587*g+0.114*b)/255<0.5;}
-function initTelegram(){ const tg=window.Telegram&&window.Telegram.WebApp; if(!tg) return null; tg.ready(); tg.expand();
-const p=tg.themeParams||{}; if(p.bg_color) document.documentElement.style.setProperty("--bg",p.bg_color); if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel",p.secondary_bg_color);
-if(p.text_color) document.documentElement.style.setProperty("--text",p.text_color); if(p.hint_color) document.documentElement.style.setProperty("--muted",p.hint_color);
-if(p.text_color) document.documentElement.setAttribute("data-theme", isColorDark(p.text_color) ? "light":"dark");
-tg.setHeaderColor(p.bg_color||"#0a0d12"); tg.setBackgroundColor(p.bg_color||"#0a0d12"); return tg; }
+function isColorDark(hex){ if(!hex||hex[0]!=="#") return false; const r=parseInt(hex.slice(1,3),16),g=parseInt(hex.slice(3,5),16),b=parseInt(hex.slice(5,7),16); return (0.299*r+0.587*g+0.114*b)/255<0.5;}
+function initTelegram(){ const tg=window.Telegram&&window.Telegram.WebApp; if(!tg) return null; tg.ready(); tg.expand(); const p=tg.themeParams||{}; if(p.bg_color) document.documentElement.style.setProperty("--bg",p.bg_color); if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel",p.secondary_bg_color); if(p.text_color) document.documentElement.style.setProperty("--text",p.text_color); if(p.hint_color) document.documentElement.style.setProperty("--muted",p.hint_color); if(p.text_color) document.documentElement.setAttribute("data-theme", isColorDark(p.text_color) ? "light":"dark"); tg.setHeaderColor(p.bg_color||"#0a0d12"); tg.setBackgroundColor(p.bg_color||"#0a0d12"); return tg; }
 const tg=initTelegram(); if(!tg){ const prefersLight=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches; document.documentElement.setAttribute("data-theme", prefersLight?"light":"dark"); }
 function getUidFromUrl(){ try{const u=new URL(location.href); return u.searchParams.get("uid");}catch(e){return null;} }
 function getTgUserId(){ try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); } }
 const API_BASE="https://api.firstgamble.ru";
-async function loadBalance(){ const uid=getTgUserId(); const el=document.getElementById("balanceValue"); if(!el) return;
-if(!uid){ el.textContent=localStorage.getItem("balance_local")||"0"; return; }
-try{ const r=await fetch(API_BASE+"/api/balance?user_id="+uid); const d=await r.json(); el.textContent=d.balance??0; localStorage.setItem("balance_local", el.textContent); }
-catch(e){ el.textContent=localStorage.getItem("balance_local")||"0"; }
-}
+async function loadBalance(){ const uid=getTgUserId(); const el=document.getElementById("balanceValue"); if(!el) return; if(!uid){ el.textContent=localStorage.getItem("balance_local")||"0"; return; } try{ const r=await fetch(API_BASE+"/api/balance?user_id="+uid); const d=await r.json(); el.textContent=d.balance??0; localStorage.setItem("balance_local", el.textContent); } catch(e){ el.textContent=localStorage.getItem("balance_local")||"0"; } }
 loadBalance();
+
+const resourceTypes={
+ferro:{name:"Ферросталь",icon:"⛓️",range:[4,9],rate:2},
+cryo:{name:"Крио-кристалл",icon:"❄️",range:[2,6],rate:5},
+aether:{name:"Эфирный сплав",icon:"🌌",range:[1,4],rate:9},
+flora:{name:"Пыльца флоры",icon:"🍃",range:[3,7],rate:3}
+};
+const craftables=[
+{id:"chrono_band",name:"Хронометрический браслет",type:"accessory",description:"Сокращает базовый кулдаун на 60 секунд.",cooldownBonus:-60000,gatherBonus:0,requires:{ferro:12,cryo:6}},
+{id:"quantum_drill",name:"Квантовый бур",type:"accessory",description:"+2 к каждой добыче ресурса, кулдаун -30 сек.",cooldownBonus:-30000,gatherBonus:2,requires:{ferro:10,flora:10}},
+{id:"void_siphon",name:"Вакуумный сифон",type:"accessory",description:"+50% к ценности обмена, но кулдаун без изменений.",cooldownBonus:0,gatherBonus:0,valueBoost:0.5,requires:{aether:6,cryo:8}}
+];
+const baseCooldown=300000;
+let state={resources:{},points:0,inventory:[],equipped:null,lastGather:0};
+const uidKey=getTgUserId()||"local";
+function loadState(){ const raw=localStorage.getItem(`rpg_state_${uidKey}`); if(raw){ try{ state=JSON.parse(raw); }catch(e){} }
+state.resources=state.resources||{}; for(const k of Object.keys(resourceTypes)){ if(typeof state.resources[k]!=="number") state.resources[k]=0; }
+if(!Array.isArray(state.inventory)) state.inventory=[]; if(!state.points) state.points=0; if(!state.lastGather) state.lastGather=0; }
+function saveState(){ localStorage.setItem(`rpg_state_${uidKey}`, JSON.stringify(state)); }
+function msToClock(ms){ const t=Math.max(0,Math.ceil(ms/1000)); const m=Math.floor(t/60).toString().padStart(1,"0"); const s=(t%60).toString().padStart(2,"0"); return `${m}:${s}`; }
+function effectiveCooldown(){ let cd=baseCooldown; const eq=state.equipped && craftables.find(c=>c.id===state.equipped); if(eq&&eq.cooldownBonus){ cd=Math.max(60000, cd+eq.cooldownBonus); } return cd; }
+function gatherResources(){ const now=Date.now(); const cd=effectiveCooldown(); const next=state.lastGather+cd; if(now<next) return; let gained=[]; const eq=state.equipped && craftables.find(c=>c.id===state.equipped);
+Object.entries(resourceTypes).forEach(([key,res])=>{
+ const base=Math.floor(Math.random()*(res.range[1]-res.range[0]+1))+res.range[0];
+ const bonus=eq?.gatherBonus||0; const total=base+bonus; state.resources[key]+=total; gained.push(`${res.icon} ${res.name} +${total}`);
+});
+state.lastGather=now; saveState(); render(); animateGather(gained.join(" | "));
+}
+function animateGather(text){ const info=document.getElementById("gatherInfo"); info.textContent=text; info.classList.add("pulse"); setTimeout(()=>info.classList.remove("pulse"), 600); }
+function convertAll(){ let earned=0; const eq=state.equipped && craftables.find(c=>c.id===state.equipped); const boost=eq?.valueBoost||0;
+Object.entries(state.resources).forEach(([key,amount])=>{
+ const rate=resourceTypes[key].rate; earned+=amount*rate*(1+boost);
+ state.resources[key]=0;
+});
+state.points=Math.floor(state.points+earned); saveState(); render(); const preview=document.getElementById("convertPreview"); preview.textContent=`Получено: ${earned.toFixed(0)} очков`; }
+function craftItem(id){ const item=craftables.find(c=>c.id===id); if(!item) return; for(const [res,need] of Object.entries(item.requires)){ if((state.resources[res]||0)<need) return; }
+Object.entries(item.requires).forEach(([res,need])=> state.resources[res]-=need); if(!state.inventory.includes(id)) state.inventory.push(id); saveState(); render(); }
+function equipItem(id){ state.equipped=id; saveState(); render(); }
+function unequipItem(){ state.equipped=null; saveState(); render(); }
+function renderResources(){ const wrap=document.getElementById("resourceCards"); wrap.innerHTML=""; Object.entries(resourceTypes).forEach(([key,res])=>{
+ const card=document.createElement("div"); card.className="card"; card.innerHTML=`<div class="label">${res.icon} ${res.name}</div><div class="value">${state.resources[key]}</div><small>Курс: ×${res.rate}</small>`; wrap.appendChild(card);
+}); }
+function renderRates(){ const wrap=document.getElementById("ratesList"); wrap.innerHTML=""; const eq=state.equipped && craftables.find(c=>c.id===state.equipped); const boost=eq?.valueBoost||0; Object.entries(resourceTypes).forEach(([key,res])=>{
+ const span=document.createElement("span"); const rate=res.rate*(1+boost); span.className="tag"; span.textContent=`${res.icon} ${res.name} — ×${rate}`; wrap.appendChild(span);
+ }); updateConvertPreview(); }
+function updateConvertPreview(){ const preview=document.getElementById("convertPreview"); let potential=0; const eq=state.equipped && craftables.find(c=>c.id===state.equipped); const boost=eq?.valueBoost||0; Object.entries(state.resources).forEach(([key,amount])=>{ potential+=amount*resourceTypes[key].rate*(1+boost); }); preview.textContent=`Потенциал: ${potential.toFixed(0)} очков`; }
+function renderCraft(){ const wrap=document.getElementById("craftList"); wrap.innerHTML=""; craftables.forEach(item=>{
+ const li=document.createElement("div"); li.className="list-item";
+ const header=document.createElement("header"); header.innerHTML=`<div class="label">${item.name}</div><span class="badge">${item.type==='accessory'?'Аксессуар':'Предмет'}</span>`; li.appendChild(header);
+ const desc=document.createElement("p"); desc.textContent=item.description; li.appendChild(desc);
+ const req=document.createElement("div"); req.className="requirements"; let canCraft=true; Object.entries(item.requires).forEach(([res,need])=>{
+ const have=state.resources[res]||0; const span=document.createElement("span"); span.className="tag"; span.textContent=`${resourceTypes[res].icon} ${resourceTypes[res].name}: ${have}/${need}`; if(have<need){ span.style.color="#ef4444"; canCraft=false; } req.appendChild(span);
+ }); li.appendChild(req);
+ const action=document.createElement("div"); action.style.display="flex"; action.style.gap="8px"; const btn=document.createElement("button"); btn.className="btn primary"; btn.textContent=state.inventory.includes(item.id)?"Изготовлено":"Создать"; btn.disabled=!canCraft; btn.onclick=()=>craftItem(item.id); action.appendChild(btn);
+ if(state.inventory.includes(item.id)){
+ const equipBtn=document.createElement("button"); equipBtn.className="btn"; equipBtn.textContent=state.equipped===item.id?"Уже надето":"Надеть"; equipBtn.disabled=state.equipped===item.id; equipBtn.onclick=()=>equipItem(item.id); action.appendChild(equipBtn);
+ }
+ li.appendChild(action);
+ wrap.appendChild(li);
+ }); }
+function renderInventory(){ const wrap=document.getElementById("inventoryList"); wrap.innerHTML=""; if(!state.inventory.length){ wrap.innerHTML='<div class="alert">Пока пусто. Создайте предмет в крафте.</div>'; return; }
+ state.inventory.forEach(id=>{
+ const item=craftables.find(c=>c.id===id); const li=document.createElement("div"); li.className="list-item"; li.innerHTML=`<header><div class="label">${item.name}</div><span class="badge">${item.type}</span></header><p>${item.description}</p>`; const btn=document.createElement("button"); btn.className="btn"; btn.textContent=state.equipped===id?"Снято":"Надеть"; btn.onclick=()=>equipItem(id); li.appendChild(btn); wrap.appendChild(li);
+ }); }
+function renderEquipment(){ const status=document.getElementById("equipStatus"); const desc=document.getElementById("equipDescription"); const btn=document.getElementById("unequipBtn"); const eq=state.equipped && craftables.find(c=>c.id===state.equipped); if(eq){ status.textContent="Активно"; desc.textContent=eq.description; btn.disabled=false; document.getElementById("equipmentValue").textContent=eq.name; document.getElementById("cooldownBonus").textContent=eq.cooldownBonus?`Бонус: ${(eq.cooldownBonus/1000)} сек`: (eq.valueBoost?`Бонус: +${Math.round(eq.valueBoost*100)}% к обмену`:"Без бонуса"); } else { status.textContent="Пусто"; desc.textContent="Наденьте изготовленный предмет, чтобы ускорить добычу или увеличить прибыль."; btn.disabled=true; document.getElementById("equipmentValue").textContent="Нет"; document.getElementById("cooldownBonus").textContent="Базовый 5 мин"; } btn.onclick=unequipItem; document.getElementById("cooldownValue").textContent=msToClock(effectiveCooldown()); }
+function renderCooldown(){ const btn=document.getElementById("gatherBtn"); const bar=document.getElementById("cdBar"); const label=document.getElementById("cdLabel"); const now=Date.now(); const cd=effectiveCooldown(); const remaining=Math.max(0, state.lastGather+cd-now); const pct=Math.min(100, ((cd-remaining)/cd)*100); bar.style.width=`${pct}%`; if(remaining>0){ btn.disabled=true; btn.textContent="Ожидание..."; label.textContent="Доступно через " + msToClock(remaining); } else { btn.disabled=false; btn.textContent="⛏️ Добыть ресурсы"; label.textContent="Готово к добыче"; }
+}
+function render(){ document.getElementById("pointsValue").textContent=state.points; renderResources(); renderRates(); renderCraft(); renderInventory(); renderEquipment(); renderCooldown(); }
+function tick(){ renderCooldown(); }
+loadState(); render(); document.getElementById("gatherBtn").addEventListener("click", gatherResources); document.getElementById("convertAll").addEventListener("click", convertAll); setInterval(tick, 1000);
 </script>
 </body>
 </html>

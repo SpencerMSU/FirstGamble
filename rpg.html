@@ -116,13 +116,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="note" id="cdNote">КД: 5 минут между добычами. Аксессуары/инструменты уменьшают КД.</div>
   </section>
 
-  <!-- INVENTORY -->
   <section class="section" id="inventoryView">
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Ресурсы</h3>
     <div class="grid2" id="resGrid"></div>
   </section>
 
-  <!-- SHOP -->
   <section class="section hidden" id="shopView">
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Магазин</h3>
     <div class="tabs" id="shopTabs">
@@ -134,7 +132,6 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="note">Покупка сразу применяет бафф, предмет пропадает из магазина.</div>
   </section>
 
-  <!-- WORKBENCH -->
   <section class="section hidden" id="benchView">
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Верстак</h3>
     <div class="tabs" id="benchTabs">
@@ -223,7 +220,14 @@ function isBgDark(hex){
 function initTelegram(){
   const tg = window.Telegram && window.Telegram.WebApp;
   if(!tg) return null;
-  tg.ready(); tg.expand();
+
+  tg.ready();
+  // ВАЖНО: expand только один раз — иначе тряска
+  if(!window._tgExpanded){
+    try{ tg.expand(); }catch(e){}
+    window._tgExpanded = true;
+  }
+
   const p = tg.themeParams || {};
   if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
   if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
@@ -236,22 +240,52 @@ function initTelegram(){
         || (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id)
         || null;
 
+  // Никаких reload — только легкое обновление CSS
+  tg.onEvent("themeChanged", () => {
+    const p=tg.themeParams||{};
+    if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+    if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+    if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+    if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+  });
+
   return tg;
 }
 
 async function apiGet(path){
-  const r = await fetch(API_BASE + path);
-  return r.json();
+  try{
+    const r = await fetch(API_BASE + path, {cache:"no-store"});
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ return {ok:false, error:"bad json", raw:txt}; }
+  }catch(e){
+    return {ok:false, error:"network"};
+  }
 }
 async function apiPost(path, body){
-  const r = await fetch(API_BASE + path, {
-    method:"POST", headers:{"Content-Type":"application/json"},
-    body:JSON.stringify(body||{})
-  });
-  return r.json();
+  try{
+    const r = await fetch(API_BASE + path, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body||{}),
+      cache:"no-store"
+    });
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ return {ok:false, error:"bad json", raw:txt}; }
+  }catch(e){
+    return {ok:false, error:"network"};
+  }
 }
 
 function setBalance(v){ document.getElementById("balanceValue").textContent = v||0; }
+
+async function loadBalanceOnly(){
+  if(!uid) return;
+  const r = await apiGet(`/api/balance?user_id=${uid}`);
+  if(r && (r.balance!=null)){
+    setBalance(r.balance);
+    state.balance = r.balance;
+  }
+}
 
 function renderResources(){
   const grid=document.getElementById("resGrid");
@@ -314,6 +348,7 @@ function renderItemsInto(container, items, ownedSet, kind){
       const res = await apiPost("/api/rpg/buy", {user_id:uid, category:kind, item_id:it.id});
       if(!res.ok){ alert(res.error||"Ошибка покупки"); return; }
       state = res.state;
+      localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
       renderAll();
     });
     container.appendChild(el);
@@ -383,30 +418,73 @@ function fillConvertSelects(){
 }
 
 async function loadState(){
+  // Серверный state (если он есть), иначе локальный
   const res = await apiGet(`/api/rpg/state?user_id=${uid}`);
-  if(!res.ok){ alert(res.error||"API RPG недоступно"); return; }
-  state = res.state;
+  if(res && res.ok){
+    state = res.state;
+    localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+  } else {
+    try{
+      state = JSON.parse(localStorage.getItem("rpg_state_"+uid) || "null");
+    }catch(e){ state=null; }
+    if(!state){
+      state = {
+        balance: 0,
+        resources: Object.fromEntries(RES_META.map(r=>[r.id,0])),
+        owned:{tools:[],acc:[],bags:[]},
+        cooldown_remaining: 0,
+        buffs:{cd_mult:1, yield_add:0},
+        caps:{wood:0,stone:0,iron:0,silver:0,gold:0,crystal:0}
+      };
+    }
+  }
+  await loadBalanceOnly();
   renderAll();
 }
 
 async function gather(){
   const res = await apiPost("/api/rpg/gather", {user_id:uid});
-  if(!res.ok){
-    if(res.cooldown_remaining!=null){
-      state.cooldown_remaining=res.cooldown_remaining;
-      renderCooldown();
-      return;
+  if(res && res.ok){
+    state = res.state;
+    localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+    const gain=res.gained||{};
+
+    const lines=Object.entries(gain).filter(([k,v])=>v>0).map(([k,v])=>{
+      const name=RES_META.find(x=>x.id===k)?.name||k;
+      return `${name}: +${v}`;
+    });
+    if(lines.length) alert("Добыто:\n"+lines.join("\n"));
+
+  } else {
+    // Локальный режим (если бэк сейчас без RPG эндпоинтов)
+    if((state.cooldown_remaining||0) > 0) return;
+
+    state.cooldown_remaining = 300;
+    const yAdd = state.buffs?.yield_add || 0;
+
+    const gain = {
+      wood:  5 + Math.floor(Math.random()*6),
+      stone: 3 + Math.floor(Math.random()*5),
+      iron:  Math.random()<0.35 ? 1 : 0,
+      silver:Math.random()<0.15 ? 1 : 0,
+      gold:  Math.random()<0.07 ? 1 : 0,
+      crystal:Math.random()<0.03 ? 1 : 0
+    };
+
+    for(const k in gain){
+      gain[k] = Math.floor(gain[k] * (1+yAdd));
+      state.resources[k] = (state.resources[k]||0) + gain[k];
     }
-    alert(res.error||"Ошибка добычи");
-    return;
+
+    localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+
+    const lines = Object.entries(gain).filter(([,v])=>v>0).map(([k,v])=>{
+      const name=RES_META.find(x=>x.id===k)?.name||k;
+      return `${name}: +${v}`;
+    });
+    if(lines.length) alert("Добыто:\n"+lines.join("\n"));
   }
-  state = res.state;
-  const gain=res.gained||{};
-  const lines=Object.entries(gain).filter(([k,v])=>v>0).map(([k,v])=>{
-    const name=RES_META.find(x=>x.id===k)?.name||k;
-    return `${name}: +${v}`;
-  });
-  if(lines.length) alert("Добыто:\n"+lines.join("\n"));
+
   renderAll();
 }
 
@@ -451,6 +529,7 @@ function setupConvert(){
     const res=await apiPost("/api/rpg/convert",{user_id:uid, from, to, amount:amt});
     if(!res.ok){ document.getElementById("convNote").textContent=res.error||"Ошибка"; return; }
     state=res.state;
+    localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
     document.getElementById("convNote").textContent="Успешно!";
     renderAll();
   });
@@ -462,8 +541,15 @@ function setupConvert(){
   setupConvert();
   document.getElementById("gatherBtn").addEventListener("click", gather);
   loadState();
-  setInterval(()=>{ if(state){ state.cooldown_remaining=Math.max(0,(state.cooldown_remaining||0)-1); renderCooldown(); } },1000);
-  if(tg){ tg.onEvent("themeChanged", ()=>location.reload()); }
+
+  // локальный тикающий КД (если бэка нет)
+  setInterval(()=>{
+    if(state){
+      state.cooldown_remaining=Math.max(0,(state.cooldown_remaining||0)-1);
+      renderCooldown();
+      localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+    }
+  },1000);
 })();
 </script>
 </body>

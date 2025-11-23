@@ -47,20 +47,24 @@
     h1{margin:0;font-size:22px;font-weight:900;}
     .grid{
       display:grid;
-      grid-template-columns:1fr 1fr;
+      grid-template-columns:1fr;
       gap:14px;
+      width:100%;
     }
     .card{
-      border-radius:16px;padding:16px;
-      background:linear-gradient(180deg,var(--card),var(--card2));
-      border:1px solid var(--stroke);
-      box-shadow:var(--shadow);
-      cursor:pointer;
-      transition:.15s ease;
-      color:var(--text);
-      text-decoration:none;
-      display:block;
-    }
+  width:100%;
+  min-width:0;               /* важно для grid, чтобы не распирало */
+  border-radius:16px;
+  padding:16px;
+  background:linear-gradient(180deg,var(--card),var(--card2));
+  border:1px solid var(--stroke);
+  box-shadow:var(--shadow);
+  cursor:pointer;
+  transition:.15s ease;
+  color:var(--text);
+  text-decoration:none;
+  display:block;
+}
     .card:hover{border-color:var(--stroke2);transform:translateY(-2px);}
     .title2{font-size:18px;font-weight:900;margin-bottom:4px;}
     .subtitle{font-size:12px;color:var(--muted);}

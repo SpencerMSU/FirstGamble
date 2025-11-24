@@ -1,47 +1,47 @@
 {
   "rewrites": [
     {
-      "source": "/",
+      "source": "static/",
       "destination": "/index.html"
     },
     {
-      "source": "/ludka",
+      "source": "static/ludka",
       "destination": "/ludka.html"
     },
     {
-      "source": "/prices",
+      "source": "static/prices",
       "destination": "/prices.html"
     },
     {
-      "source": "/rpg",
+      "source": "static/rpg",
       "destination": "/rpg.html"
     },
     {
-      "source": "/shop",
+      "source": "static/shop",
       "destination": "/shop.html"
     },
     {
-      "source": "/raffles",
+      "source": "static/raffles",
       "destination": "/raffles.html"
     },
     {
-      "source": "/dice",
+      "source": "static/dice",
       "destination": "/dice.html"
     },
     {
-      "source": "/bj",
+      "source": "static/bj",
       "destination": "/bj.html"
     },
     {
-      "source": "/slot",
+      "source": "static/slot",
       "destination": "/slot.html"
     },
     {
-      "source": "/rating",
+      "source": "static/rating",
       "destination": "/rating.html"
     },
     {
-      "source": "/cabinet",
+      "source": "static/cabinet",
       "destination": "/cabinet.html"
     }
   ]

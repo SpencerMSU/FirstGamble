@@ -4,25 +4,7 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init">
-      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
-      <change beforePath="$PROJECT_DIR$/app.js" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bj.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/bot.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/cabinet.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/config.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/database.py" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/dice.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/index.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/ludka.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/prices.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/raffles.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rating.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/requirements.txt" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/rpg.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/shop.html" beforeDir="false" />
-      <change beforePath="$PROJECT_DIR$/slot.html" beforeDir="false" />
-    </list>
+    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init" />
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -76,6 +58,7 @@
       <recent name="C:\Users\rjdcb\OneDrive\Документы\GitHUbRepositories\FirstGamble" />
     </key>
     <key name="MoveFile.RECENT_KEYS">
+      <recent name="C:\Users\rjdcb\OneDrive\Документы\GitHUbRepositories\FirstGamble\static" />
       <recent name="C:\Users\rjdcb\OneDrive\Документы\GitHUbRepositories\FirstGamble\pages" />
       <recent name="C:\Users\rjdcb\OneDrive\Документы\GitHUbRepositories\FirstGamble" />
     </key>
@@ -94,22 +77,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1763822177206</updated>
-    </task>
-    <task id="LOCAL-00008" summary="Init">
-      <option name="closed" value="true" />
-      <created>1763829081831</created>
-      <option name="number" value="00008" />
-      <option name="presentableId" value="LOCAL-00008" />
-      <option name="project" value="LOCAL" />
-      <updated>1763829081831</updated>
-    </task>
-    <task id="LOCAL-00009" summary="Init">
-      <option name="closed" value="true" />
-      <created>1763829187524</created>
-      <option name="number" value="00009" />
-      <option name="presentableId" value="LOCAL-00009" />
-      <option name="project" value="LOCAL" />
-      <updated>1763829187524</updated>
     </task>
     <task id="LOCAL-00010" summary="Init">
       <option name="closed" value="true" />
@@ -487,7 +454,23 @@
       <option name="project" value="LOCAL" />
       <updated>1763937074169</updated>
     </task>
-    <option name="localTasksCounter" value="57" />
+    <task id="LOCAL-00057" summary="Init">
+      <option name="closed" value="true" />
+      <created>1764001584488</created>
+      <option name="number" value="00057" />
+      <option name="presentableId" value="LOCAL-00057" />
+      <option name="project" value="LOCAL" />
+      <updated>1764001584489</updated>
+    </task>
+    <task id="LOCAL-00058" summary="Init">
+      <option name="closed" value="true" />
+      <created>1764001719731</created>
+      <option name="number" value="00058" />
+      <option name="presentableId" value="LOCAL-00058" />
+      <option name="project" value="LOCAL" />
+      <updated>1764001719731</updated>
+    </task>
+    <option name="localTasksCounter" value="59" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

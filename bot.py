@@ -24,6 +24,7 @@ TOKENS_FILE = BASE_DIR / "tokens.txt"
 if not TOKENS_FILE.exists():
     raise SystemExit("tokens.txt not found")
 
+
 def load_config() -> Dict[str, str]:
     config: Dict[str, str] = {}
     with TOKENS_FILE.open("r", encoding="utf-8") as f:
@@ -35,15 +36,24 @@ def load_config() -> Dict[str, str]:
             config[key.strip()] = value.strip()
     return config
 
+
 config = load_config()
 
 BOT_TOKEN = config.get("BOT_TOKEN")
 if not BOT_TOKEN:
     raise SystemExit("BOT_TOKEN is missing in tokens.txt")
 
+# Access token for external SAMP/game integrations
+# Put ConServeAuthToken=<your_secret_here> into tokens.txt
+CONSERVE_AUTH_TOKEN = config.get("ConServeAuthToken") or config.get("CONSERVE_AUTH_TOKEN")
+if not CONSERVE_AUTH_TOKEN:
+    logging.warning(
+        "ConServeAuthToken is not set in tokens.txt; external SAMP access will be disabled."
+    )
+
 REDIS_HOST = config.get("REDIS_HOST", "127.0.0.1")
 REDIS_PORT = int(config.get("REDIS_PORT", "6379"))
-REDIS_DB   = int(config.get("REDIS_DB", "0"))
+REDIS_DB = int(config.get("REDIS_DB", "0"))
 
 WEBAPP_URL = config.get("WEBAPP_URL", "").rstrip("/")
 if not WEBAPP_URL:
@@ -56,6 +66,7 @@ dp = Dispatcher()
 
 rds: Optional[redis.Redis] = None
 
+
 async def get_redis() -> redis.Redis:
     global rds
     if rds is None:
@@ -67,26 +78,33 @@ async def get_redis() -> redis.Redis:
         )
     return rds
 
+
 # ====== Redis keys ======
 def key_confirmed(user_id: int) -> str:
     return f"user:{user_id}:confirmed"
 
+
 def key_balance(user_id: int) -> str:
     return f"user:{user_id}:balance"
 
+
 def key_profile(user_id: int) -> str:
-    return f"user:{user_id}:profile"   # hash: name, username
+    return f"user:{user_id}:profile"  # hash: name, username
+
 
 def key_stats(user_id: int) -> str:
-    return f"user:{user_id}:stats"     # hash: wins, losses, draws, games_total
+    return f"user:{user_id}:stats"  # hash: wins, losses, draws, games_total
+
 
 def key_gamestats(user_id: int, game: str) -> str:
     return f"user:{user_id}:game:{game}"  # hash: wins, losses, draws, games_total
 
-USERS_ZSET = "leaderboard:points"      # zset: user_id -> points
-USERS_SET = "users:all"               # set of user_ids
+
+USERS_ZSET = "leaderboard:points"  # zset: user_id -> points
+USERS_SET = "users:all"  # set of user_ids
 
 ALLOWED_GAMES = {"dice", "bj", "slot"}
+
 
 # ====== helpers ======
 def safe_int(value, default=0) -> int:
@@ -95,8 +113,21 @@ def safe_int(value, default=0) -> int:
     except (TypeError, ValueError):
         return default
 
+
 def json_error(message: str, status: int = 400):
     return web.json_response({"ok": False, "error": message}, status=status)
+
+
+def is_conserve_request(request: web.Request) -> bool:
+    """
+    Returns True if request is authorized by external SAMP/game token.
+    Client must send header: X-ConServe-Auth: <ConServeAuthToken from tokens.txt>
+    """
+    if not CONSERVE_AUTH_TOKEN:
+        return False
+    token = request.headers.get("X-ConServe-Auth") or request.headers.get("X-Conserve-Auth")
+    return token == CONSERVE_AUTH_TOKEN
+
 
 async def ensure_user(user_id: int):
     r = await get_redis()
@@ -111,21 +142,30 @@ async def ensure_user(user_id: int):
         await r.hset(key_profile(user_id), mapping={"name": "", "username": ""})
 
     if not await r.exists(key_stats(user_id)):
-        await r.hset(key_stats(user_id), mapping={
-            "wins": 0, "losses": 0, "draws": 0, "games_total": 0
-        })
+        await r.hset(
+            key_stats(user_id),
+            mapping={"wins": 0, "losses": 0, "draws": 0, "games_total": 0},
+        )
 
     for g in ALLOWED_GAMES:
         ks = key_gamestats(user_id, g)
         if not await r.exists(ks):
-            await r.hset(ks, mapping={
-                "wins": 0, "losses": 0, "draws": 0, "games_total": 0
-            })
+            await r.hset(
+                ks,
+                mapping={
+                    "wins": 0,
+                    "losses": 0,
+                    "draws": 0,
+                    "games_total": 0,
+                },
+            )
+
 
 async def get_balance(user_id: int) -> int:
     r = await get_redis()
     val = await r.get(key_balance(user_id))
     return safe_int(val)
+
 
 async def add_points(user_id: int, delta: int) -> int:
     r = await get_redis()
@@ -136,6 +176,7 @@ async def add_points(user_id: int, delta: int) -> int:
     new_balance = safe_int(res[1])
     await r.zadd(USERS_ZSET, {user_id: new_balance})
     return new_balance
+
 
 # ====== Telegram handlers ======
 @dp.message(CommandStart())
@@ -153,7 +194,7 @@ async def cmd_start(message: Message):
                 [
                     InlineKeyboardButton(
                         text="Открыть приложение",
-                        web_app=WebAppInfo(url=f"{WEBAPP_URL}/?uid={user_id}")
+                        web_app=WebAppInfo(url=f"{WEBAPP_URL}/?uid={user_id}"),
                     )
                 ]
             ]
@@ -177,6 +218,7 @@ async def cmd_start(message: Message):
     )
     await message.answer(text, reply_markup=kb)
 
+
 @dp.callback_query(F.data == "confirm")
 async def on_confirm(cb: CallbackQuery):
     user_id = cb.from_user.id
@@ -190,7 +232,7 @@ async def on_confirm(cb: CallbackQuery):
             [
                 InlineKeyboardButton(
                     text="Открыть приложение",
-                    web_app=WebAppInfo(url=f"{WEBAPP_URL}/?uid={user_id}")
+                    web_app=WebAppInfo(url=f"{WEBAPP_URL}/?uid={user_id}"),
                 )
             ]
         ]
@@ -198,14 +240,16 @@ async def on_confirm(cb: CallbackQuery):
 
     await cb.message.edit_text(
         "✅ Подтверждено! Теперь можно открыть мини-приложение:",
-        reply_markup=webapp_button
+        reply_markup=webapp_button,
     )
     await cb.answer()
+
 
 @dp.callback_query(F.data == "decline")
 async def on_decline(cb: CallbackQuery):
     await cb.message.edit_text("❌ Вы отклонили запуск мини-приложения.")
     await cb.answer()
+
 
 # ================= RPG SYSTEM (including 10 bags) =================
 RPG_RESOURCES = ["wood", "stone", "iron", "silver", "gold", "crystal"]
@@ -221,7 +265,7 @@ RPG_ACCESSORIES = {
     "acc7": {"name": "Сердце леса", "cost": 7, "cd_red": 0.06, "yield_add": 0.09},
     "acc8": {"name": "Око горы", "cost": 11, "cd_red": 0.09, "yield_add": 0.11},
     "acc9": {"name": "Звезда артефактов", "cost": 18, "cd_red": 0.13, "yield_add": 0.14},
-    "acc10":{"name": "Корона старателя", "cost": 30, "cd_red": 0.20, "yield_add": 0.20},
+    "acc10": {"name": "Корона старателя", "cost": 30, "cd_red": 0.20, "yield_add": 0.20},
 }
 
 RPG_TOOLS = {
@@ -237,29 +281,46 @@ RPG_TOOLS = {
 
 # 10 сумок (3 старые + 7 новых)
 RPG_BAGS = {
-    "bag1":  {"name": "Мешок из ткани",         "cost": 3,  "cap_add": 50},
-    "bag2":  {"name": "Сумка старателя",        "cost": 6,  "cap_add": 100},
-    "bag3":  {"name": "Рюкзак шахтёра",         "cost": 12, "cap_add": 200},
-    "bag4":  {"name": "Укреплённый рюкзак",     "cost": 18, "cap_add": 300},
-    "bag5":  {"name": "Экспедиционный мешок",  "cost": 25, "cap_add": 450},
-    "bag6":  {"name": "Каркасная сумка",       "cost": 33, "cap_add": 650},
-    "bag7":  {"name": "Горный баул",           "cost": 42, "cap_add": 900},
-    "bag8":  {"name": "Сумка инженера",        "cost": 55, "cap_add": 1200},
-    "bag9":  {"name": "Артефактный рюкзак",    "cost": 70, "cap_add": 1600},
+    "bag1": {"name": "Мешок из ткани", "cost": 3, "cap_add": 50},
+    "bag2": {"name": "Сумка старателя", "cost": 6, "cap_add": 100},
+    "bag3": {"name": "Рюкзак шахтёра", "cost": 12, "cap_add": 200},
+    "bag4": {"name": "Укреплённый рюкзак", "cost": 18, "cap_add": 300},
+    "bag5": {"name": "Экспедиционный мешок", "cost": 25, "cap_add": 450},
+    "bag6": {"name": "Каркасная сумка", "cost": 33, "cap_add": 650},
+    "bag7": {"name": "Горный баул", "cost": 42, "cap_add": 900},
+    "bag8": {"name": "Сумка инженера", "cost": 55, "cap_add": 1200},
+    "bag9": {"name": "Артефактный рюкзак", "cost": 70, "cap_add": 1600},
     "bag10": {"name": "Легендарный контейнер", "cost": 95, "cap_add": 2200},
 }
 
-RPG_SELL_VALUES = {"wood": 1, "stone": 2, "iron": 5, "silver": 8, "gold": 12, "crystal": 20}
-RPG_CHAIN = [("wood", "stone"), ("stone", "iron"), ("iron", "silver"), ("silver", "gold"), ("gold", "crystal")]
+RPG_SELL_VALUES = {
+    "wood": 1,
+    "stone": 2,
+    "iron": 5,
+    "silver": 8,
+    "gold": 12,
+    "crystal": 20,
+}
+RPG_CHAIN = [
+    ("wood", "stone"),
+    ("stone", "iron"),
+    ("iron", "silver"),
+    ("silver", "gold"),
+    ("gold", "crystal"),
+]
+
 
 def key_rpg_res(uid: int) -> str:
-    return f"user:{uid}:rpg:res"     # hash
+    return f"user:{uid}:rpg:res"  # hash
+
 
 def key_rpg_cd(uid: int) -> str:
-    return f"user:{uid}:rpg:cd"      # unix next gather time
+    return f"user:{uid}:rpg:cd"  # unix next gather time
+
 
 def key_rpg_owned(uid: int, cat: str) -> str:
     return f"user:{uid}:rpg:owned:{cat}"  # set
+
 
 async def rpg_ensure(uid: int):
     r = await get_redis()
@@ -269,12 +330,14 @@ async def rpg_ensure(uid: int):
     pipe.setnx(key_rpg_cd(uid), 0)
     await pipe.execute()
 
+
 async def rpg_get_owned(uid: int):
     r = await get_redis()
     tools = await r.smembers(key_rpg_owned(uid, "tools"))
     acc = await r.smembers(key_rpg_owned(uid, "acc"))
     bags = await r.smembers(key_rpg_owned(uid, "bags"))
     return {"tools": list(tools), "acc": list(acc), "bags": list(bags)}
+
 
 def rpg_calc_buffs(owned: dict):
     cd_mult = 1.0
@@ -284,13 +347,13 @@ def rpg_calc_buffs(owned: dict):
     for tid in owned.get("tools", []):
         it = RPG_TOOLS.get(tid)
         if it:
-            cd_mult *= (1.0 - float(it.get("cd_red", 0.0)))
+            cd_mult *= 1.0 - float(it.get("cd_red", 0.0))
             yield_add += float(it.get("yield_add", 0.0))
 
     for aid in owned.get("acc", []):
         it = RPG_ACCESSORIES.get(aid)
         if it:
-            cd_mult *= (1.0 - float(it.get("cd_red", 0.0)))
+            cd_mult *= 1.0 - float(it.get("cd_red", 0.0))
             yield_add += float(it.get("yield_add", 0.0))
 
     for bid in owned.get("bags", []):
@@ -304,6 +367,7 @@ def rpg_calc_buffs(owned: dict):
     yield_add = max(0.0, min(yield_add, 1.0))
     return cd_mult, yield_add, cap_add
 
+
 async def rpg_state(uid: int):
     r = await get_redis()
     await rpg_ensure(uid)
@@ -312,6 +376,7 @@ async def rpg_state(uid: int):
     res = {k: safe_int(v) for k, v in res.items()}
     owned = await rpg_get_owned(uid)
     cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
+
     next_ts = safe_int(await r.get(key_rpg_cd(uid)))
     now = int(time.time())
     cooldown_remaining = max(0, next_ts - now)
@@ -322,8 +387,9 @@ async def rpg_state(uid: int):
         "cooldown_remaining": cooldown_remaining,
         "cooldown_until": next_ts,
         "buffs": {"cd_mult": cd_mult, "yield_add": yield_add},
-        "caps": cap_add
+        "caps": cap_add,
     }
+
 
 def rpg_roll_gather():
     return {
@@ -332,22 +398,27 @@ def rpg_roll_gather():
         "iron": random.randint(0, 3),
         "silver": random.randint(0, 2),
         "gold": random.choice([0, 1]),
-        "crystal": 1 if random.random() < 0.35 else 0
+        "crystal": 1 if random.random() < 0.35 else 0,
     }
+
 
 # ================= RAFFLE TICKETS =================
 def key_ticket_counter() -> str:
     return "raffle:ticket:counter"  # global counter
 
+
 def key_user_tickets(uid: int) -> str:
     return f"user:{uid}:raffle:tickets"  # list of ticket numbers
+
 
 # ====== HTTP API ======
 routes = web.RouteTableDef()
 
+
 @routes.get("/api/ping")
 async def api_ping(request: web.Request):
     return web.json_response({"ok": True, "message": "pong"})
+
 
 @routes.get("/api/balance")
 async def api_balance(request: web.Request):
@@ -359,12 +430,14 @@ async def api_balance(request: web.Request):
         return json_error("bad user_id")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     bal = await get_balance(uid)
     return web.json_response({"ok": True, "balance": bal})
+
 
 @routes.post("/api/add_point")
 async def api_add_point(request: web.Request):
@@ -387,9 +460,10 @@ async def api_add_point(request: web.Request):
         return json_error("bad game")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(user_id))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(user_id))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(user_id)
     new_balance = await add_points(user_id, delta)
@@ -401,6 +475,7 @@ async def api_add_point(request: web.Request):
     await r.hincrby(key_gamestats(user_id, game), "games_total", 1)
 
     return web.json_response({"ok": True, "balance": new_balance})
+
 
 @routes.post("/api/report_game")
 async def api_report_game(request: web.Request):
@@ -425,9 +500,10 @@ async def api_report_game(request: web.Request):
         return json_error("bad result")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(user_id))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(user_id))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(user_id)
 
@@ -442,6 +518,7 @@ async def api_report_game(request: web.Request):
 
     return web.json_response({"ok": True})
 
+
 @routes.get("/api/stats")
 async def api_stats(request: web.Request):
     user_id = request.query.get("user_id")
@@ -452,9 +529,10 @@ async def api_stats(request: web.Request):
         return json_error("bad user_id")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
 
@@ -465,11 +543,14 @@ async def api_stats(request: web.Request):
         gs = await r.hgetall(key_gamestats(uid, g))
         games_stats[g] = {k: safe_int(v) for k, v in gs.items()}
 
-    return web.json_response({
-        "ok": True,
-        "stats": {k: safe_int(v) for k, v in stats.items()},
-        "games": games_stats,
-    })
+    return web.json_response(
+        {
+            "ok": True,
+            "stats": {k: safe_int(v) for k, v in stats.items()},
+            "games": games_stats,
+        }
+    )
+
 
 @routes.get("/api/leaderboard")
 async def api_leaderboard(request: web.Request):
@@ -502,17 +583,19 @@ async def api_leaderboard(request: web.Request):
         games_total = safe_int(stats_raw.get("games_total"))
         winrate = float(wins) / games_total if games_total > 0 else 0.0
 
-        rows.append({
-            "user_id": uid,
-            "points": points,
-            "wins": wins,
-            "losses": losses,
-            "draws": draws,
-            "games_total": games_total,
-            "winrate": winrate,
-            "name": profile.get("name") or "",
-            "username": profile.get("username") or "",
-        })
+        rows.append(
+            {
+                "user_id": uid,
+                "points": points,
+                "wins": wins,
+                "losses": losses,
+                "draws": draws,
+                "games_total": games_total,
+                "winrate": winrate,
+                "name": profile.get("name") or "",
+                "username": profile.get("username") or "",
+            }
+        )
 
     def sort_key(row):
         if sort_by == "wins":
@@ -527,6 +610,7 @@ async def api_leaderboard(request: web.Request):
     rows = rows[:limit]
 
     return web.json_response({"ok": True, "rows": rows})
+
 
 @routes.post("/api/update_profile")
 async def api_update_profile(request: web.Request):
@@ -543,9 +627,10 @@ async def api_update_profile(request: web.Request):
         return json_error("user_id required")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(user_id))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(user_id))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(user_id)
 
@@ -560,6 +645,7 @@ async def api_update_profile(request: web.Request):
 
     return web.json_response({"ok": True})
 
+
 # ---------- RPG endpoints ----------
 @routes.get("/api/rpg/state")
 async def api_rpg_state(request: web.Request):
@@ -571,12 +657,14 @@ async def api_rpg_state(request: web.Request):
         return json_error("bad user_id")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     st = await rpg_state(uid)
     return web.json_response({"ok": True, "state": st})
+
 
 @routes.post("/api/rpg/gather")
 async def api_rpg_gather(request: web.Request):
@@ -590,19 +678,22 @@ async def api_rpg_gather(request: web.Request):
         return json_error("user_id required")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await rpg_ensure(uid)
     now = int(time.time())
     next_ts = safe_int(await r.get(key_rpg_cd(uid)))
     if now < next_ts:
-        return web.json_response({
-            "ok": False,
-            "error": "cooldown",
-            "cooldown_remaining": next_ts - now
-        })
+        return web.json_response(
+            {
+                "ok": False,
+                "error": "cooldown",
+                "cooldown_remaining": next_ts - now,
+            }
+        )
 
     owned = await rpg_get_owned(uid)
     cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
@@ -627,6 +718,7 @@ async def api_rpg_gather(request: web.Request):
     st = await rpg_state(uid)
     return web.json_response({"ok": True, "gained": gained, "state": st})
 
+
 @routes.post("/api/rpg/buy")
 async def api_rpg_buy(request: web.Request):
     try:
@@ -642,9 +734,10 @@ async def api_rpg_buy(request: web.Request):
         return json_error("bad data")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
 
@@ -680,6 +773,7 @@ async def api_rpg_buy(request: web.Request):
     st = await rpg_state(uid)
     return web.json_response({"ok": True, "state": st})
 
+
 @routes.post("/api/rpg/convert")
 async def api_rpg_convert(request: web.Request):
     try:
@@ -696,9 +790,10 @@ async def api_rpg_convert(request: web.Request):
         return json_error("bad data")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await rpg_ensure(uid)
     res = await r.hgetall(key_rpg_res(uid))
@@ -740,6 +835,7 @@ async def api_rpg_convert(request: web.Request):
     st = await rpg_state(uid)
     return web.json_response({"ok": True, "state": st})
 
+
 # ---------- Raffle tickets endpoints ----------
 @routes.post("/api/raffle/buy_ticket")
 async def api_buy_ticket(request: web.Request):
@@ -753,9 +849,10 @@ async def api_buy_ticket(request: web.Request):
         return json_error("user_id required")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
 
@@ -775,12 +872,15 @@ async def api_buy_ticket(request: web.Request):
 
     tickets = await r.lrange(key_user_tickets(uid), 0, -1)
 
-    return web.json_response({
-        "ok": True,
-        "ticket": ticket,
-        "balance": bal - PRICE,
-        "tickets": tickets
-    })
+    return web.json_response(
+        {
+            "ok": True,
+            "ticket": ticket,
+            "balance": bal - PRICE,
+            "tickets": tickets,
+        }
+    )
+
 
 @routes.get("/api/cabinet")
 async def api_cabinet(request: web.Request):
@@ -792,64 +892,73 @@ async def api_cabinet(request: web.Request):
         return json_error("bad user_id")
 
     r = await get_redis()
-    confirmed = await r.get(key_confirmed(uid))
-    if confirmed != "1":
-        return json_error("not confirmed", status=403)
+    if not is_conserve_request(request):
+        confirmed = await r.get(key_confirmed(uid))
+        if confirmed != "1":
+            return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
 
     bal = safe_int(await r.get(key_balance(uid)))
     tickets = await r.lrange(key_user_tickets(uid), 0, -1)
 
-    return web.json_response({
-        "ok": True,
-        "user_id": str(uid),
-        "balance": bal,
-        "tickets": tickets
-    })
+    return web.json_response(
+        {"ok": True, "user_id": str(uid), "balance": bal, "tickets": tickets}
+    )
+
 
 # ====== HTML pages ======
 @routes.get("/")
 async def index_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "index.html")
 
+
 @routes.get("/ludka")
 async def ludka_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "ludka.html")
+
 
 @routes.get("/dice")
 async def dice_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "dice.html")
 
+
 @routes.get("/bj")
 async def bj_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "bj.html")
+
 
 @routes.get("/slot")
 async def slot_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "slot.html")
 
+
 @routes.get("/rating")
 async def rating_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "rating.html")
+
 
 @routes.get("/prices")
 async def prices_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "prices.html")
 
+
 @routes.get("/shop")
 async def shop_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "shop.html")
 
+
 @routes.get("/rpg")
 async def rpg_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "rpg.html")
+
 
 @routes.get("/raffles")
 async def raffles_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "raffles.html")
 
 # (кабинет страницу добавим в пункте 3, пока не трогаю)
+
 
 # ====== Startup / run ======
 async def on_startup(app: web.Application):
@@ -862,9 +971,11 @@ async def on_startup(app: web.Application):
     )
     logging.info("Redis connected")
 
+
 async def on_cleanup(app: web.Application):
     if rds:
         await rds.close()
+
 
 async def main():
     app = web.Application()
@@ -880,6 +991,7 @@ async def main():
     logging.info(f"HTTP server started on 0.0.0.0:{port}")
 
     await dp.start_polling(bot)
+
 
 if __name__ == "__main__":
     try:

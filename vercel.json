@@ -2,47 +2,47 @@
   "rewrites": [
     {
       "source": "static/",
-      "destination": "/index.html"
+      "destination": "static/index.html"
     },
     {
       "source": "static/ludka",
-      "destination": "/ludka.html"
+      "destination": "static/ludka.html"
     },
     {
       "source": "static/prices",
-      "destination": "/prices.html"
+      "destination": "static/prices.html"
     },
     {
       "source": "static/rpg",
-      "destination": "/rpg.html"
+      "destination": "static/rpg.html"
     },
     {
       "source": "static/shop",
-      "destination": "/shop.html"
+      "destination": "static/shop.html"
     },
     {
       "source": "static/raffles",
-      "destination": "/raffles.html"
+      "destination": "static/raffles.html"
     },
     {
       "source": "static/dice",
-      "destination": "/dice.html"
+      "destination": "static/dice.html"
     },
     {
       "source": "static/bj",
-      "destination": "/bj.html"
+      "destination": "static/bj.html"
     },
     {
       "source": "static/slot",
-      "destination": "/slot.html"
+      "destination": "static/slot.html"
     },
     {
       "source": "static/rating",
-      "destination": "/rating.html"
+      "destination": "static/rating.html"
     },
     {
       "source": "static/cabinet",
-      "destination": "/cabinet.html"
+      "destination": "static/cabinet.html"
     }
   ]
 }

@@ -1,0 +1,303 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Магазин — FirstClub</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{
+  --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+  --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+  --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+  --green:#22c55e;--red:#ef4444;--amber:#f59e0b;
+  --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+  --radius:18px;
+}
+html[data-theme="light"]{
+  --bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;
+  --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+  --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+  --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+} html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;} *{box-sizing:border-box}
+body{
+  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+  background:
+    radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+    radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+    linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+  min-height:100vh;display:flex;justify-content:center;padding:16px;
+}
+.app{
+  width:min(1000px,100%);
+  border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  height:100%;overflow-y:auto;overscroll-behavior:none;
+}
+header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+.title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
+.title h1{margin:0;font-size:20px;font-weight:800;}
+.title span{font-size:12px;color:var(--muted);}
+.back{
+  display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+  background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+  border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;
+}
+.back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+.balance-pill{
+  display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;
+  background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+  border:1px solid var(--stroke);font-weight:800;font-size:14px;min-width:88px;justify-content:center;
+}
+.section{background:linear-gradient(180deg,var(--panel),transparent);border:1px solid var(--stroke);border-radius:var(--radius);padding:12px;margin-bottom:12px;}
+.tabs{display:flex;gap:8px;flex-wrap:wrap;}
+.tab{
+  padding:7px 10px;border-radius:10px;border:1px solid var(--stroke);
+  background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+  font-weight:800;font-size:12px;cursor:pointer;user-select:none;transition:.15s;
+}
+.tab.active{border-color:var(--stroke2);box-shadow:0 0 0 2px rgba(59,130,246,.12) inset;}
+.bigbtn{
+  width:100%;padding:12px 14px;border-radius:12px;border:1px solid var(--stroke2);cursor:pointer;
+  background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);color:white;font-weight:900;font-size:15px;
+  display:flex;align-items:center;justify-content:center;gap:8px;transition:.15s;
+}
+.bigbtn:disabled{opacity:.6;cursor:not-allowed;filter:saturate(.5);}
+.grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+@media (max-width:720px){.grid2{grid-template-columns:1fr;}}
+.res-card{
+  border:1px solid var(--stroke);border-radius:12px;padding:10px;background:linear-gradient(180deg,var(--card),var(--card2));
+  display:flex;flex-direction:column;gap:6px;
+}
+.res-row{display:flex;justify-content:space-between;align-items:center;font-weight:800;}
+.res-sub{font-size:12px;color:var(--muted);font-weight:700;}
+.bar{height:8px;border-radius:999px;background:rgba(255,255,255,.06);overflow:hidden;border:1px solid var(--stroke);}
+.bar > div{height:100%;background:linear-gradient(90deg,var(--blue),var(--blue2));width:0%;}
+.list{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px;}
+@media (max-width:720px){.list{grid-template-columns:1fr;}}
+.item{
+  border:1px solid var(--stroke);border-radius:12px;padding:10px;background:linear-gradient(180deg,var(--card),var(--card2));
+  display:flex;flex-direction:column;gap:6px;min-height:110px;
+}
+.item h4{margin:0;font-size:14px;font-weight:900;}
+.item .desc{font-size:12px;color:var(--muted);font-weight:700;}
+.cost{font-size:12px;font-weight:800;color:var(--text);}
+.req{font-size:12px;color:var(--muted);}
+.buybtn{
+  margin-top:auto;padding:8px 10px;border-radius:10px;border:1px solid var(--stroke2);
+  background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);color:white;font-weight:900;font-size:12px;cursor:pointer;
+}
+.buybtn:disabled{opacity:.5;cursor:not-allowed;}
+.note{font-size:12px;color:var(--muted);margin-top:6px;}
+.hidden{display:none!important;}
+.container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <a class="back" href="/">← Назад</a>
+    <div class="title">
+      <h1>Магазин</h1>
+      <span>Покупай товары за очки</span>
+    </div>
+    <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
+  </header>
+
+  <section class="section">
+    <div class="tabs" id="shopTabs">
+      <div class="tab active" data-tab="goods">🛒 Товары</div>
+      <div class="tab" data-tab="tickets">🎟 Билеты</div>
+    </div>
+  </section>
+
+  <section class="section" id="goodsView">
+    <div class="list" id="goodsList"></div>
+    <div class="note">Сюда можно будет добавить другие товары позже.</div>
+  </section>
+
+  <section class="section hidden" id="ticketsView">
+    <div class="list" id="ticketList"></div>
+    <div class="note">Билеты закрепляются за твоим Telegram ID и участвуют в розыгрышах.</div>
+  </section>
+</div>
+
+<script>
+
+const API_BASE = "https://api.firstgamble.ru";
+let uid = null;
+let tg = null;
+
+function hexToRgb(hex){
+  if(!hex || hex[0] !== "#") return null;
+  return {r:parseInt(hex.slice(1,3),16), g:parseInt(hex.slice(3,5),16), b:parseInt(hex.slice(5,7),16)};
+}
+function isBgDark(hex){
+  const c=hexToRgb(hex); if(!c) return true;
+  const lum=(0.299*c.r+0.587*c.g+0.114*c.b)/255;
+  return lum < 0.55;
+}
+
+function initTelegram(){
+  tg = window.Telegram && window.Telegram.WebApp;
+  if(!tg) return null;
+
+  tg.ready();
+  if(!window.__tgExpanded){
+    try{ tg.expand(); }catch(e){}
+    window.__tgExpanded = true;
+  }
+  try{ tg.disableVerticalSwipes(); }catch(e){}
+  document.documentElement.style.overscrollBehavior = "none";
+  document.body.style.overscrollBehavior = "none";
+
+  const p = tg.themeParams || {};
+  if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+  if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+  if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+  if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+  if(p.bg_color && !isBgDark(p.bg_color)) document.documentElement.setAttribute("data-theme","light");
+  else document.documentElement.setAttribute("data-theme","dark");
+
+  uid = new URLSearchParams(location.search).get("uid")
+        || (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id)
+        || null;
+
+  tg.onEvent("themeChanged", () => {
+    const p=tg.themeParams||{};
+    if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+    if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+    if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+    if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+    if(p.bg_color && !isBgDark(p.bg_color)) document.documentElement.setAttribute("data-theme","light");
+    else document.documentElement.setAttribute("data-theme","dark");
+  });
+
+  return tg;
+}
+
+async function apiGet(path){
+  try{
+    const r = await fetch(API_BASE + path, {cache:"no-store"});
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ return {ok:false, error:"bad json", raw:txt}; }
+  }catch(e){
+    return {ok:false, error:"network"};
+  }
+}
+async function apiPost(path, body){
+  try{
+    const r = await fetch(API_BASE + path, {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body:JSON.stringify(body||{}),
+      cache:"no-store"
+    });
+    const txt = await r.text();
+    try{ return JSON.parse(txt); }catch(e){ return {ok:false, error:"bad json", raw:txt}; }
+  }catch(e){
+    return {ok:false, error:"network"};
+  }
+}
+
+
+let balance = 0;
+
+const GOODS = [
+  // Заглушки под будущие товары
+  {
+    id:"soon1",
+    name:"Скоро новые товары",
+    desc:"Мы готовим новые позиции для магазина.",
+    cost:0,
+    disabled:true
+  },
+];
+
+const TICKETS = [
+  {
+    id:"raffle_ticket",
+    name:"🎟 Билет розыгрыша",
+    cost:500,
+    desc:"Шанс на выигрыш в розыгрыше, думаю именно тебе повезет забрать главный приз!"
+  }
+];
+
+function setBalance(v){
+  balance = v||0;
+  document.getElementById("balanceValue").textContent = balance;
+}
+
+function renderGoods(){
+  const list = document.getElementById("goodsList");
+  list.innerHTML = "";
+  GOODS.forEach(g=>{
+    const el=document.createElement("div");
+    el.className="item";
+    el.innerHTML = `
+      <h4>${g.name}</h4>
+      <div class="desc">${g.desc}</div>
+      <div class="cost">${g.cost>0?`Цена: 🪙 ${g.cost}`:""}</div>
+      <button class="buybtn" disabled>Скоро</button>
+    `;
+    list.appendChild(el);
+  });
+}
+
+function renderTickets(){
+  const list = document.getElementById("ticketList");
+  list.innerHTML = "";
+  TICKETS.forEach(t=>{
+    const canBuy = balance >= t.cost;
+    const el=document.createElement("div");
+    el.className="item";
+    el.innerHTML = `
+      <h4>${t.name}</h4>
+      <div class="desc">${t.desc}</div>
+      <div class="cost">Цена: 🪙 ${t.cost}</div>
+      <div class="req">После покупки билет появится в Личном кабинете.</div>
+      <button class="buybtn" ${canBuy?"":"disabled"}>Купить</button>
+    `;
+    el.querySelector("button").addEventListener("click", ()=>buyTicket(t.cost));
+    list.appendChild(el);
+  });
+}
+
+async function buyTicket(price){
+  if(balance < price) return;
+  const res = await apiPost("/api/raffle/buy_ticket", {user_id: uid});
+  if(!res.ok){
+    tg?.showAlert(res.error || "Ошибка покупки билета");
+    return;
+  }
+  setBalance(res.balance);
+  tg?.showPopup?.({message: `Куплен билет #${res.ticket}`});
+  renderTickets();
+}
+
+async function loadBalance(){
+  const r = await apiGet(`/api/balance?user_id=${uid}`);
+  if(r && r.ok) setBalance(r.balance);
+}
+
+function setupTabs(){
+  document.querySelectorAll("#shopTabs .tab").forEach(tab=>{
+    tab.addEventListener("click", ()=>{
+      document.querySelectorAll("#shopTabs .tab").forEach(x=>x.classList.remove("active"));
+      tab.classList.add("active");
+      const k=tab.dataset.tab;
+      document.getElementById("goodsView").classList.toggle("hidden", k!=="goods");
+      document.getElementById("ticketsView").classList.toggle("hidden", k!=="tickets");
+    });
+  });
+}
+
+(function main(){
+  initTelegram();
+  setupTabs();
+  renderGoods();
+  renderTickets();
+  if(uid) loadBalance();
+})();
+</script>
+</body>
+</html>

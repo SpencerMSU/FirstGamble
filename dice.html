@@ -180,6 +180,7 @@
     const tg = window.Telegram && window.Telegram.WebApp;
     if(!tg) return null;
     tg.ready();
+    tgInitData = tg.initData || "";
     if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
     try{ tg.disableVerticalSwipes(); }catch(e){}
     document.documentElement.style.overscrollBehavior="none";
@@ -235,6 +236,8 @@ async function loadBalance(){
   async function sendPoint(userId, game){
     const attempt = async ()=>{
       const body = JSON.stringify({ user_id: String(userId), game: String(game) || "dice" });
+      const headers = { "Content-Type": "application/json" };
+        if (tgInitData) headers["X-Telegram-InitData"] = tgInitData;
       const res = await fetch(API_BASE + "/api/add_point", {
         method: "POST",
         headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(),

@@ -1,0 +1,48 @@
+{
+  "rewrites": [
+    {
+      "source": "/",
+      "destination": "/index.html"
+    },
+    {
+      "source": "/ludka",
+      "destination": "/ludka.html"
+    },
+    {
+      "source": "/prices",
+      "destination": "/prices.html"
+    },
+    {
+      "source": "/rpg",
+      "destination": "/rpg.html"
+    },
+    {
+      "source": "/shop",
+      "destination": "/shop.html"
+    },
+    {
+      "source": "/raffles",
+      "destination": "/raffles.html"
+    },
+    {
+      "source": "/dice",
+      "destination": "/dice.html"
+    },
+    {
+      "source": "/bj",
+      "destination": "/bj.html"
+    },
+    {
+      "source": "/slot",
+      "destination": "/slot.html"
+    },
+    {
+      "source": "/rating",
+      "destination": "/rating.html"
+    },
+    {
+      "source": "/cabinet",
+      "destination": "/cabinet.html"
+    }
+  ]
+}

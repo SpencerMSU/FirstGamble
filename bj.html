@@ -239,9 +239,9 @@
       el.textContent=localStorage.getItem("balance_local")||"0";
     }
   }
-  async function sendPoint(uid, delta){
+  async function sendPoint(uid, game){
     try{
-      const body=JSON.stringify({user_id:String(uid), delta:Number(delta)});
+      const body=JSON.stringify({user_id:String(uid), game:String(game)||"bj"});
       const r=await fetch(API_BASE+"/api/add_point", {method:"POST", headers:{"Content-Type":"application/json"}, body});
       const text=await r.text();
       try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
@@ -361,7 +361,7 @@
       pointGiven=false;
       return;
     }
-    const res=await sendPoint(uid, 1);
+    const res=await sendPoint(uid, "bj");
     if(res.ok){
       awardTextEl.textContent="✅ +1 очко за победу добавлено";
       document.getElementById("balanceValue").textContent=res.balance;

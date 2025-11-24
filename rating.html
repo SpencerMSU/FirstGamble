@@ -211,7 +211,10 @@
     const tr=document.createElement("tr");
     if(myId && String(r.user_id)===String(myId)) tr.classList.add("me");
 
-    const name = r.username ? `${r.name} (@${r.username})` : r.name;
+    const baseName = r.name || "";
+    const name = r.username
+      ? `${baseName} (@${r.username})`
+      : (baseName || `Игрок ${r.user_id}`);
     tr.innerHTML = `
       <td>${idx}</td>
       <td>${name}</td>
@@ -233,16 +236,21 @@
     rowsEl.innerHTML="";
     emptyEl.style.display="none";
 
-    const res = await fetch(`${API_BASE}/api/leaderboard?game=${game}&sort=${sort}&limit=100`);
-    const data = await res.json();
-    if(!data.ok || !data.rows || data.rows.length===0){
+    try{
+      const res = await fetch(`${API_BASE}/api/leaderboard?game=${game}&sort=${sort}&limit=100`);
+      const data = await res.json();
+      if(!data.ok || !data.rows || data.rows.length===0){
+        emptyEl.style.display="block";
+        return;
+      }
+      const myId=getTgUserId();
+      data.rows.forEach((r, i)=>{
+        rowsEl.appendChild(makeRow(r, i+1, myId));
+      });
+    }catch(e){
+      emptyEl.textContent = "Не удалось загрузить рейтинг. Попробуй обновить позже.";
       emptyEl.style.display="block";
-      return;
     }
-    const myId=getTgUserId();
-    data.rows.forEach((r, i)=>{
-      rowsEl.appendChild(makeRow(r, i+1, myId));
-    });
   }
 
   refreshBtn.addEventListener("click", loadLeaderboard);

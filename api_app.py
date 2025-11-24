@@ -5,6 +5,7 @@ import hashlib
 import json
 from pathlib import Path
 from typing import Dict, Optional, Any, List
+from pydantic import BaseModel, Field
 
 import redis.asyncio as redis
 from fastapi import FastAPI, Request, Header, HTTPException, Depends
@@ -392,14 +393,14 @@ class RpgBuyRequest(BaseModel):
     category: str
     item_id: str
 
+
 class RpgConvertRequest(BaseModel):
     user_id: Optional[str] = None
-    from_: str
+    from_: str = Field(alias="from")
     to: str
     amount: int
 
-    class Config:
-        fields = {"from_": "from"}
+    model_config = {"populate_by_name": True}
 
 class RaffleBuyRequest(BaseModel):
     user_id: Optional[str] = None

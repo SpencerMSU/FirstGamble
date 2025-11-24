@@ -143,6 +143,14 @@
       const lum=(0.299*c.r+0.587*c.g+0.114*c.b)/255;
       return lum < 0.55;
     }
+    function applyTheme(p){
+      if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
+      if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
+      if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
+      if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
+      if(p.bg_color && !isBgDark(p.bg_color)) document.documentElement.setAttribute("data-theme","light");
+      else document.documentElement.setAttribute("data-theme","dark");
+    }
     (function initTelegram(){
       const tg = window.Telegram && window.Telegram.WebApp;
       if(!tg) return;
@@ -151,14 +159,8 @@
       try{ tg.disableVerticalSwipes(); }catch(e){}
       document.documentElement.style.overscrollBehavior="none";
       document.body.style.overscrollBehavior="none";
-      const p=tg.themeParams||{};
-      if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
-      if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);
-      if(p.text_color) document.documentElement.style.setProperty("--text", p.text_color);
-      if(p.hint_color) document.documentElement.style.setProperty("--muted", p.hint_color);
-      if(p.bg_color && !isBgDark(p.bg_color)) document.documentElement.setAttribute("data-theme","light");
-      else document.documentElement.setAttribute("data-theme","dark");
-      tg.onEvent("themeChanged", () => location.reload());
+      applyTheme(tg.themeParams||{});
+      tg.onEvent("themeChanged", () => applyTheme(tg.themeParams||{}));
     })();
   </script>
 </body>

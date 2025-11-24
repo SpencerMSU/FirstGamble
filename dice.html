@@ -231,17 +231,23 @@
   }
 
   async function sendPoint(userId, delta){
-    try{
+    const attempt = async ()=>{
       const body = JSON.stringify({ user_id: String(userId), delta: Number(delta) });
       const res = await fetch(API_BASE + "/api/add_point", {
         method: "POST",
         headers: { "Content-Type":"application/json" },
-        body
+        body,
+        cache: "no-store",
+        keepalive: true
       });
       const text = await res.text();
       try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
+    };
+    try{
+      return await attempt();
     }catch(err){
-      return {ok:false, error:String(err)};
+      // Safari/iOS иногда роняет запросы fetch() с "TypeError: Load failed" — пробуем ещё раз
+      try{ return await attempt(); }catch(err2){ return {ok:false, error:String(err2)}; }
     }
   }
 
@@ -353,7 +359,10 @@ loadBalance();
           localStorage.setItem("balance_local", res.balance);
           showToast("+1 очко!");
         }else{
-          awardTextEl.textContent = "⚠️ Сервер не принял очко: " + (res.error || "unknown");
+          const friendly = (res.error||"").includes("Load failed")
+            ? "Сеть в Telegram WebView. Попробуй ещё раз"
+            : res.error || "unknown";
+          awardTextEl.textContent = "⚠️ Сервер не принял очко: " + friendly;
         }
       }else{
         awardTextEl.textContent = "⚠️ Нет TG id — очко не начислено.";

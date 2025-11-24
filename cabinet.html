@@ -19,8 +19,7 @@ html[data-theme="light"]{
   --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
   --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
   --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
-}
-*{box-sizing:border-box}
+} html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;} *{box-sizing:border-box}
 body{
   margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
   background:
@@ -33,6 +32,7 @@ body{
   width:min(1000px,100%);
   border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
   background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+  height:100%;overflow-y:auto;overscroll-behavior:none;
 }
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
 .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
@@ -90,7 +90,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 .buybtn:disabled{opacity:.5;cursor:not-allowed;}
 .note{font-size:12px;color:var(--muted);margin-top:6px;}
 .hidden{display:none!important;}
-</style>
+.container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}</style>
 <style>
 /* доп. стили только для кабинета */
 .ticket-grid {
@@ -170,10 +170,13 @@ function initTelegram(){
   if(!tg) return null;
 
   tg.ready();
-  if(!window._tgExpanded){
+  if(!window.__tgExpanded){
     try{ tg.expand(); }catch(e){}
-    window._tgExpanded = true;
+    window.__tgExpanded = true;
   }
+  try{ tg.disableVerticalSwipes(); }catch(e){}
+  document.documentElement.style.overscrollBehavior = "none";
+  document.body.style.overscrollBehavior = "none";
 
   const p = tg.themeParams || {};
   if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);

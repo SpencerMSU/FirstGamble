@@ -26,6 +26,13 @@
       --text:#0b1220; --muted:#52607a;
       --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
     }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
+      touch-action: manipulation;
+    }
     *{box-sizing:border-box;}
     body{
       margin:0;
@@ -44,7 +51,9 @@
       border:1px solid var(--stroke);
       background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
       box-shadow:var(--shadow);
+      height:100%; overflow-y:auto; overscroll-behavior:none;
     }
+    .container, .content { height:100%; overflow-y:auto; overscroll-behavior:none; }
     header{
       display:flex;align-items:center;justify-content:space-between;
       padding:4px 0 14px 0; gap:10px;
@@ -137,7 +146,11 @@
     (function initTelegram(){
       const tg = window.Telegram && window.Telegram.WebApp;
       if(!tg) return;
-      tg.ready(); tg.expand();
+      tg.ready();
+      if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
+      try{ tg.disableVerticalSwipes(); }catch(e){}
+      document.documentElement.style.overscrollBehavior="none";
+      document.body.style.overscrollBehavior="none";
       const p=tg.themeParams||{};
       if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);
       if(p.secondary_bg_color) document.documentElement.style.setProperty("--panel", p.secondary_bg_color);

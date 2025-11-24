@@ -14,26 +14,29 @@
   --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
   --radius:18px;
 }
-html[data-theme="light"]{
-  --bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;
-  --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
-  --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
-  --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
-}
-*{box-sizing:border-box}
-body{
-  margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
-  background:
-    radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+  html[data-theme="light"]{
+    --bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;
+    --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+    --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+    --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+  }
+  html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+  *{box-sizing:border-box}
+  body{
+    margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+    background:
+      radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
     radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
     linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
   min-height:100vh;display:flex;justify-content:center;padding:16px;
 }
-.app{
-  width:min(1000px,100%);
-  border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
-  background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
-}
+  .app{
+    width:min(1000px,100%);
+    border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+    background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+    height:100%;overflow-y:auto;overscroll-behavior:none;
+  }
+  .container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
 .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
 .title h1{margin:0;font-size:20px;font-weight:800;}
@@ -235,10 +238,13 @@ function initTelegram(){
   if(!tg) return null;
 
   tg.ready();
-  if(!window._tgExpanded){
+  if(!window.__tgExpanded){
     try{ tg.expand(); }catch(e){}
-    window._tgExpanded = true;
+    window.__tgExpanded = true;
   }
+  try{ tg.disableVerticalSwipes(); }catch(e){}
+  document.documentElement.style.overscrollBehavior = "none";
+  document.body.style.overscrollBehavior = "none";
 
   const p = tg.themeParams || {};
   if(p.bg_color) document.documentElement.style.setProperty("--bg", p.bg_color);

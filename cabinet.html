@@ -265,7 +265,11 @@ function renderTickets(){
 async function loadCabinet(){
   const cab = await apiGet(`/api/cabinet?user_id=${uid}`);
   if(!cab.ok){
-    tg?.showAlert(cab.error || "Ошибка загрузки кабинета");
+    const msg = cab.error || "Ошибка загрузки кабинета";
+    const empty = document.getElementById("emptyNote");
+    empty.textContent = `Не удалось загрузить данные: ${msg}`;
+    empty.style.display = "block";
+    document.getElementById("ticketGrid").innerHTML = "";
     return;
   }
   setTgIdLabel(cab.user_id);
@@ -297,6 +301,7 @@ async function buyTicket(){
     loadCabinet();
   }else{
     setTgIdLabel("нет TG id");
+    document.getElementById("buyTicketBtn").disabled = true;
   }
 })();
 </script>

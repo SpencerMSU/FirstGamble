@@ -130,10 +130,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
       <div class="tab active" data-shop="tools">Инструменты</div>
       <div class="tab" data-shop="acc">Аксессуары</div>
       <div class="tab" data-shop="bags">Сумки</div>
-      <div class="tab" data-shop="tickets">Билеты</div>
     </div>
     <div class="list" id="shopList" style="margin-top:10px;"></div>
-    <div class="note">Покупка сразу применяет бафф, предмет пропадает из магазина. Билеты сохраняются в личном кабинете.</div>
+    <div class="note">Покупка сразу применяет бафф, предмет пропадает из магазина.</div>
   </section>
 
   <section class="section hidden" id="benchView">
@@ -214,11 +213,6 @@ const BAGS = [
   {id:"bag8",  name:"Сумка инженера",        cost:55, capAdd:1200,req:{silver:18, gold:10, crystal:2}},
   {id:"bag9",  name:"Артефактный рюкзак",    cost:70, capAdd:1600,req:{gold:18, crystal:4}},
   {id:"bag10", name:"Легендарный контейнер", cost:95, capAdd:2200,req:{silver:25, gold:20, crystal:8}},
-];
-
-const TICKETS = [
-  {id:"raffle_ticket", name:"🎟 Билет розыгрыша", cost:500,
-   desc:"Шанс на выигрыш в розыгрыше, думаю именно тебе повезет забрать главный приз!"}
 ];
 
 let uid = null;
@@ -360,40 +354,16 @@ function renderItemsInto(container, items, ownedSet, kind){
         ${owned?"Куплено":"Купить"}
       </button>
     `;
-    el.querySelector("button").addEventListener("click", async ()=>{
-      if(!canBuy) return;
-      const res = await apiPost("/api/rpg/buy", {user_id:uid, category:kind, item_id:it.id});
-      if(!res.ok){ alert(res.error||"Ошибка покупки"); return; }
-      state = res.state;
-      localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
-      renderAll();
-    });
-    container.appendChild(el);
-  });
-}
-
-function renderTickets(container){
-  container.innerHTML="";
-  TICKETS.forEach(t=>{
-    const el=document.createElement("div");
-    el.className="item";
-    const canBuy = (state.balance||0) >= t.cost;
-    el.innerHTML = `
-      <h4>${t.name}</h4>
-      <div class="desc">${t.desc}</div>
-      <div class="cost">Цена: 🪙 ${t.cost}</div>
-      <div class="req">После покупки билет появится в Личном кабинете.</div>
-      <button class="buybtn" ${canBuy?"":"disabled"}>Купить</button>
-    `;
-    el.querySelector("button").addEventListener("click", async ()=>{
-      if(!canBuy) return;
-      const res = await apiPost("/api/raffle/buy_ticket", {user_id:uid});
-      if(!res.ok){ alert(res.error||"Ошибка покупки билета"); return; }
-      state.balance = res.balance ?? state.balance;
-      localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
-      alert("Твой билет: #"+res.ticket);
-      renderAll();
-    });
+    const btn = el.querySelector("button");
+    if(canBuy){
+      btn.addEventListener("click", async ()=>{
+        const res = await apiPost("/api/rpg/buy", {user_id:uid, category:kind, item_id:it.id});
+        if(!res.ok){ alert(res.error||"Ошибка покупки"); return; }
+        state = res.state;
+        localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+        renderAll();
+      });
+    }
     container.appendChild(el);
   });
 }
@@ -407,7 +377,7 @@ function renderShop(listKind){
   if(listKind==="tools") renderItemsInto(list, TOOLS, ownedTools, "tools");
   else if(listKind==="acc") renderItemsInto(list, ACCESSORIES, ownedAcc, "acc");
   else if(listKind==="bags") renderItemsInto(list, BAGS, ownedBags, "bags");
-  else renderTickets(list);
+  else renderItemsInto(list, TOOLS, ownedTools, "tools");
 }
 
 function renderBench(){
@@ -423,7 +393,9 @@ function renderBench(){
 function renderCooldown(){
   const btn=document.getElementById("gatherBtn");
   const note=document.getElementById("cdNote");
-  const rem = state.cooldown_remaining || 0;
+  const now = Math.floor(Date.now()/1000);
+  const rem = Math.max(0, Math.floor((state.cooldown_until||0) - now));
+  state.cooldown_remaining = rem;
   if(rem<=0){
     btn.disabled=false;
     btn.textContent="⛏️ Добыть ресурсы";
@@ -465,6 +437,9 @@ async function loadState(){
   const res = await apiGet(`/api/rpg/state?user_id=${uid}`);
   if(res && res.ok){
     state = res.state;
+    if(!state.cooldown_until){
+      state.cooldown_until = Math.floor(Date.now()/1000) + (state.cooldown_remaining||0);
+    }
     localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
   } else {
     try{ state = JSON.parse(localStorage.getItem("rpg_state_"+uid) || "null"); }catch(e){ state=null; }
@@ -474,9 +449,13 @@ async function loadState(){
         resources: Object.fromEntries(RES_META.map(r=>[r.id,0])),
         owned:{tools:[],acc:[],bags:[]},
         cooldown_remaining: 0,
+        cooldown_until: 0,
         buffs:{cd_mult:1, yield_add:0},
         caps:{wood:0,stone:0,iron:0,silver:0,gold:0,crystal:0}
       };
+    }
+    if(!state.cooldown_until){
+      state.cooldown_until = Math.floor(Date.now()/1000) + (state.cooldown_remaining||0);
     }
   }
   await loadBalanceOnly();
@@ -495,8 +474,17 @@ async function gather(){
     });
     if(lines.length) alert("Добыто:\n"+lines.join("\n"));
   } else {
+    if(res && res.error === "cooldown"){
+      const cd = Math.max(0, res.cooldown_remaining||0);
+      state.cooldown_until = Math.floor(Date.now()/1000) + cd;
+      state.cooldown_remaining = cd;
+      localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+      renderCooldown();
+      return;
+    }
     if((state.cooldown_remaining||0) > 0) return;
     state.cooldown_remaining = 300;
+    state.cooldown_until = Math.floor(Date.now()/1000) + 300;
     for(const k in state.resources){
       state.resources[k] = state.resources[k] || 0;
     }
@@ -561,7 +549,6 @@ function setupConvert(){
 
   setInterval(()=>{
     if(state){
-      state.cooldown_remaining=Math.max(0,(state.cooldown_remaining||0)-1);
       renderCooldown();
       localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
     }

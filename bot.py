@@ -146,6 +146,24 @@ async def cmd_start(message: Message):
     r = await get_redis()
     await ensure_user(user_id)
 
+    confirmed = await r.get(key_confirmed(user_id))
+    if confirmed == "1":
+        webapp_button = InlineKeyboardMarkup(
+            inline_keyboard=[
+                [
+                    InlineKeyboardButton(
+                        text="Открыть приложение",
+                        web_app=WebAppInfo(url=f"{WEBAPP_URL}/?uid={user_id}")
+                    )
+                ]
+            ]
+        )
+        await message.answer(
+            "✅ Ты уже подтвердил запуск. Можно открыть мини-приложение:",
+            reply_markup=webapp_button,
+        )
+        return
+
     kb = InlineKeyboardMarkup(
         inline_keyboard=[
             [InlineKeyboardButton(text="✅ Подтвердить", callback_data="confirm")],
@@ -302,6 +320,7 @@ async def rpg_state(uid: int):
         "resources": res,
         "owned": owned,
         "cooldown_remaining": cooldown_remaining,
+        "cooldown_until": next_ts,
         "buffs": {"cd_mult": cd_mult, "yield_add": yield_add},
         "caps": cap_add
     }
@@ -350,8 +369,8 @@ async def api_balance(request: web.Request):
 @routes.post("/api/add_point")
 async def api_add_point(request: web.Request):
     """
-    POST JSON: { "user_id": ..., "game": "dice"|"bj"|"slot" }
-    Увеличивает баланс на 1, обновляет лидерборд и статистику.
+    POST JSON: { "user_id": ..., "game": "dice"|"bj"|"slot", "delta"?: int }
+    Увеличивает баланс (по умолчанию на 1), обновляет лидерборд и статистику.
     """
     try:
         data = await request.json()
@@ -360,6 +379,7 @@ async def api_add_point(request: web.Request):
 
     user_id = safe_int(data.get("user_id"))
     game = (data.get("game") or "").strip().lower()
+    delta = max(1, safe_int(data.get("delta"), 1))
 
     if user_id <= 0:
         return json_error("user_id required")
@@ -372,7 +392,7 @@ async def api_add_point(request: web.Request):
         return json_error("not confirmed", status=403)
 
     await ensure_user(user_id)
-    new_balance = await add_points(user_id, 1)
+    new_balance = await add_points(user_id, delta)
 
     await r.hincrby(key_stats(user_id), "wins", 1)
     await r.hincrby(key_stats(user_id), "games_total", 1)
@@ -453,23 +473,60 @@ async def api_stats(request: web.Request):
 
 @routes.get("/api/leaderboard")
 async def api_leaderboard(request: web.Request):
+    game = (request.query.get("game") or "all").strip().lower()
+    sort_by = (request.query.get("sort") or "points").strip().lower()
     limit = safe_int(request.query.get("limit"), 10)
     if limit <= 0 or limit > 100:
         limit = 10
 
     r = await get_redis()
-    raw = await r.zrevrange(USERS_ZSET, 0, limit - 1, withscores=True)
-    board = []
-    for user_id_str, score in raw:
+    if game not in {"all", "dice", "bj", "slot"}:
+        game = "all"
+    if sort_by not in {"points", "wins", "winrate", "games"}:
+        sort_by = "points"
+
+    user_ids = await r.smembers(USERS_SET)
+    rows = []
+    for user_id_str in user_ids:
         uid = safe_int(user_id_str)
+        if uid <= 0:
+            continue
+
         profile = await r.hgetall(key_profile(uid))
-        board.append({
+        points = safe_int(await r.get(key_balance(uid)))
+        stats_key = key_stats(uid) if game == "all" else key_gamestats(uid, game)
+        stats_raw = await r.hgetall(stats_key)
+        wins = safe_int(stats_raw.get("wins"))
+        losses = safe_int(stats_raw.get("losses"))
+        draws = safe_int(stats_raw.get("draws"))
+        games_total = safe_int(stats_raw.get("games_total"))
+        winrate = float(wins) / games_total if games_total > 0 else 0.0
+
+        rows.append({
             "user_id": uid,
-            "points": int(score),
+            "points": points,
+            "wins": wins,
+            "losses": losses,
+            "draws": draws,
+            "games_total": games_total,
+            "winrate": winrate,
             "name": profile.get("name") or "",
             "username": profile.get("username") or "",
         })
-    return web.json_response({"ok": True, "leaderboard": board})
+
+    def sort_key(row):
+        if sort_by == "wins":
+            return (row["wins"], row["points"])
+        if sort_by == "winrate":
+            return (row["winrate"], row["games_total"], row["points"])
+        if sort_by == "games":
+            return (row["games_total"], row["points"])
+        return (row["points"], row["wins"])
+
+    rows.sort(key=sort_key, reverse=True)
+    rows = rows[:limit]
+
+    return web.json_response({"ok": True, "rows": rows})
 
 @routes.post("/api/update_profile")
 async def api_update_profile(request: web.Request):

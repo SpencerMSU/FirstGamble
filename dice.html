@@ -230,9 +230,9 @@
     }
   }
 
-  async function sendPoint(userId, delta){
+  async function sendPoint(userId, game){
     const attempt = async ()=>{
-      const body = JSON.stringify({ user_id: String(userId), delta: Number(delta) });
+      const body = JSON.stringify({ user_id: String(userId), game: String(game) || "dice" });
       const res = await fetch(API_BASE + "/api/add_point", {
         method: "POST",
         headers: { "Content-Type":"application/json" },
@@ -352,7 +352,7 @@ loadBalance();
       resultTextEl.classList.add("win");
       if(userId){
         await reportGame(userId, "dice", "win");
-        const res = await sendPoint(userId, 1);
+        const res = await sendPoint(userId, "dice");
         if(res.ok){
           awardTextEl.textContent = "✅ +1 очко за победу добавлено";
           document.getElementById("balanceValue").textContent = res.balance;

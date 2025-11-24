@@ -209,9 +209,11 @@
   }
 
   // ===== API =====
-const API_BASE = "";
+  const API_BASE = "https://api.firstgamble.ru";
 
-  async function loadBalance(){
+  
+let tgInitData = "";
+async function loadBalance(){
     const userId = getTgUserId();
     const el = document.getElementById("balanceValue");
     if(!el) return;
@@ -221,7 +223,7 @@ const API_BASE = "";
       return;
     }
     try{
-      const res = await fetch(API_BASE + "/api/balance?user_id=" + userId);
+      const res = await fetch(API_BASE + "/api/balance?user_id=" + userId, {headers: tgInitData ? {"X-Telegram-InitData": tgInitData} : {}});
       const data = await res.json();
       el.textContent = data.balance ?? 0;
       localStorage.setItem("balance_local", el.textContent);
@@ -235,7 +237,7 @@ const API_BASE = "";
       const body = JSON.stringify({ user_id: String(userId), game: String(game) || "dice" });
       const res = await fetch(API_BASE + "/api/add_point", {
         method: "POST",
-        headers: { "Content-Type":"application/json" },
+        headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(),
         body,
         cache: "no-store",
         keepalive: true
@@ -256,7 +258,7 @@ const API_BASE = "";
       const body = JSON.stringify({ user_id:String(userId), game:String(game), result:String(result) });
       await fetch(API_BASE + "/api/report_game", {
         method:"POST",
-        headers:{ "Content-Type":"application/json" },
+        headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(),
         body
       });
     }catch(e){}

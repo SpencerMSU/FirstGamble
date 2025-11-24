@@ -195,9 +195,11 @@
   function getUidFromUrl(){ try{ return new URL(location.href).searchParams.get("uid"); }catch(e){ return null; } }
   function getTgUserId(){ try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); } }
 
-    const API_BASE="";
+  const API_BASE="https://api.firstgamble.ru";
 
-  const rowsEl=document.getElementById("rows");
+  
+let tgInitData = "";
+const rowsEl=document.getElementById("rows");
   const emptyEl=document.getElementById("empty");
   const gameSel=document.getElementById("gameSel");
   const sortSel=document.getElementById("sortSel");
@@ -237,7 +239,7 @@
     emptyEl.style.display="none";
 
     try{
-      const res = await fetch(`${API_BASE}/api/leaderboard?game=${game}&sort=${sort}&limit=100`);
+      const res = await fetch(`${API_BASE}/api/leaderboard?game=${game}&sort=${sort}&limit=100`, {headers: tgInitData ? {"X-Telegram-InitData": tgInitData} : {}});
       const data = await res.json();
       if(!data.ok || !data.rows || data.rows.length===0){
         emptyEl.style.display="block";

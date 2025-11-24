@@ -61,10 +61,12 @@ tg.setHeaderColor(p.bg_color||"#0a0d12"); tg.setBackgroundColor(p.bg_color||"#0a
 const tg=initTelegram(); if(!tg){ const prefersLight=window.matchMedia&&window.matchMedia("(prefers-color-scheme: light)").matches; document.documentElement.setAttribute("data-theme", prefersLight?"light":"dark"); }
 function getUidFromUrl(){ try{const u=new URL(location.href); return u.searchParams.get("uid");}catch(e){return null;} }
 function getTgUserId(){ try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); } }
-const API_BASE="";
+const API_BASE="https://api.firstgamble.ru";
+
+let tgInitData = "";
 async function loadBalance(){ const uid=getTgUserId(); const el=document.getElementById("balanceValue"); if(!el) return;
 if(!uid){ el.textContent=localStorage.getItem("balance_local")||"0"; return; }
-try{ const r=await fetch(API_BASE+"/api/balance?user_id="+uid); const d=await r.json(); el.textContent=d.balance??0; localStorage.setItem("balance_local", el.textContent); }
+try{ const r=await fetch(API_BASE+"/api/balance?user_id="+uid, {headers: tgInitData ? {"X-Telegram-InitData": tgInitData} : {}}); const d=await r.json(); el.textContent=d.balance??0; localStorage.setItem("balance_local", el.textContent); }
 catch(e){ el.textContent=localStorage.getItem("balance_local")||"0"; }
 }
 loadBalance();

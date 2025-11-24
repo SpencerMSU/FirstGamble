@@ -151,8 +151,9 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 
 <script>
 
-const API_BASE = "";
+const API_BASE = "https://api.firstgamble.ru";
 
+let tgInitData = "";
 let uid = null;
 let tg = null;
 
@@ -175,6 +176,7 @@ function initTelegram(){
   if(!tg) return null;
 
   tg.ready();
+      tgInitData = tg.initData || "";
   if(!window.__tgExpanded){
     try{ tg.expand(); }catch(e){}
     window.__tgExpanded = true;
@@ -211,7 +213,10 @@ function initTelegram(){
 
 async function apiGet(path){
   try{
-    const r = await fetch(API_BASE + path, {cache:"no-store"});
+    const headers = {};
+    if(tgInitData) headers["X-Telegram-InitData"] = tgInitData;
+
+    const r = await fetch(API_BASE + path, {cache:"no-store", headers});
     const txt = await r.text();
     try{ return JSON.parse(txt); }catch(e){ return {ok:false, error:"bad json", raw:txt}; }
   }catch(e){
@@ -220,9 +225,12 @@ async function apiGet(path){
 }
 async function apiPost(path, body){
   try{
+    const headers = {"Content-Type":"application/json"};
+    if(tgInitData) headers["X-Telegram-InitData"] = tgInitData;
+
     const r = await fetch(API_BASE + path, {
       method:"POST",
-      headers:{"Content-Type":"application/json"},
+      headers,
       body:JSON.stringify(body||{}),
       cache:"no-store"
     });

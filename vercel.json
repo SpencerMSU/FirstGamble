@@ -2,47 +2,47 @@
   "rewrites": [
     {
       "source": "/",
-      "destination": "static/index.html"
+      "destination": "/index.html"
     },
     {
       "source": "/ludka",
-      "destination": "static/ludka.html"
+      "destination": "/ludka.html"
     },
     {
       "source": "/prices",
-      "destination": "static/prices.html"
+      "destination": "/prices.html"
     },
     {
-      "source": "static/rpg",
-      "destination": "static/rpg.html"
+      "source": "/rpg",
+      "destination": "/rpg.html"
     },
     {
-      "source": "static/shop",
-      "destination": "static/shop.html"
+      "source": "/shop",
+      "destination": "/shop.html"
     },
     {
-      "source": "static/raffles",
-      "destination": "static/raffles.html"
+      "source": "/raffles",
+      "destination": "/raffles.html"
     },
     {
-      "source": "static/dice",
-      "destination": "static/dice.html"
+      "source": "/dice",
+      "destination": "/dice.html"
     },
     {
-      "source": "static/bj",
-      "destination": "static/bj.html"
+      "source": "/bj",
+      "destination": "/bj.html"
     },
     {
-      "source": "static/slot",
-      "destination": "static/slot.html"
+      "source": "/slot",
+      "destination": "/slot.html"
     },
     {
-      "source": "static/rating",
-      "destination": "static/rating.html"
+      "source": "/rating",
+      "destination": "/rating.html"
     },
     {
-      "source": "static/cabinet",
-      "destination": "static/cabinet.html"
+      "source": "/cabinet",
+      "destination": "/cabinet.html"
     }
   ]
 }

@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Слоты — FirstClub</title>
+  <title>Блэкджек — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
 
   <style>
@@ -16,108 +16,121 @@
       --text:#e6edf3; --muted:#98a2b3;
       --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
       --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+      --radius:18px;
     }
-      html[data-theme="light"]{
-        --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
-        --card:#ffffff; --card2:#f6f8fb;
-        --stroke:rgba(10,20,40,.08);
-        --stroke2:rgba(59,130,246,.35);
-        --blue:#2563eb; --blue2:#1d4ed8;
-        --text:#0b1220; --muted:#52607a;
-        --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
-      }
-      html, body {
-        height: 100%;
-        overflow: hidden;
-        overscroll-behavior: none;
-        -webkit-overflow-scrolling: auto;
-        touch-action: manipulation;
-      }
-      *{box-sizing:border-box}
-      body{
-        margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif; color:var(--text);
-        background:
-          radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
-          radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
-          linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
-        min-height:100vh; display:flex; justify-content:center; padding:16px;
-      }
-      .app{
-        width:min(900px,100%); border:1px solid var(--stroke); border-radius:20px; box-shadow:var(--shadow);
-        padding:14px; background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
-        height:100%; overflow-y:auto; overscroll-behavior:none;
-      }
-      .container, .content { height:100%; overflow-y:auto; overscroll-behavior:none; }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);
+      --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8;
+      --text:#0b1220; --muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    } html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;} *{box-sizing:border-box}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+        radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+      min-height:100vh; display:flex; justify-content:center; padding:16px;
+    }
+    .app{
+      width:min(1100px,100%);
+      border:1px solid var(--stroke);
+      border-radius:20px; box-shadow:var(--shadow);
+      padding:14px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      height:100%; overflow-y:auto; overscroll-behavior:none;
+    }
     header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
     .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
     .title h1{margin:0;font-size:20px;font-weight:800;}
     .title span{font-size:12px;color:var(--muted);}
     .back{
       display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
-      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
       border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
       cursor:pointer;transition:.15s ease;
     }
     .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
     .balance-pill{
       display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
-      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
       border:1px solid var(--stroke);box-shadow:var(--shadow);min-width:64px;justify-content:center;
     }
     .section{
-      background:linear-gradient(180deg,var(--panel) 0%, color-mix(in oklab, var(--panel) 92%, transparent) 100%);
+      background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);
       border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;
     }
-
-    .machine{
-      display:flex; flex-direction:column; align-items:center; gap:14px;
-    }
-    .reels{
-      display:grid; grid-template-columns:repeat(3, 1fr); gap:10px; width:100%;
+    .table{display:grid;grid-template-columns:1fr;gap:12px;}
+    .row{
+      display:grid;grid-template-columns:1fr auto;gap:10px;align-items:start;
       background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
-      border:1px solid var(--stroke); border-radius:16px; padding:14px;
+      border:1px solid var(--stroke);border-radius:14px;padding:12px;
     }
-    .reel-window{
-      height:160px; border-radius:14px; border:1px solid var(--stroke);
-      background:rgba(0,0,0,.25); overflow:hidden; position:relative;
-      display:grid; place-items:center;
-      box-shadow: inset 0 0 24px rgba(0,0,0,.75);
+    .row h2{margin:0 0 8px 0;font-size:16px;font-weight:900;}
+    .hands{display:flex;flex-wrap:wrap;gap:8px;min-height:92px;}
+    .score{
+      font-weight:900;font-size:15px;padding:6px 10px;border-radius:999px;
+      border:1px solid var(--stroke);background:color-mix(in oklab,var(--panel) 75%,transparent);
+      min-width:92px;text-align:center;
     }
-    .strip{
-      position:absolute; top:0; left:0; right:0;
-      display:flex; flex-direction:column; align-items:center; gap:8px;
-      transform:translateY(0);
-    }
-    .symbol{
-      width:90%; height:72px; border-radius:12px; display:grid; place-items:center;
-      font-size:34px; font-weight:900;
-      background:linear-gradient(180deg, rgba(59,130,246,.14), rgba(59,130,246,.06));
-      border:1px solid rgba(59,130,246,.28);
-      box-shadow: inset 0 0 12px rgba(59,130,246,.2);
-    }
-    .payline{
-      width:100%; height:4px; background:linear-gradient(90deg, transparent, rgba(255,255,255,.7), transparent);
-      position:relative; top:-2px; border-radius:999px; opacity:.5;
-    }
-
-    .controls{display:flex; gap:8px; flex-wrap:wrap; justify-content:center;}
+    .controls{display:flex;flex-wrap:wrap;gap:8px;}
     .btn{
-      padding:10px 16px;border-radius:12px;border:1px solid var(--stroke2);
-      background:linear-gradient(180deg,var(--blue) 0%, var(--blue2) 100%);
+      padding:10px 14px;border-radius:12px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
       color:white;font-weight:900;cursor:pointer;transition:.15s ease;
       box-shadow:0 6px 18px rgba(37,99,235,.35);
     }
     .btn.secondary{
-      background:linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
-      color:var(--text); border-color:var(--stroke);
-      box-shadow:none;
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      color:var(--text);border-color:var(--stroke);box-shadow:none;
     }
-    .btn:disabled{opacity:.6; cursor:not-allowed; transform:none;}
+    .btn:disabled{opacity:.6;cursor:not-allowed;transform:none;}
     .btn:hover{transform:translateY(-1px);}
 
-    .status{font-size:16px;font-weight:900;margin:0;text-align:center;}
-    .status.win{color:var(--green);} .status.lose{color:var(--red);} .status.draw{color:var(--amber);}
-    .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;white-space:pre-wrap; text-align:center;}
+    /* Cards */
+    .card-ui{
+      width:64px; height:88px; border-radius:10px;
+      background:linear-gradient(180deg,#ffffff 0%, #eef2f7 100%);
+      color:#0b1220;
+      border:1px solid rgba(0,0,0,.12);
+      box-shadow:0 6px 12px rgba(0,0,0,.2);
+      position:relative; display:flex; align-items:center; justify-content:center;
+      font-weight:900;
+      user-select:none;
+      transform:translateY(0);
+      transition:.2s ease;
+    }
+    .card-ui.red{color:#b91c1c;}
+    .card-ui.backside{
+      background:
+        radial-gradient(circle at 20% 20%, rgba(59,130,246,.8) 0 8px, transparent 9px),
+        radial-gradient(circle at 80% 20%, rgba(29,78,216,.8) 0 8px, transparent 9px),
+        radial-gradient(circle at 20% 80%, rgba(29,78,216,.8) 0 8px, transparent 9px),
+        radial-gradient(circle at 80% 80%, rgba(59,130,246,.8) 0 8px, transparent 9px),
+        repeating-linear-gradient(45deg, #0b1220, #0b1220 8px, #111827 8px, #111827 16px);
+      border:1px solid rgba(255,255,255,.14);
+      color:white;
+    }
+    .card-ui .corner{
+      position:absolute; font-size:12px; font-weight:900; line-height:1.1;
+    }
+    .card-ui .corner.tl{top:6px; left:6px; text-align:left;}
+    .card-ui .corner.br{bottom:6px; right:6px; transform:rotate(180deg); text-align:left;}
+    .card-ui .center{
+      font-size:22px; display:flex; flex-direction:column; align-items:center; gap:2px;
+    }
+    .card-ui.fresh{transform:translateY(-6px);}
+
+    .status{font-size:15px; font-weight:900; margin:0;}
+    .status.win{color:var(--green);}
+    .status.lose{color:var(--red);}
+    .status.draw{color:var(--amber);}
+    .note{font-size:12px;color:var(--muted);margin-top:6px;line-height:1.4;white-space:pre-wrap;}
 
     .toast{
       position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);
@@ -126,32 +139,48 @@
       box-shadow:var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;
     }
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
-  </style>
+    @media (max-width:720px){
+      .row{grid-template-columns:1fr;}
+      .score{justify-self:start;}
+    }
+  .container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}</style>
 </head>
 <body>
   <div class="app">
     <header>
       <a class="back" href="/ludka">← Назад</a>
       <div class="title">
-        <h1>Слот‑машина</h1>
-        <span>Без ставок. 3 в ряд = +1 очко</span>
+        <h1>Блэкджек</h1>
+        <span>Без ставок. Победа = +1 очко</span>
       </div>
       <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
     </header>
 
-    <section class="section machine">
-      <div class="reels">
-        <div class="reel-window"><div id="strip0" class="strip"></div></div>
-        <div class="reel-window"><div id="strip1" class="strip"></div></div>
-        <div class="reel-window"><div id="strip2" class="strip"></div></div>
+    <section class="section table">
+      <div class="row">
+        <div>
+          <h2>Дилер (бот)</h2>
+          <div id="dealerHand" class="hands"></div>
+        </div>
+        <div class="score">Сумма: <span id="dealerScore">0</span></div>
       </div>
-      <div class="payline"></div>
+
+      <div class="row">
+        <div>
+          <h2>Ты</h2>
+          <div id="playerHand" class="hands"></div>
+        </div>
+        <div class="score">Сумма: <span id="playerScore">0</span></div>
+      </div>
+    </section>
+
+    <section class="section">
       <div class="controls">
-        <button id="btnSpin" class="btn">Крутить 🎰</button>
-        <button id="btnAuto" class="btn secondary">Авто ×10</button>
-        <button id="btnReset" class="btn secondary">Сброс</button>
+        <button id="btnDeal" class="btn">Новая игра 🂡</button>
+        <button id="btnHit" class="btn secondary" disabled>Ещё карту ➕</button>
+        <button id="btnStand" class="btn secondary" disabled>Хватит ✋</button>
       </div>
-      <p id="status" class="status">Нажми «Крутить».</p>
+      <p id="status" class="status" style="margin-top:10px;">Нажми «Новая игра».</p>
       <div id="awardText" class="note"></div>
     </section>
   </div>
@@ -169,8 +198,9 @@
     const tg=window.Telegram && window.Telegram.WebApp;
     if(!tg) return null;
     tg.ready();
-
-    if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
+    
+    tgInitData = tg.initData || "";
+if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
     try{ tg.disableVerticalSwipes(); }catch(e){}
     document.documentElement.style.overscrollBehavior="none";
     document.body.style.overscrollBehavior="none";
@@ -189,19 +219,24 @@
     const prefersLight=window.matchMedia && window.matchMedia("(prefers-color-scheme: light)").matches;
     document.documentElement.setAttribute("data-theme", prefersLight? "light":"dark");
   }
-  function getUidFromUrl(){ try{ return new URL(location.href).searchParams.get("uid"); }catch(e){ return null; } }
-  function getTgUserId(){ try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); } }
+  function getUidFromUrl(){
+    try{ return new URL(location.href).searchParams.get("uid"); }catch(e){ return null; }
+  }
+  function getTgUserId(){
+    try{ return tg?.initDataUnsafe?.user?.id || getUidFromUrl(); }catch(e){ return getUidFromUrl(); }
+  }
 
   const API_BASE="https://api.firstgamble.ru";
-  
+
 let tgInitData = "";
-async function loadBalance(){
+
+  async function loadBalance(){
     const uid=getTgUserId();
     const el=document.getElementById("balanceValue");
     if(!el) return;
     if(!uid){ el.textContent=localStorage.getItem("balance_local")||"0"; return; }
     try{
-      const r=await fetch(API_BASE+"/api/balance?user_id="+uid, {headers: tgInitData ? {"X-Telegram-InitData": tgInitData} : {}});
+      const r=await fetch(API_BASE + "/api/balance?user_id=" + uid, { headers: (tgInitData?{"X-Telegram-InitData":tgInitData}:{}) });
       const d=await r.json();
       el.textContent=d.balance??0;
       localStorage.setItem("balance_local", el.textContent);
@@ -211,11 +246,17 @@ async function loadBalance(){
   }
   async function sendPoint(uid, game){
     try{
-      const body=JSON.stringify({user_id:String(uid), game:String(game)||"slot"});
-      const r=await fetch(API_BASE+"/api/add_point", {method:"POST", headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(), body});
+      const body=JSON.stringify({user_id:String(uid), game:String(game)||"bj"});
+      const r=await fetch(API_BASE+"/api/add_point", {method:"POST", headers: (()=>{ const h={ "Content-Type":"application/json" }; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h; })(), body});
       const text=await r.text();
       try{ return JSON.parse(text); }catch{ return {ok:false, error:"json_parse_fail", raw:text}; }
     }catch(err){ return {ok:false, error:String(err)}; }
+  }
+  async function reportGame(uid, game, result){
+    try{
+      const body=JSON.stringify({user_id:String(uid), game:String(game), result:String(result)});
+      await fetch(API_BASE+"/api/report_game", {method:"POST", headers: (()=>{ const h={ "Content-Type":"application/json" }; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h; })(), body});
+    }catch(e){}
   }
   function showToast(t){
     const toast=document.getElementById("toast");
@@ -225,55 +266,96 @@ async function loadBalance(){
     showToast._t=setTimeout(()=>toast.classList.remove("show"), 1400);
   }
 
-  // ===== Slot machine =====
-  // Weights scaled from target odds: 6%, 5%, 4%, 3.38%, 2.25%, 1.13%, 0.56%.
-  const SYMBOLS = [
-    {ch:"🍺", w:600},
-    {ch:"🍒", w:500},
-    {ch:"🤡", w:400},
-    {ch:"🧀", w:338},
-    {ch:"💎", w:225},
-    {ch:"👽", w:113},
-    {ch:"🍀", w:56}
+  // ===== Blackjack game =====
+  const SUITS = [
+    {s:"♠", color:"black"},
+    {s:"♥", color:"red"},
+    {s:"♦", color:"red"},
+    {s:"♣", color:"black"}
   ];
-  function pickSymbol(){
-    const total = SYMBOLS.reduce((a,s)=>a+s.w,0);
-    let r = Math.random()*total;
-    for(const s of SYMBOLS){
-      r-=s.w;
-      if(r<=0) return s.ch;
+  const RANKS = [
+    {r:"A", v:11},
+    {r:"2", v:2},{r:"3", v:3},{r:"4", v:4},{r:"5", v:5},{r:"6", v:6},{r:"7", v:7},{r:"8", v:8},{r:"9", v:9},
+    {r:"10", v:10},{r:"J", v:10},{r:"Q", v:10},{r:"K", v:10}
+  ];
+
+  function newDeck(){
+    const deck=[];
+    for(const suit of SUITS){
+      for(const rank of RANKS){
+        deck.push({rank:rank.r, value:rank.v, suit:suit.s, color:suit.color});
+      }
     }
-    return SYMBOLS[0].ch;
-  }
-
-  const strips = [document.getElementById("strip0"), document.getElementById("strip1"), document.getElementById("strip2")];
-  const btnSpin = document.getElementById("btnSpin");
-  const btnAuto = document.getElementById("btnAuto");
-  const btnReset = document.getElementById("btnReset");
-  const statusEl = document.getElementById("status");
-  const awardTextEl = document.getElementById("awardText");
-
-  let spinning=false, autoLeft=0, pointGiven=false;
-
-  function setStatus(t, cls=""){
-    statusEl.className="status "+cls;
-    statusEl.textContent=t;
-  }
-  function setButtons({spin=true, auto=true, reset=true}){
-    btnSpin.disabled=!spin; btnAuto.disabled=!auto; btnReset.disabled=!reset;
-  }
-
-  function buildStrip(strip){
-    strip.innerHTML="";
-    // make long strip for animation
-    for(let i=0;i<18;i++){
-      const div=document.createElement("div");
-      div.className="symbol";
-      div.textContent=pickSymbol();
-      strip.appendChild(div);
+    for(let i=deck.length-1;i>0;i--){
+      const j=Math.floor(Math.random()*(i+1));
+      [deck[i],deck[j]]=[deck[j],deck[i]];
     }
+    return deck;
   }
-  strips.forEach(buildStrip);
+
+  function handValue(hand){
+    let sum=0, aces=0;
+    for(const c of hand){
+      sum+=c.value;
+      if(c.rank==="A") aces++;
+    }
+    while(sum>21 && aces>0){
+      sum-=10; aces--;
+    }
+    return sum;
+  }
+
+  function renderCard(card, hidden=false){
+    const div=document.createElement("div");
+    if(hidden){
+      div.className="card-ui backside";
+      div.innerHTML='<div class="center">🂠</div>';
+      return div;
+    }
+    div.className="card-ui " + (card.color==="red"?"red":"");
+    div.innerHTML=`
+      <div class="corner tl">${card.rank}<br>${card.suit}</div>
+      <div class="center">${card.rank}<div style="font-size:20px">${card.suit}</div></div>
+      <div class="corner br">${card.rank}<br>${card.suit}</div>
+    `;
+    requestAnimationFrame(()=>div.classList.add("fresh"));
+    setTimeout(()=>div.classList.remove("fresh"), 220);
+    return div;
+  }
+
+  const dealerHandEl=document.getElementById("dealerHand");
+  const playerHandEl=document.getElementById("playerHand");
+  const dealerScoreEl=document.getElementById("dealerScore");
+  const playerScoreEl=document.getElementById("playerScore");
+  const statusEl=document.getElementById("status");
+  const awardTextEl=document.getElementById("awardText");
+
+  const btnDeal=document.getElementById("btnDeal");
+  const btnHit=document.getElementById("btnHit");
+  const btnStand=document.getElementById("btnStand");
+
+  let deck=[], dealerHand=[], playerHand=[];
+  let inRound=false, dealerHidden=true, pointGiven=false;
+
+  function updateUI(){
+    dealerHandEl.innerHTML="";
+    playerHandEl.innerHTML="";
+    dealerHand.forEach((c,i)=>dealerHandEl.appendChild(renderCard(c, dealerHidden && i===0)));
+    playerHand.forEach(c=>playerHandEl.appendChild(renderCard(c)));
+    dealerScoreEl.textContent = dealerHidden ? "?" : handValue(dealerHand);
+    playerScoreEl.textContent = handValue(playerHand);
+  }
+
+  function setControls({deal=true, hit=false, stand=false}){
+    btnDeal.disabled=!deal;
+    btnHit.disabled=!hit;
+    btnStand.disabled=!stand;
+  }
+
+  function setStatus(text, cls=""){
+    statusEl.className="status " + cls;
+    statusEl.textContent=text;
+  }
 
   async function givePointIfWin(){
     if(pointGiven) return;
@@ -284,7 +366,7 @@ async function loadBalance(){
       pointGiven=false;
       return;
     }
-      const res=await sendPoint(uid, "slot");
+    const res=await sendPoint(uid, "bj");
     if(res.ok){
       awardTextEl.textContent="✅ +1 очко за победу добавлено";
       document.getElementById("balanceValue").textContent=res.balance;
@@ -296,74 +378,92 @@ async function loadBalance(){
     }
   }
 
-  async function spinOnce(){
-    spinning=true; pointGiven=false; awardTextEl.textContent="";
-    setButtons({spin:false, auto:false, reset:false});
-    setStatus("Крутим...", "");
+  async function endRound(result){
+    inRound=false;
+    dealerHidden=false;
+    updateUI();
+    setControls({deal:true, hit:false, stand:false});
 
-    const final = [pickSymbol(), pickSymbol(), pickSymbol()];
-    const durations = [1200, 1600, 2000];
-    const eases = ["cubic-bezier(.2,.8,.2,1)","cubic-bezier(.2,.8,.2,1)","cubic-bezier(.2,.8,.2,1)"];
+    const p=handValue(playerHand);
+    const d=handValue(dealerHand);
+    const uid=getTgUserId();
 
-    await Promise.all(strips.map((strip, idx)=>new Promise(resolve=>{
-      buildStrip(strip);
-      // set last 3 to end with final symbol in center
-      const kids = [...strip.children];
-      kids[kids.length-3].textContent = pickSymbol();
-      kids[kids.length-2].textContent = final[idx];
-      kids[kids.length-1].textContent = pickSymbol();
-
-      strip.style.transition="none";
-      strip.style.transform="translateY(0)";
-      // force reflow
-      strip.getBoundingClientRect();
-
-      const shift = -(kids.length-2)*80 + 40; // approximate step (72 + 8 gap = 80), center on final
-      strip.style.transition=`transform ${durations[idx]}ms ${eases[idx]}`;
-      strip.style.transform=`translateY(${shift}px)`;
-
-      setTimeout(resolve, durations[idx]+30);
-    })));
-
-    spinning=false;
-    setButtons({spin:true, auto:true, reset:true});
-
-    const [a,b,c]=final;
-    if(a===b && b===c){
-      setStatus(`Победа! ${a} ${b} ${c}`, "win");
-      givePointIfWin();
-    }else if(a===b || b===c || a===c){
-      setStatus(`Почти! ${a} ${b} ${c}`, "draw");
+    if(result==="player_bust"){
+      if(uid) await reportGame(uid,"bj","lose");
+      setStatus(`Перебор. Ты проиграл (${p})`, "lose");
+    }else if(result==="dealer_bust"){
+      if(uid) await reportGame(uid,"bj","win");
+      setStatus(`Дилер перебрал. Ты победил! (${p} против ${d})`, "win");
+      await givePointIfWin();
+    }else if(result==="player_win"){
+      if(uid) await reportGame(uid,"bj","win");
+      setStatus(`Ты победил! (${p} против ${d})`, "win");
+      await givePointIfWin();
+    }else if(result==="dealer_win"){
+      if(uid) await reportGame(uid,"bj","lose");
+      setStatus(`Ты проиграл (${p} против ${d})`, "lose");
     }else{
-      setStatus(`Мимо. ${a} ${b} ${c}`, "lose");
-    }
-
-    if(autoLeft>0){
-      autoLeft--;
-      btnAuto.textContent = autoLeft>0 ? `Авто ×${autoLeft}` : "Авто ×10";
-      if(autoLeft>0) setTimeout(spinOnce, 450);
+      if(uid) await reportGame(uid,"bj","draw");
+      setStatus(`Ничья (${p} = ${d})`, "draw");
     }
   }
 
-  btnSpin.addEventListener("click", ()=>{
-    if(spinning) return;
-    spinOnce();
-  });
+  function dealerPlay(){
+    dealerHidden=false;
+    updateUI();
+    let d=handValue(dealerHand);
+    while(d<17){
+      dealerHand.push(deck.pop());
+      d=handValue(dealerHand);
+    }
+    const p=handValue(playerHand);
+    if(d>21) endRound("dealer_bust");
+    else if(p>d) endRound("player_win");
+    else if(p<d) endRound("dealer_win");
+    else endRound("draw");
+  }
 
-  btnAuto.addEventListener("click", ()=>{
-    if(spinning) return;
-    autoLeft = 10;
-    btnAuto.textContent = `Авто ×${autoLeft}`;
-    spinOnce();
-  });
-
-  btnReset.addEventListener("click", ()=>{
-    if(spinning) return;
-    strips.forEach(buildStrip);
-    setStatus("Нажми «Крутить».", "");
+  function startRound(){
+    if(inRound){
+      showToast("Сначала доиграй раунд ✋");
+      return; // lock restart mid-round
+    }
+    deck=newDeck();
+    dealerHand=[deck.pop(), deck.pop()];
+    playerHand=[deck.pop(), deck.pop()];
+    dealerHidden=true;
+    inRound=true;
+    pointGiven=false;
     awardTextEl.textContent="";
-    autoLeft=0;
-    btnAuto.textContent="Авто ×10";
+    setControls({deal:true, hit:true, stand:true});
+
+    updateUI();
+    const p=handValue(playerHand);
+    if(p===21){
+      dealerHidden=false;
+      updateUI();
+      const d=handValue(dealerHand);
+      if(d===21) endRound("draw");
+      else endRound("player_win");
+    }else{
+      setStatus("Твой ход: возьми карту или хватит.");
+    }
+  }
+
+  btnDeal.addEventListener("click", startRound);
+  btnHit.addEventListener("click", ()=>{
+    if(!inRound) return;
+    playerHand.push(deck.pop());
+    updateUI();
+    const p=handValue(playerHand);
+    if(p>21) endRound("player_bust");
+    else setStatus("Твой ход продолжается.");
+  });
+  btnStand.addEventListener("click", ()=>{
+    if(!inRound) return;
+    setStatus("Ход дилера...");
+    setControls({deal:false, hit:false, stand:false});
+    setTimeout(dealerPlay, 700);
   });
 
   loadBalance();

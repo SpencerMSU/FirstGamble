@@ -180,8 +180,9 @@
     const tg = window.Telegram && window.Telegram.WebApp;
     if(!tg) return null;
     tg.ready();
+    
     tgInitData = tg.initData || "";
-    if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
+if(!window.__tgExpanded){ try{ tg.expand(); }catch(e){} window.__tgExpanded=true; }
     try{ tg.disableVerticalSwipes(); }catch(e){}
     document.documentElement.style.overscrollBehavior="none";
     document.body.style.overscrollBehavior="none";
@@ -212,9 +213,10 @@
   // ===== API =====
   const API_BASE = "https://api.firstgamble.ru";
 
-  
 let tgInitData = "";
-async function loadBalance(){
+
+
+  async function loadBalance(){
     const userId = getTgUserId();
     const el = document.getElementById("balanceValue");
     if(!el) return;
@@ -224,7 +226,9 @@ async function loadBalance(){
       return;
     }
     try{
-      const res = await fetch(API_BASE + "/api/balance?user_id=" + userId, {headers: tgInitData ? {"X-Telegram-InitData": tgInitData} : {}});
+      const headers = {};
+      if (tgInitData) headers["X-Telegram-InitData"] = tgInitData;
+      const res = await fetch(API_BASE + "/api/balance?user_id=" + userId, { headers });
       const data = await res.json();
       el.textContent = data.balance ?? 0;
       localStorage.setItem("balance_local", el.textContent);
@@ -236,11 +240,9 @@ async function loadBalance(){
   async function sendPoint(userId, game){
     const attempt = async ()=>{
       const body = JSON.stringify({ user_id: String(userId), game: String(game) || "dice" });
-      const headers = { "Content-Type": "application/json" };
-        if (tgInitData) headers["X-Telegram-InitData"] = tgInitData;
       const res = await fetch(API_BASE + "/api/add_point", {
         method: "POST",
-        headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(),
+        headers: (()=>{ const h={ "Content-Type":"application/json" }; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h; })(),
         body,
         cache: "no-store",
         keepalive: true
@@ -261,7 +263,7 @@ async function loadBalance(){
       const body = JSON.stringify({ user_id:String(userId), game:String(game), result:String(result) });
       await fetch(API_BASE + "/api/report_game", {
         method:"POST",
-        headers: (()=>{const h={"Content-Type":"application/json"}; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h;})(),
+        headers: (()=>{ const h={ "Content-Type":"application/json" }; if(tgInitData) h["X-Telegram-InitData"]=tgInitData; return h; })(),
         body
       });
     }catch(e){}

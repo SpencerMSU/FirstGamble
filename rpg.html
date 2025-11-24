@@ -169,6 +169,7 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 const API_BASE = "https://api.firstgamble.ru";
 
 let tgInitData = "";
+
 const RES_MAX = 999;
 
 const RES_META = [
@@ -234,8 +235,9 @@ function initTelegram(){
   if(!tg) return null;
 
   tg.ready();
-      tgInitData = tg.initData || "";
-  if(!window.__tgExpanded){
+  
+    tgInitData = tg.initData || "";
+if(!window.__tgExpanded){
     try{ tg.expand(); }catch(e){}
     window.__tgExpanded = true;
   }

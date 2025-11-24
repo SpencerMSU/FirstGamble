@@ -165,6 +165,10 @@ function isBgDark(hex){
   return lum < 0.55;
 }
 
+function setTgIdLabel(value){
+  document.getElementById("tgid").textContent = value || "—";
+}
+
 function initTelegram(){
   tg = window.Telegram && window.Telegram.WebApp;
   if(!tg) return null;
@@ -189,6 +193,7 @@ function initTelegram(){
   uid = new URLSearchParams(location.search).get("uid")
         || (tg.initDataUnsafe && tg.initDataUnsafe.user && tg.initDataUnsafe.user.id)
         || null;
+  if(uid) setTgIdLabel(uid);
 
   tg.onEvent("themeChanged", () => {
     const p=tg.themeParams||{};
@@ -263,7 +268,7 @@ async function loadCabinet(){
     tg?.showAlert(cab.error || "Ошибка загрузки кабинета");
     return;
   }
-  document.getElementById("tgid").textContent = cab.user_id;
+  setTgIdLabel(cab.user_id);
   setBalance(cab.balance);
   tickets = cab.tickets || [];
   renderTickets();
@@ -288,7 +293,11 @@ async function buyTicket(){
 (function main(){
   initTelegram();
   document.getElementById("buyTicketBtn").addEventListener("click", buyTicket);
-  if(uid) loadCabinet();
+  if(uid){
+    loadCabinet();
+  }else{
+    setTgIdLabel("нет TG id");
+  }
 })();
 </script>
 </body>

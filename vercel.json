@@ -1,15 +1,15 @@
 {
   "rewrites": [
     {
-      "source": "static/",
+      "source": "/",
       "destination": "static/index.html"
     },
     {
-      "source": "static/ludka",
+      "source": "/ludka",
       "destination": "static/ludka.html"
     },
     {
-      "source": "static/prices",
+      "source": "/prices",
       "destination": "static/prices.html"
     },
     {

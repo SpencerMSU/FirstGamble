@@ -286,8 +286,16 @@ async function buyTicket(price){
 }
 
 async function loadBalance(){
-  const r = await apiGet(`/api/balance?user_id=${uid}`);
-  if(r && r.ok) setBalance(r.balance);
+  let path = '/api/balance';
+  if(uid) path += `?user_id=${uid}`;
+  const r = await apiGet(path);
+  if(r && r.ok){
+    setBalance(r.balance);
+    localStorage.setItem('balance_local', r.balance);
+  } else {
+    const cached = localStorage.getItem('balance_local');
+    if(cached!==null) setBalance(Number(cached)||0);
+  }
 }
 
 function setupTabs(){

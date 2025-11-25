@@ -4,4 +4,4 @@ REDIS_HOST=localhost
 REDIS_PORT=6379
 REDIS_DB=0
 WEBAPP_URL=https://firstgamble.ru/
-ConServeAuthToken=ТВОЙ_СЕКРЕТНЫЙ_ТОКЕН
+ConServeAuthToken=auth_conserve_82650245_XxX

@@ -301,11 +301,16 @@ async function apiPost(path, body){
 function setBalance(v){ document.getElementById("balanceValue").textContent = v||0; }
 
 async function loadBalanceOnly(){
-  if(!uid) return;
-  const r = await apiGet(`/api/balance?user_id=${uid}`);
+  let path = '/api/balance';
+  if(uid) path += `?user_id=${uid}`;
+  const r = await apiGet(path);
   if(r && (r.balance!=null)){
     setBalance(r.balance);
     state.balance = r.balance;
+    localStorage.setItem('balance_local', r.balance);
+  } else {
+    const cached = localStorage.getItem('balance_local');
+    if(cached!==null) setBalance(Number(cached)||0);
   }
 }
 
@@ -493,13 +498,9 @@ async function gather(){
       renderCooldown();
       return;
     }
-    if((state.cooldown_remaining||0) > 0) return;
-    state.cooldown_remaining = 300;
-    state.cooldown_until = Math.floor(Date.now()/1000) + 300;
-    for(const k in state.resources){
-      state.resources[k] = state.resources[k] || 0;
-    }
-    localStorage.setItem("rpg_state_"+uid, JSON.stringify(state));
+    alert("Не удалось добыть ресурсы. Попробуй ещё раз.");
+    await loadState();
+    return;
   }
   renderAll();
 }

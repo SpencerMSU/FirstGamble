@@ -81,6 +81,10 @@
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
       if(body) opts.body = JSON.stringify(body);
       const res = await fetch(path, opts);
+      if(res.status === 401){
+        window.location.href = "/";
+        throw new Error('unauthorized');
+      }
       if(!res.ok){
         const txt = await res.text();
         throw new Error(txt || 'request failed');

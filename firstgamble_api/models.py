@@ -52,6 +52,11 @@ class BuyRaffleTicketRequest(BaseModel):
     count: int = Field(1, ge=1, le=100)
 
 
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
 class AdminPrizeRequest(BaseModel):
     name: str
     description: Optional[str] = ""

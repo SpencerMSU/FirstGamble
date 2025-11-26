@@ -4,7 +4,11 @@
     <option name="autoReloadType" value="SELECTIVE" />
   </component>
   <component name="ChangeListManager">
-    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init" />
+    <list default="true" id="30fd6b36-9e43-4d1a-83ed-f8811c2ec949" name="Changes" comment="Init">
+      <change afterPath="$PROJECT_DIR$/error_notg.html" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/.idea/workspace.xml" beforeDir="false" afterPath="$PROJECT_DIR$/.idea/workspace.xml" afterDir="false" />
+      <change beforePath="$PROJECT_DIR$/rpg.zip" beforeDir="false" />
+    </list>
     <option name="SHOW_DIALOG" value="false" />
     <option name="HIGHLIGHT_CONFLICTS" value="true" />
     <option name="HIGHLIGHT_NON_ACTIVE_CHANGELIST" value="false" />
@@ -77,14 +81,6 @@
       <option name="number" value="Default" />
       <option name="presentableId" value="Default" />
       <updated>1763822177206</updated>
-    </task>
-    <task id="LOCAL-00026" summary="Init">
-      <option name="closed" value="true" />
-      <created>1763838336401</created>
-      <option name="number" value="00026" />
-      <option name="presentableId" value="LOCAL-00026" />
-      <option name="project" value="LOCAL" />
-      <updated>1763838336401</updated>
     </task>
     <task id="LOCAL-00027" summary="Init">
       <option name="closed" value="true" />
@@ -470,7 +466,15 @@
       <option name="project" value="LOCAL" />
       <updated>1764025186188</updated>
     </task>
-    <option name="localTasksCounter" value="75" />
+    <task id="LOCAL-00075" summary="Init">
+      <option name="closed" value="true" />
+      <created>1764084603230</created>
+      <option name="number" value="00075" />
+      <option name="presentableId" value="LOCAL-00075" />
+      <option name="project" value="LOCAL" />
+      <updated>1764084603230</updated>
+    </task>
+    <option name="localTasksCounter" value="76" />
     <servers />
   </component>
   <component name="VcsManagerConfiguration">

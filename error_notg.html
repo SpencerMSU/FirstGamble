@@ -1,0 +1,153 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Ошибка входа — FirstClub</title>
+  <style>
+    :root{
+      --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+      --red:#ef4444;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{
+      height:100%;overflow:hidden;overscroll-behavior:none;
+      -webkit-overflow-scrolling:auto;touch-action:manipulation;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+        radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{
+      width:min(900px,100%);
+      border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);
+      padding:18px;
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      height:100%;display:flex;align-items:center;justify-content:center;
+    }
+    .card{
+      position:relative;
+      width:100%;
+      max-width:540px;
+      border-radius:18px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(180deg,var(--panel) 0%, color-mix(in oklab,var(--panel) 90%,transparent) 100%);
+      box-shadow:var(--shadow);
+      padding:20px 18px 18px;
+      overflow:hidden;
+    }
+    .card::before{
+      content:"";
+      position:absolute;inset:-40%;
+      background:
+        radial-gradient(520px 260px at 0% 0%, rgba(239,68,68,.22), transparent 60%),
+        radial-gradient(520px 260px at 100% 0%, rgba(59,130,246,.16), transparent 60%);
+      opacity:0.9;
+      pointer-events:none;
+    }
+    .card-inner{
+      position:relative;z-index:1;
+      display:flex;flex-direction:column;gap:14px;
+      text-align:left;
+    }
+    .tag{
+      display:inline-flex;align-items:center;gap:6px;
+      padding:5px 9px;border-radius:999px;
+      border:1px solid rgba(239,68,68,.5);
+      background:rgba(15,23,42,.8);
+      font-size:11px;font-weight:800;color:#fecaca;
+    }
+    h1{
+      margin:0;
+      font-size:20px;font-weight:900;
+      display:flex;align-items:center;gap:8px;
+    }
+    h1 span.icon{
+      display:inline-flex;align-items:center;justify-content:center;
+      width:30px;height:30px;border-radius:12px;
+      background:rgba(239,68,68,.14);
+      border:1px solid rgba(239,68,68,.45);
+      font-size:18px;
+    }
+    p{
+      margin:0;
+      font-size:14px;
+      color:var(--muted);
+      line-height:1.5;
+      font-weight:500;
+    }
+    ul{
+      margin:6px 0 0 0;
+      padding-left:18px;
+      font-size:13px;
+      color:var(--muted);
+      line-height:1.5;
+    }
+    .btn-row{
+      display:flex;flex-wrap:wrap;gap:8px;margin-top:6px;
+    }
+    .btn{
+      padding:10px 14px;border-radius:12px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;font-size:14px;
+      cursor:pointer;transition:.15s ease;
+      box-shadow:0 6px 18px rgba(37,99,235,.35);
+      text-decoration:none;display:inline-flex;align-items:center;gap:8px;
+    }
+    .btn.secondary{
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      color:var(--text);border-color:var(--stroke);box-shadow:none;
+      font-size:13px;font-weight:800;
+    }
+    .btn:hover{transform:translateY(-1px);}
+    .hint{
+      font-size:11px;color:var(--muted);margin-top:4px;
+    }
+    @media (max-width:480px){
+      .card{padding:16px 14px;}
+      h1{font-size:18px;}
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div class="card">
+      <div class="card-inner">
+        <div class="tag">Доступ только из Telegram-бота</div>
+        <h1>
+          <span class="icon">🚫</span>
+          Открой FirstClub через Telegram
+        </h1>
+        <p>
+          Похоже, страница открыта <b>не через Telegram-мини-приложение</b>.<br/>
+          Чтобы всё работало — авторизация, баланс, игры и RPG — нужно зайти из бота.
+        </p>
+        <ul>
+          <li>Открой нашего бота в Telegram.</li>
+          <li>Нажми кнопку <b>«Подтвердить»</b>, если её ещё не нажимал.</li>
+          <li>Выбери <b>«Открыть приложение»</b>, чтобы запустить FirstClub.</li>
+        </ul>
+
+
+
+
+      </div>
+    </div>
+  </div>
+</body>
+</html>

@@ -62,6 +62,8 @@ const input = document.getElementById("nickInput");
 const errorEl = document.getElementById("error");
 const saveBtn = document.getElementById("saveBtn");
 const reNick = /^[A-Za-z0-9_-]{3,20}$/;
+const SAVE_TEXT = "Сохранить и продолжить";
+const LOADING_TEXT = "Сохраняем...";
 
 function redirectHome(){
   const query = uid ? `?uid=${uid}` : "";
@@ -85,13 +87,15 @@ function validate(){
   return val;
 }
 
-input.addEventListener("input", validate);
+// Обновляем состояние кнопки при любых изменениях поля, включая автозаполнение
+["input", "change", "blur"].forEach(evt => input.addEventListener(evt, validate));
+validate();
 
 async function save(){
   const nick = validate();
   if(!nick) return;
   saveBtn.disabled = true;
-  saveBtn.textContent = "Сохраняем...";
+  saveBtn.textContent = LOADING_TEXT;
   try{
     const res = await apiPost("/api/update_profile", {name: nick});
     if(res && res.ok){
@@ -102,7 +106,7 @@ async function save(){
     throw new Error(res?.error || "Не удалось сохранить");
   }catch(e){
     saveBtn.disabled = false;
-    saveBtn.textContent = "Сохранить и продолжить";
+    saveBtn.textContent = SAVE_TEXT;
     tg?.showAlert?.(String(e));
   }
 }

@@ -47,4 +47,4 @@ ADMIN_TOKEN = config.get("ADMIN_TOKEN")
 ADMIN_SESSION_TTL = int(config.get("ADMIN_SESSION_TTL", "86400"))
 ADMIN_TG_ID = int(config.get("ADMIN_TG_ID", "0") or 0)
 
-RAFFLE_TICKET_PRICE = int(config.get("RAFFLE_TICKET_PRICE", "10"))
+RAFFLE_TICKET_PRICE = int(config.get("RAFFLE_TICKET_PRICE", "500"))

@@ -353,7 +353,7 @@
     const uid=getTgUserId();
 
     if(result==="player_bust"){
-      if(uid) await reportGame(uid,"bj","lose");
+      if(uid) await reportGame(uid,"bj","loss");
       setStatus(`Перебор. Ты проиграл (${p})`, "lose");
     }else if(result==="dealer_bust"){
       if(uid) await reportGame(uid,"bj","win");
@@ -364,7 +364,7 @@
       setStatus(`Ты победил! (${p} против ${d})`, "win");
       await givePointIfWin();
     }else if(result==="dealer_win"){
-      if(uid) await reportGame(uid,"bj","lose");
+      if(uid) await reportGame(uid,"bj","loss");
       setStatus(`Ты проиграл (${p} против ${d})`, "lose");
     }else{
       if(uid) await reportGame(uid,"bj","draw");

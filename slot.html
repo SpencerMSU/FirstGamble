@@ -315,7 +315,7 @@
     }else{
       setStatus(`Мимо. ${a} ${b} ${c}`, "lose");
       const uid=getTgUserId();
-      if(uid) await reportGame(uid, "slot", "lose");
+      if(uid) await reportGame(uid, "slot", "loss");
     }
 
     if(autoLeft>0){

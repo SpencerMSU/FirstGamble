@@ -324,7 +324,7 @@
     }else if(youSum < botSum){
       resultTextEl.textContent = `Ты проиграл. ${youSum} против ${botSum}`;
       resultTextEl.classList.add("lose");
-      if(userId) await reportGame(userId, "dice", "lose");
+      if(userId) await reportGame(userId, "dice", "loss");
     }else{
       resultTextEl.textContent = `Ничья! ${youSum} = ${botSum}`;
       resultTextEl.classList.add("draw");

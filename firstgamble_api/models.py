@@ -48,9 +48,8 @@ class RpgConvertRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
-class RaffleBuyRequest(BaseModel):
-    user_id: Optional[str] = None
-    count: Optional[int] = 1
+class BuyRaffleTicketRequest(BaseModel):
+    count: int = Field(1, ge=1, le=100)
 
 
 class AdminLoginRequest(BaseModel):

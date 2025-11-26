@@ -1,10 +1,11 @@
 import json
+import logging
 import random
 import secrets
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
 
 from .models import (
     AddPointRequest,
@@ -15,14 +16,20 @@ from .models import (
     AdminPrizeUpdateRequest,
     AdminSetPointsRequest,
     AuthContext,
-    RaffleBuyRequest,
+    BuyRaffleTicketRequest,
     ReportGameRequest,
     RpgBuyRequest,
     RpgConvertRequest,
     RpgGatherRequest,
     UpdateProfileRequest,
 )
-from .config import ADMIN_PASS, ADMIN_SESSION_TTL, ADMIN_TOKEN, ADMIN_USER
+from .config import (
+    ADMIN_PASS,
+    ADMIN_SESSION_TTL,
+    ADMIN_TOKEN,
+    ADMIN_USER,
+    RAFFLE_TICKET_PRICE,
+)
 from .redis_utils import (
     ALLOWED_GAMES,
     USERS_ZSET,
@@ -63,6 +70,9 @@ from .services import (
     rpg_state,
     _ensure_profile_identity_fields,
 )
+
+
+logger = logging.getLogger(__name__)
 
 
 async def get_current_auth(
@@ -501,54 +511,51 @@ def register_routes(app: FastAPI):
         return {"ok": True, "state": st}
 
     @app.post("/api/raffle/buy_ticket")
-    async def api_buy_ticket(
-        body: Optional[RaffleBuyRequest] = None,
+    async def api_raffle_buy_ticket(
+        body: BuyRaffleTicketRequest = Body(default_factory=BuyRaffleTicketRequest),
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
         uid = auth.user_id
-        r = await get_redis()
-        await ensure_user(uid)
 
-        PRICE = 500
-        cnt = 1
-        if body and body.count:
-            try:
-                cnt = int(body.count)
-            except Exception:
-                cnt = 1
-        cnt = max(1, min(cnt, 20))
+        try:
+            r = await get_redis()
+            await ensure_user(uid)
 
-        bal = safe_int(await r.get(key_balance(uid)))
-        total_cost = PRICE * cnt
-        if bal < total_cost:
-            return {"ok": False, "error": "not_enough_points", "message": "Недостаточно очков"}
+            count = max(1, min(body.count or 1, 100))
 
-        start_num = await r.incrby(key_ticket_counter(), cnt) - cnt
-        tickets_bought = []
-        owners_map = {}
-        for i in range(cnt):
-            ticket_val = start_num + i
-            ticket = str(ticket_val).zfill(8)
-            tickets_bought.append(ticket)
-            owners_map[ticket] = uid
+            balance_raw = await r.get(key_balance(uid))
+            balance = safe_int(balance_raw)
+            total_cost = RAFFLE_TICKET_PRICE * count
 
-        pipe = r.pipeline()
-        pipe.incrby(key_balance(uid), -total_cost)
-        pipe.zadd(USERS_ZSET, {uid: bal - total_cost})
-        if tickets_bought:
-            pipe.rpush(key_user_tickets(uid), *tickets_bought)
-            pipe.hset(key_ticket_owners(), mapping={k: str(v) for k, v in owners_map.items()})
-        await pipe.execute()
+            if balance < total_cost:
+                return {"ok": False, "error": "not_enough_points", "balance": balance}
 
-        tickets = await r.lrange(key_user_tickets(uid), 0, -1)
+            last_ticket = await r.incrby(key_ticket_counter(), count)
+            first_ticket = last_ticket - count + 1
+            bought_numbers = list(range(first_ticket, last_ticket + 1))
 
-        return {
-            "ok": True,
-            "ticket": tickets_bought[0] if tickets_bought else None,
-            "tickets_bought": tickets_bought,
-            "balance": bal - total_cost,
-            "tickets": tickets,
-        }
+            new_balance = balance - total_cost
+            tickets_key = key_user_tickets(uid)
+            owners_map = {str(num): str(uid) for num in bought_numbers}
+
+            pipe = r.pipeline()
+            pipe.set(key_balance(uid), new_balance)
+            pipe.zadd(USERS_ZSET, {uid: new_balance})
+            pipe.rpush(tickets_key, *[str(num) for num in bought_numbers])
+            pipe.hset(key_ticket_owners(), mapping=owners_map)
+            await pipe.execute()
+
+            user_tickets = [safe_int(t) for t in await r.lrange(tickets_key, 0, -1)]
+
+            return {
+                "ok": True,
+                "balance": new_balance,
+                "bought": bought_numbers,
+                "tickets": user_tickets,
+            }
+        except Exception:
+            logger.exception("raffle buy ticket failed")
+            return {"ok": False, "error": "internal_error"}
 
     @app.get("/api/cabinet")
     async def api_cabinet(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:

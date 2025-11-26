@@ -445,7 +445,7 @@ async def api_balance(request: web.Request):
 async def api_add_point(request: web.Request):
     """
     POST JSON: { "user_id": ..., "game": "dice"|"bj"|"slot", "delta"?: int }
-    Увеличивает баланс (по умолчанию на 1), обновляет лидерборд и статистику.
+    Увеличивает баланс (по умолчанию на 1) и обновляет лидерборд.
     """
     try:
         data = await request.json()
@@ -469,12 +469,6 @@ async def api_add_point(request: web.Request):
 
     await ensure_user(user_id)
     new_balance = await add_points(user_id, delta)
-
-    await r.hincrby(key_stats(user_id), "wins", 1)
-    await r.hincrby(key_stats(user_id), "games_total", 1)
-
-    await r.hincrby(key_gamestats(user_id, game), "wins", 1)
-    await r.hincrby(key_gamestats(user_id, game), "games_total", 1)
 
     return web.json_response({"ok": True, "balance": new_balance})
 

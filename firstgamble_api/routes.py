@@ -28,6 +28,7 @@ from .config import (
     ADMIN_SESSION_TTL,
     ADMIN_TOKEN,
     ADMIN_USER,
+    ADMIN_TG_ID,
     RAFFLE_TICKET_PRICE,
 )
 from .redis_utils import (
@@ -58,6 +59,8 @@ from .services import (
     key_prize_counter,
     key_prize_item,
     key_prizes_set,
+    key_raffle_status,
+    key_last_raffle_winners,
     key_raffle_winners,
     key_ticket_counter,
     key_ticket_owners,
@@ -165,6 +168,20 @@ def register_routes(app: FastAPI):
         prizes.sort(key=lambda x: (x.get("order", 0), x.get("id", 0)))
         return prizes
 
+    async def get_raffle_status(r) -> str:
+        status = await r.get(key_raffle_status())
+        return (status or "preparing").lower()
+
+    async def resolve_winner_name(r, uid: Optional[int]) -> str:
+        if not uid:
+            return ""
+        profile = await r.hgetall(key_profile(uid))
+        return (
+            profile.get("name")
+            or (f"@{profile.get('username')}" if profile.get("username") else "")
+            or f"user {uid}"
+        )
+
     @app.get("/api/ping")
     async def api_ping() -> Dict[str, Any]:
         return {"ok": True, "message": "pong"}
@@ -194,6 +211,7 @@ def register_routes(app: FastAPI):
             "name": profile.get("name") or "",
             "username": profile.get("username") or "",
             "tg_id": int(profile.get("tg_id") or auth.user_id),
+            "is_admin": bool(auth.user_id == ADMIN_TG_ID),
         }
 
     @app.post("/api/add_point")
@@ -543,6 +561,9 @@ def register_routes(app: FastAPI):
             pipe.zadd(USERS_ZSET, {uid: new_balance})
             pipe.rpush(tickets_key, *[str(num) for num in bought_numbers])
             pipe.hset(key_ticket_owners(), mapping=owners_map)
+            status = await get_raffle_status(r)
+            if status != "finished":
+                pipe.set(key_raffle_status(), "active")
             await pipe.execute()
 
             user_tickets = [safe_int(t) for t in await r.lrange(tickets_key, 0, -1)]
@@ -572,6 +593,54 @@ def register_routes(app: FastAPI):
             "balance": bal,
             "tickets": tickets,
         }
+
+    @app.get("/api/raffle/state")
+    async def api_raffle_state(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+        r = await get_redis()
+        status = await get_raffle_status(r)
+
+        result = {"ok": True, "status": status, "prizes": []}
+        if status in {"preparing", "closed"}:
+            return result
+
+        prizes = await get_prizes(r)
+        winners_raw = await r.lrange(key_raffle_winners(), 0, -1)
+        winners = []
+        for item in winners_raw:
+            try:
+                winners.append(json.loads(item))
+            except Exception:
+                continue
+
+        winners_by_prize: Dict[int, Dict[str, Any]] = {}
+        for w in winners:
+            pid = safe_int(w.get("prize_id"))
+            if pid:
+                winners_by_prize[pid] = w
+
+        prize_rows = []
+        for prize in prizes:
+            pid = prize.get("id")
+            winner = winners_by_prize.get(pid) if status == "finished" else None
+            ticket_no = None
+            winner_name = None
+            if winner:
+                ticket_no = safe_int(winner.get("ticket_no") or winner.get("ticket")) or None
+                winner_name = await resolve_winner_name(r, safe_int(winner.get("user_id"))) or None
+
+            prize_rows.append(
+                {
+                    "id": pid,
+                    "name": prize.get("name", ""),
+                    "description": prize.get("description", ""),
+                    "order": prize.get("order", 0),
+                    "winner_name": winner_name,
+                    "ticket_no": ticket_no,
+                }
+            )
+
+        result["prizes"] = prize_rows
+        return result
 
     @app.post("/api/admin/login")
     async def api_admin_login(body: AdminLoginRequest, response: Response) -> Dict[str, Any]:
@@ -677,7 +746,17 @@ def register_routes(app: FastAPI):
                 winners.append(json.loads(item))
             except Exception:
                 continue
-        return {"ok": True, "items": winners}
+        enriched = []
+        for w in winners:
+            uid = safe_int(w.get("user_id"))
+            enriched.append(
+                {
+                    **w,
+                    "ticket_no": safe_int(w.get("ticket_no") or w.get("ticket")) or None,
+                    "user_name": await resolve_winner_name(r, uid),
+                }
+            )
+        return {"ok": True, "items": enriched}
 
     @app.post("/api/admin/raffle/draw")
     async def api_admin_draw(
@@ -717,7 +796,14 @@ def register_routes(app: FastAPI):
             used_tickets.add(ticket)
             if uid:
                 used_users.add(uid)
-            winners.append({"prize_id": prize.get("id"), "ticket": ticket, "user_id": uid})
+            winners.append(
+                {
+                    "prize_id": prize.get("id"),
+                    "ticket": ticket,
+                    "ticket_no": safe_int(ticket),
+                    "user_id": uid,
+                }
+            )
 
         pipe = r.pipeline()
         pipe.delete(key_raffle_winners())
@@ -725,9 +811,24 @@ def register_routes(app: FastAPI):
             pipe.rpush(key_raffle_winners(), *[json.dumps(w) for w in winners])
             for w in winners:
                 pipe.rpush(key_user_raffle_wins(int(w.get("user_id"))), json.dumps(w))
+        pipe.set(key_raffle_status(), "finished")
         await pipe.execute()
 
         return {"ok": True, "items": winners, "total_tickets": total_tickets}
+
+    @app.post("/api/admin/raffle/finish_payout")
+    async def api_admin_finish_payout(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+        r = await get_redis()
+        winners = await r.lrange(key_raffle_winners(), 0, -1)
+
+        pipe = r.pipeline()
+        if winners:
+            pipe.delete(key_last_raffle_winners())
+            pipe.rpush(key_last_raffle_winners(), *winners)
+        pipe.set(key_raffle_status(), "closed")
+        await pipe.execute()
+
+        return {"ok": True, "status": "closed"}
 
     def normalize_nickname(name: str) -> str:
         return (name or "").strip().lower()

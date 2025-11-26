@@ -1,17 +1,15 @@
 import json
 import logging
 import random
-import secrets
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request
 
 from .models import (
     AddPointRequest,
     AdminDrawRequest,
     AdminFindUserRequest,
-    AdminLoginRequest,
     AdminPrizeRequest,
     AdminPrizeUpdateRequest,
     AdminSetPointsRequest,
@@ -24,10 +22,6 @@ from .models import (
     UpdateProfileRequest,
 )
 from .config import (
-    ADMIN_PASS,
-    ADMIN_SESSION_TTL,
-    ADMIN_TOKEN,
-    ADMIN_USER,
     ADMIN_TG_ID,
     RAFFLE_TICKET_PRICE,
 )
@@ -109,24 +103,6 @@ async def get_current_auth(
     if auth.from_conserve:
         await ensure_user(auth.user_id)
     return auth
-
-
-def key_admin_session(session_id: str) -> str:
-    return f"admin:session:{session_id}"
-
-
-async def get_admin_user(request: Request) -> str:
-    session_id = request.cookies.get("admin_session") or request.headers.get("X-Admin-Session")
-    if not session_id:
-        raise HTTPException(status_code=401, detail="admin session required")
-
-    r = await get_redis()
-    username = await r.get(key_admin_session(session_id))
-    if not username:
-        raise HTTPException(status_code=401, detail="invalid admin session")
-
-    await r.expire(key_admin_session(session_id), ADMIN_SESSION_TTL)
-    return username
 
 
 def register_routes(app: FastAPI):
@@ -642,56 +618,14 @@ def register_routes(app: FastAPI):
         result["prizes"] = prize_rows
         return result
 
-    @app.post("/api/admin/login")
-    async def api_admin_login(body: AdminLoginRequest, response: Response) -> Dict[str, Any]:
-        username = (body.username or "").strip()
-        password = (body.password or "").strip()
-
-        authorized = False
-        if ADMIN_TOKEN and password == ADMIN_TOKEN:
-            authorized = True
-            username = username or ADMIN_USER
-        elif username == ADMIN_USER and password == ADMIN_PASS:
-            authorized = True
-
-        if not authorized:
-            raise HTTPException(status_code=401, detail="bad credentials")
-
-        session_id = secrets.token_urlsafe(32)
-        r = await get_redis()
-        await r.setex(key_admin_session(session_id), ADMIN_SESSION_TTL, username)
-
-        response.set_cookie(
-            "admin_session",
-            session_id,
-            httponly=True,
-            samesite="lax",
-            max_age=ADMIN_SESSION_TTL,
-        )
-        return {"ok": True, "user": username}
-
-    @app.post("/api/admin/logout")
-    async def api_admin_logout(request: Request) -> Dict[str, Any]:
-        session_id = request.cookies.get("admin_session") or request.headers.get("X-Admin-Session")
-        if session_id:
-            r = await get_redis()
-            await r.delete(key_admin_session(session_id))
-        return {"ok": True}
-
-    @app.get("/api/admin/session")
-    async def api_admin_session(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
-        return {"ok": True, "user": username}
-
     @app.get("/api/admin/raffle/prizes")
-    async def api_admin_get_prizes(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+    async def api_admin_get_prizes() -> Dict[str, Any]:
         r = await get_redis()
         prizes = await get_prizes(r)
         return {"ok": True, "items": prizes}
 
     @app.post("/api/admin/raffle/prizes")
-    async def api_admin_create_prize(
-        body: AdminPrizeRequest, username: str = Depends(get_admin_user)
-    ) -> Dict[str, Any]:
+    async def api_admin_create_prize(body: AdminPrizeRequest) -> Dict[str, Any]:
         r = await get_redis()
         pid = await r.incr(key_prize_counter())
         data = {"name": body.name, "description": body.description or "", "order": int(body.order or 0)}
@@ -706,7 +640,6 @@ def register_routes(app: FastAPI):
     async def api_admin_update_prize(
         prize_id: int,
         body: AdminPrizeUpdateRequest,
-        username: str = Depends(get_admin_user),
     ) -> Dict[str, Any]:
         r = await get_redis()
         exists = await r.sismember(key_prizes_set(), prize_id)
@@ -725,9 +658,7 @@ def register_routes(app: FastAPI):
         return {"ok": True, "items": prizes}
 
     @app.delete("/api/admin/raffle/prizes/{prize_id}")
-    async def api_admin_delete_prize(
-        prize_id: int, username: str = Depends(get_admin_user)
-    ) -> Dict[str, Any]:
+    async def api_admin_delete_prize(prize_id: int) -> Dict[str, Any]:
         r = await get_redis()
         pipe = r.pipeline()
         pipe.srem(key_prizes_set(), prize_id)
@@ -737,7 +668,7 @@ def register_routes(app: FastAPI):
         return {"ok": True, "items": prizes}
 
     @app.get("/api/admin/raffle/winners")
-    async def api_admin_winners(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+    async def api_admin_winners() -> Dict[str, Any]:
         r = await get_redis()
         raw = await r.lrange(key_raffle_winners(), 0, -1)
         winners = []
@@ -760,7 +691,7 @@ def register_routes(app: FastAPI):
 
     @app.post("/api/admin/raffle/draw")
     async def api_admin_draw(
-        body: AdminDrawRequest, username: str = Depends(get_admin_user)
+        body: AdminDrawRequest,
     ) -> Dict[str, Any]:
         r = await get_redis()
         prizes = await get_prizes(r)
@@ -817,7 +748,7 @@ def register_routes(app: FastAPI):
         return {"ok": True, "items": winners, "total_tickets": total_tickets}
 
     @app.post("/api/admin/raffle/finish_payout")
-    async def api_admin_finish_payout(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+    async def api_admin_finish_payout() -> Dict[str, Any]:
         r = await get_redis()
         winners = await r.lrange(key_raffle_winners(), 0, -1)
 
@@ -849,9 +780,7 @@ def register_routes(app: FastAPI):
         return None
 
     @app.post("/api/admin/users/by_nickname")
-    async def api_admin_user_by_nick(
-        body: AdminFindUserRequest, username: str = Depends(get_admin_user)
-    ) -> Dict[str, Any]:
+    async def api_admin_user_by_nick(body: AdminFindUserRequest) -> Dict[str, Any]:
         r = await get_redis()
         user = await find_user_by_nick(r, body.nickname)
         if not user:
@@ -859,9 +788,7 @@ def register_routes(app: FastAPI):
         return {"ok": True, **user}
 
     @app.post("/api/admin/users/set_points")
-    async def api_admin_set_points(
-        body: AdminSetPointsRequest, username: str = Depends(get_admin_user)
-    ) -> Dict[str, Any]:
+    async def api_admin_set_points(body: AdminSetPointsRequest) -> Dict[str, Any]:
         r = await get_redis()
         uid = body.user_id
         if (not uid or uid <= 0) and body.nickname:

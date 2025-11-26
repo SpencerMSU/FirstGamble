@@ -126,7 +126,15 @@ async function loadBalance(){
 
 (async () => {
   if(!tgInstance) return;
-  await ensureNicknameOrRedirect(uid);
+  const prof = await fetchProfile();
+  if(prof && prof.ok){
+    const name = (prof.name || "").trim();
+    if(!name){
+      const query = uid ? `?uid=${uid}` : "";
+      window.location.href = `/nickname${query}`;
+      return;
+    }
+  }
   loadBalance();
 })();
 </script>

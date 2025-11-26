@@ -90,3 +90,24 @@ async function apiPost(path, body){
   });
   return await res.json();
 }
+
+async function fetchProfile(){
+  try{
+    return await apiGet("/api/profile");
+  }catch(e){
+    return {ok:false, error:String(e)};
+  }
+}
+
+async function ensureNicknameOrRedirect(uid){
+  const profile = await fetchProfile();
+  if(profile && profile.ok){
+    const name = (profile.name || "").trim();
+    if(!name){
+      const query = uid ? `?uid=${uid}` : "";
+      window.location.href = `/nickname${query}`;
+      return null;
+    }
+  }
+  return profile;
+}

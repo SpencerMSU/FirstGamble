@@ -47,13 +47,16 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 
 <script>
 const tgInstance = initTelegramGuard();
+const searchUid = new URLSearchParams(window.location.search).get("uid");
 
 function getTgUserId(){
   try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
 }
 
+const uid = getTgUserId() || searchUid;
+
 async function loadBalance(){
-  const uid=getTgUserId();
+  const uid=getTgUserId() || searchUid;
   const el=document.getElementById("balanceValue");
   if(!el) return;
   try{
@@ -66,7 +69,11 @@ async function loadBalance(){
     el.textContent=localStorage.getItem("balance_local")||"0";
   }
 }
-loadBalance();
+(async () => {
+  if(!tgInstance) return;
+  await ensureNicknameOrRedirect(uid);
+  loadBalance();
+})();
 </script>
 </body>
 </html>

@@ -172,14 +172,17 @@
 
 <script>
   const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get("uid");
 
   function getTgUserId(){
     try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
   }
 
+  const uid = getTgUserId() || searchUid;
+
 
   async function loadBalance(){
-    const userId = getTgUserId();
+    const userId = getTgUserId() || searchUid;
     const el = document.getElementById("balanceValue");
     if(!el) return;
 
@@ -254,16 +257,19 @@
   }
 
   // ===== init =====
-const uid = getTgUserId();
-if(!uid){
-  tgWarn.textContent =
-    "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
-    "Если тестируешь в браузере — добавь ?uid=123 в адресную строку.";
-} else {
-  tgWarn.textContent = "TG id: " + uid;
-}
+(async () => {
+  if(!tgInstance) return;
+  await ensureNicknameOrRedirect(uid);
 
-loadBalance();
+  if(!uid){
+    tgWarn.textContent =
+      "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
+      "Если тестируешь в браузере — добавь ?uid=123 в адресную строку.";
+  } else {
+    tgWarn.textContent = "TG id: " + uid;
+  }
+
+  loadBalance();
 
 
   // ===== game =====
@@ -327,6 +333,7 @@ loadBalance();
 
     rollBtn.disabled = false;
   });
+})();
 </script>
 </body>
 </html>

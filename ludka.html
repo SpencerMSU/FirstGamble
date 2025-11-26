@@ -135,6 +135,18 @@
 
   <script>
     const tgInstance = initTelegramGuard();
+    const searchUid = new URLSearchParams(window.location.search).get("uid");
+
+    function getTgUserId(){
+      try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
+    }
+
+    const uid = getTgUserId() || searchUid;
+
+    (async () => {
+      if(!tgInstance) return;
+      await ensureNicknameOrRedirect(uid);
+    })();
   </script>
 </body>
 </html>

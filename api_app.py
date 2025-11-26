@@ -416,6 +416,19 @@ async def api_balance(auth: AuthContext = Depends(get_current_auth)) -> Dict[str
     bal = await get_balance(auth.user_id)
     return {"ok": True, "balance": bal}
 
+@app.get("/api/profile")
+async def api_profile(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    r = await get_redis()
+    await ensure_user(auth.user_id)
+    profile = await r.hgetall(key_profile(auth.user_id))
+
+    return {
+        "ok": True,
+        "user_id": auth.user_id,
+        "name": profile.get("name") or "",
+        "username": profile.get("username") or "",
+    }
+
 @app.post("/api/add_point")
 async def api_add_point(
     body: AddPointRequest,

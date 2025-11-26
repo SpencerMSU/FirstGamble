@@ -484,8 +484,9 @@ function setupConvert(){
   });
 }
 
-(function main(){
+(async function main(){
   if(!tgInstance) return;
+  await ensureNicknameOrRedirect(uid);
   setupTabs();
   setupConvert();
   document.getElementById("gatherBtn").addEventListener("click", gather);

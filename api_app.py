@@ -3,6 +3,7 @@ import time
 import hmac
 import hashlib
 import json
+import re
 from pathlib import Path
 from typing import Dict, Optional, Any, List
 from pydantic import BaseModel, Field
@@ -98,7 +99,10 @@ async def ensure_user(user_id: int):
         await r.zadd(USERS_ZSET, {user_id: 0}, nx=True)
 
     if not await r.exists(key_profile(user_id)):
-        await r.hset(key_profile(user_id), mapping={"name": "", "username": ""})
+        await r.hset(
+            key_profile(user_id),
+            mapping={"name": "", "username": "", "tg_id": ""},
+        )
 
     if not await r.exists(key_stats(user_id)):
         await r.hset(key_stats(user_id), mapping={
@@ -305,6 +309,8 @@ class AuthContext(BaseModel):
     user_id: int
     from_telegram: bool
     from_conserve: bool
+    username: Optional[str] = None
+    tg_id: Optional[int] = None
 
 async def get_current_auth(
     request: Request,
@@ -327,7 +333,13 @@ async def get_current_auth(
             raise HTTPException(status_code=403, detail="not confirmed")
 
         await ensure_user(uid)
-        return AuthContext(user_id=uid, from_telegram=True, from_conserve=False)
+        return AuthContext(
+            user_id=uid,
+            from_telegram=True,
+            from_conserve=False,
+            username=user.get("username"),
+            tg_id=uid,
+        )
 
     # Внешняя игра (SAMP) по ConServeAuthToken
     if x_conserve_auth and CONSERVE_AUTH_TOKEN and x_conserve_auth == CONSERVE_AUTH_TOKEN:
@@ -416,17 +428,47 @@ async def api_balance(auth: AuthContext = Depends(get_current_auth)) -> Dict[str
     bal = await get_balance(auth.user_id)
     return {"ok": True, "balance": bal}
 
+def _normalize_username(username: Optional[str]) -> str:
+    if not username:
+        return ""
+    username = str(username).strip()
+    if username.startswith("@"):  # убираем @ для хранения
+        username = username[1:]
+    return username
+
+
+def _ensure_profile_identity_fields(
+    profile: Dict[str, Any], username: Optional[str], tg_id: Optional[int]
+) -> Dict[str, str]:
+    mapping: Dict[str, str] = {}
+    uname = _normalize_username(username)
+    if uname and not profile.get("username"):
+        mapping["username"] = uname
+    if tg_id and not profile.get("tg_id"):
+        mapping["tg_id"] = str(tg_id)
+    return mapping
+
+
 @app.get("/api/profile")
 async def api_profile(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    if not auth.from_telegram:
+        raise HTTPException(status_code=403, detail="webapp only")
+
     r = await get_redis()
     await ensure_user(auth.user_id)
     profile = await r.hgetall(key_profile(auth.user_id))
+
+    mapping = _ensure_profile_identity_fields(profile, auth.username, auth.tg_id)
+    if mapping:
+        await r.hset(key_profile(auth.user_id), mapping=mapping)
+        profile.update(mapping)
 
     return {
         "ok": True,
         "user_id": auth.user_id,
         "name": profile.get("name") or "",
         "username": profile.get("username") or "",
+        "tg_id": int(profile.get("tg_id") or auth.user_id),
     }
 
 @app.post("/api/add_point")
@@ -564,20 +606,46 @@ async def api_update_profile(
     body: UpdateProfileRequest,
     auth: AuthContext = Depends(get_current_auth),
 ) -> Dict[str, Any]:
-    name = (body.name or "").strip()
-    username = (body.username or "").strip()
+    if not auth.from_telegram:
+        raise HTTPException(status_code=403, detail="webapp only")
 
+    name = (body.name or "").strip()
     r = await get_redis()
     await ensure_user(auth.user_id)
 
-    mapping: Dict[str, str] = {}
-    if name:
-        mapping["name"] = name
-    if username:
-        mapping["username"] = username
+    profile = await r.hgetall(key_profile(auth.user_id))
+    current_name = (profile.get("name") or "").strip()
+    if current_name:
+        return {"ok": False, "error": "Никнейм уже установлен"}
 
-    if mapping:
-        await r.hset(key_profile(auth.user_id), mapping=mapping)
+    if not name:
+        return {"ok": False, "error": "Никнейм обязателен"}
+
+    if not re.fullmatch(r"^[A-Za-z0-9_-]{3,20}$", name):
+        return {
+            "ok": False,
+            "error": "Никнейм должен быть 3-20 символов: латиница, цифры, _ или -",
+        }
+
+    BAD_WORDS = [
+        "хуй",
+        "пизд",
+        "еба",
+        "бля",
+        "сука",
+        "fuck",
+        "shit",
+        "bitch",
+        "asshole",
+    ]
+    name_lc = name.lower()
+    if any(bad in name_lc for bad in BAD_WORDS):
+        return {"ok": False, "error": "Никнейм содержит запрещённые слова"}
+
+    mapping: Dict[str, str] = {"name": name}
+    mapping.update(_ensure_profile_identity_fields(profile, auth.username, auth.tg_id))
+
+    await r.hset(key_profile(auth.user_id), mapping=mapping)
 
     return {"ok": True}
 

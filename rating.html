@@ -190,12 +190,7 @@
     let displayName = baseName;
 
     if(!displayName){
-      const uname = (r.username || "").trim();
-      if(uname){
-        displayName = uname.replace(/^@+/, "");
-      }else{
-        displayName = `Игрок ${r.user_id}`;
-      }
+      displayName = `Игрок ${r.user_id}`;
     }
     tr.innerHTML = `
       <td>${idx}</td>

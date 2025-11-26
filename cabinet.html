@@ -121,6 +121,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
   padding:6px 10px; border-radius:999px; border:1px solid var(--stroke);
   background:linear-gradient(180deg,var(--card),var(--card2)); font-weight:800; font-size:12px;
 }
+.profile-block {display:flex;flex-direction:column;gap:6px;margin-top:10px;font-weight:800;}
+.profile-block .muted {color:var(--muted);font-weight:700;font-size:13px;}
 </style>
 </head>
 <body>
@@ -138,6 +140,11 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="inline-row">
       <div class="pill">Telegram ID: <span id="tgid">—</span></div>
       <div class="pill">Билетов: <span id="ticketCount">0</span></div>
+    </div>
+    <div class="profile-block">
+      <div>Никнейм: <b id="profileName">—</b></div>
+      <div class="muted">Telegram: <span id="profileUsername">—</span></div>
+      <div class="muted">ID: <span id="profileTgId">—</span></div>
     </div>
   </section>
 
@@ -174,10 +181,26 @@ if(uid) setTgIdLabel(uid);
 
 let balance = 0;
 let tickets = [];
+let profileData = null;
 
 function setBalance(v){
   balance = v||0;
   document.getElementById("balanceValue").textContent = balance;
+}
+
+function renderProfile(){
+  const nameEl = document.getElementById("profileName");
+  const userEl = document.getElementById("profileUsername");
+  const tgIdEl = document.getElementById("profileTgId");
+
+  const name = (profileData?.name || "").trim();
+  const username = (profileData?.username || "").trim();
+  const tgId = profileData?.tg_id || profileData?.user_id || "—";
+
+  nameEl.textContent = name || "—";
+  userEl.textContent = username ? `@${username.replace(/^@+/, "")}` : "—";
+  tgIdEl.textContent = tgId;
+  if(tgId) setTgIdLabel(tgId);
 }
 
 function renderTickets(){
@@ -217,6 +240,14 @@ async function loadCabinet(){
   renderTickets();
 }
 
+async function loadProfile(){
+  const prof = await fetchProfile();
+  if(prof && prof.ok){
+    profileData = prof;
+    renderProfile();
+  }
+}
+
 async function buyTicket(){
   if(balance < 500){
     tg?.showAlert("Не хватает очков для покупки билета.");
@@ -237,6 +268,7 @@ async function buyTicket(){
   if(!tgInstance) return;
   await ensureNicknameOrRedirect(uid);
   document.getElementById("buyTicketBtn").addEventListener("click", buyTicket);
+  await loadProfile();
   if(uid){
     loadCabinet();
   }else{

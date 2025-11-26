@@ -85,6 +85,30 @@ def key_user_tickets(uid: int) -> str:
     return f"user:{uid}:raffle:tickets"
 
 
+def key_ticket_owners() -> str:
+    return "raffle:ticket:owners"  # hash: ticket -> user_id
+
+
+def key_prize_counter() -> str:
+    return "raffle:prize:counter"
+
+
+def key_prizes_set() -> str:
+    return "raffle:prizes"
+
+
+def key_prize_item(pid: int) -> str:
+    return f"raffle:prize:{pid}"
+
+
+def key_raffle_winners() -> str:
+    return "raffle:winners"
+
+
+def key_user_raffle_wins(uid: int) -> str:
+    return f"user:{uid}:raffle:wins"
+
+
 def rpg_calc_buffs(owned: Dict[str, Any]):
     cd_mult = 1.0
     yield_add = 0.0

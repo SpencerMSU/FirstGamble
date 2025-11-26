@@ -43,6 +43,10 @@
     {
       "source": "/cabinet",
       "destination": "/cabinet.html"
+    },
+    {
+      "source": "/nickname",
+      "destination": "/nickname.html"
     }
   ]
 }

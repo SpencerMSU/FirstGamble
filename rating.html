@@ -166,8 +166,11 @@
 
 <script>
   const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get("uid");
 
   function getTgUserId(){ try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; } }
+
+  const uid = getTgUserId() || searchUid;
 
   const rowsEl=document.getElementById("rows");
   const emptyEl=document.getElementById("empty");
@@ -221,7 +224,7 @@
         emptyEl.style.display="block";
         return;
       }
-      const myId=getTgUserId();
+      const myId=uid;
       data.rows.forEach((r, i)=>{
         rowsEl.appendChild(makeRow(r, i+1, myId));
       });
@@ -235,7 +238,11 @@
   gameSel.addEventListener("change", loadLeaderboard);
   sortSel.addEventListener("change", loadLeaderboard);
 
-  loadLeaderboard();
+  (async () => {
+    if(!tgInstance) return;
+    await ensureNicknameOrRedirect(uid);
+    loadLeaderboard();
+  })();
 </script>
 </body>
 </html>

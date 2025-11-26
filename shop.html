@@ -237,8 +237,9 @@ function setupTabs(){
   });
 }
 
-(function main(){
+(async function main(){
   if(!tgInstance) return;
+  await ensureNicknameOrRedirect(uid);
   setupTabs();
   renderGoods();
   renderTickets();

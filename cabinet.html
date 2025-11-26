@@ -233,8 +233,9 @@ async function buyTicket(){
   renderTickets();
 }
 
-(function main(){
+(async function main(){
   if(!tgInstance) return;
+  await ensureNicknameOrRedirect(uid);
   document.getElementById("buyTicketBtn").addEventListener("click", buyTicket);
   if(uid){
     loadCabinet();

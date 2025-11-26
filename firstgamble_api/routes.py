@@ -192,21 +192,80 @@ def register_routes(app: FastAPI):
         return {"ok": True}
 
     @app.get("/api/leaderboard")
-    async def api_leaderboard(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    async def api_leaderboard(
+        game: str = "all",
+        sort: str = "points",
+        limit: int = 100,
+        auth: AuthContext = Depends(get_current_auth),
+    ) -> Dict[str, Any]:
         r = await get_redis()
 
-        top = await r.zrevrange(USERS_ZSET, 0, 99, withscores=True)
-        items = []
+        game = (game or "all").lower()
+        if game in {"*"}:
+            game = "all"
+        if game not in {"all", *ALLOWED_GAMES}:
+            game = "all"
+
+        sort = (sort or "points").lower()
+        allowed_sorts = {"points", "wins", "games", "winrate", "losses", "draws"}
+        if sort not in allowed_sorts:
+            sort = "points"
+
+        if limit is None or limit <= 0:
+            limit = 100
+        limit = min(limit, 100)
+
+        top = await r.zrevrange(USERS_ZSET, 0, limit - 1, withscores=True)
+
+        rows = []
         for uid, score in top:
-            user_data = await r.hgetall(key_profile(int(uid)))
-            items.append({"user_id": str(uid), "score": int(score), "profile": user_data})
+            profile = await r.hgetall(key_profile(int(uid)))
 
-        my_pos = await r.zrevrank(USERS_ZSET, auth.user_id)
-        my_score = await r.zscore(USERS_ZSET, auth.user_id)
-        if my_pos is not None and my_score is not None:
-            items.insert(0, {"me": True, "pos": my_pos + 1, "score": int(my_score)})
+            if game == "all":
+                stats_key = key_stats(int(uid))
+            else:
+                stats_key = key_gamestats(int(uid), game)
 
-        return {"ok": True, "items": items}
+            stats = await r.hgetall(stats_key)
+
+            wins = int(stats.get("wins", 0) or 0)
+            losses = int(stats.get("losses", 0) or 0)
+            draws = int(stats.get("draws", 0) or 0)
+            games_total = int(stats.get("games_total", 0) or 0)
+
+            if games_total == 0:
+                games_total = wins + losses + draws
+
+            winrate = round(wins * 100.0 / games_total, 2) if games_total > 0 else 0.0
+
+            rows.append(
+                {
+                    "user_id": str(uid),
+                    "points": int(score),
+                    "wins": wins,
+                    "losses": losses,
+                    "draws": draws,
+                    "games_total": games_total,
+                    "winrate": winrate,
+                    "name": profile.get("name", ""),
+                    "username": profile.get("username", ""),
+                }
+            )
+
+        if sort == "wins":
+            rows.sort(key=lambda x: x.get("wins", 0), reverse=True)
+        elif sort == "games":
+            rows.sort(key=lambda x: x.get("games_total", 0), reverse=True)
+        elif sort == "winrate":
+            rows.sort(key=lambda x: x.get("winrate", 0), reverse=True)
+        elif sort == "losses":
+            rows.sort(key=lambda x: x.get("losses", 0), reverse=True)
+        elif sort == "draws":
+            rows.sort(key=lambda x: x.get("draws", 0), reverse=True)
+        else:
+            rows.sort(key=lambda x: x.get("points", 0), reverse=True)
+
+        return {"ok": True, "rows": rows}
 
     @app.get("/api/leaderboard/positions")
     async def api_leaderboard_positions(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:

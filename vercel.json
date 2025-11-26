@@ -5,6 +5,10 @@
       "destination": "/index.html"
     },
     {
+      "source": "/index",
+      "destination": "/index.html"
+    },
+    {
       "source": "/ludka",
       "destination": "/ludka.html"
     },
@@ -51,6 +55,10 @@
     {
       "source": "/nickname",
       "destination": "/nickname.html"
+    },
+    {
+      "source": "/error_notg",
+      "destination": "/error_notg.html"
     }
   ]
 }

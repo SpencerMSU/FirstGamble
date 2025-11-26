@@ -213,8 +213,10 @@ async def cmd_start(message: Message):
     )
 
     text = (
-        "Привет! Это мини-приложение firstgamble.\n\n"
-        "Нажми «Подтвердить», чтобы открыть мини-приложение."
+        "Добро пожаловать в FirstGamble / FirstClub!\n\n"
+        "Перед использованием вы должны ознакомиться с условиями сервиса:\n"
+        "https://telegra.ph/Terms-of-Service--FirstGamble-11-26\n\n"
+        "Подтвердите, что вы согласны с правилами."
     )
     await message.answer(text, reply_markup=kb)
 

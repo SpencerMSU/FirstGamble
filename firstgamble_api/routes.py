@@ -1,10 +1,19 @@
+import json
+import random
+import secrets
 import time
 from typing import Any, Dict, Optional
 
-from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi import Depends, FastAPI, Header, HTTPException, Request, Response
 
 from .models import (
     AddPointRequest,
+    AdminDrawRequest,
+    AdminFindUserRequest,
+    AdminLoginRequest,
+    AdminPrizeRequest,
+    AdminPrizeUpdateRequest,
+    AdminSetPointsRequest,
     AuthContext,
     RaffleBuyRequest,
     ReportGameRequest,
@@ -13,6 +22,7 @@ from .models import (
     RpgGatherRequest,
     UpdateProfileRequest,
 )
+from .config import ADMIN_PASS, ADMIN_SESSION_TTL, ADMIN_TOKEN, ADMIN_USER
 from .redis_utils import (
     ALLOWED_GAMES,
     USERS_ZSET,
@@ -38,8 +48,14 @@ from .services import (
     key_rpg_cd,
     key_rpg_owned,
     key_rpg_res,
+    key_prize_counter,
+    key_prize_item,
+    key_prizes_set,
+    key_raffle_winners,
     key_ticket_counter,
+    key_ticket_owners,
     key_user_tickets,
+    key_user_raffle_wins,
     rpg_calc_buffs,
     rpg_ensure,
     rpg_get_owned,
@@ -82,7 +98,63 @@ async def get_current_auth(
     return auth
 
 
+def key_admin_session(session_id: str) -> str:
+    return f"admin:session:{session_id}"
+
+
+async def get_admin_user(request: Request) -> str:
+    session_id = request.cookies.get("admin_session") or request.headers.get("X-Admin-Session")
+    if not session_id:
+        raise HTTPException(status_code=401, detail="admin session required")
+
+    r = await get_redis()
+    username = await r.get(key_admin_session(session_id))
+    if not username:
+        raise HTTPException(status_code=401, detail="invalid admin session")
+
+    await r.expire(key_admin_session(session_id), ADMIN_SESSION_TTL)
+    return username
+
+
 def register_routes(app: FastAPI):
+    async def rebuild_ticket_owners(r) -> Dict[str, int]:
+        owners: Dict[str, int] = {}
+        user_ids = await r.smembers(USERS_SET)
+        for uid_raw in user_ids:
+            uid = safe_int(uid_raw)
+            if uid <= 0:
+                continue
+            tickets = await r.lrange(key_user_tickets(uid), 0, -1)
+            for t in tickets:
+                owners[t] = uid
+        if owners:
+            await r.hset(key_ticket_owners(), mapping={k: str(v) for k, v in owners.items()})
+        return owners
+
+    async def get_ticket_owners(r) -> Dict[str, int]:
+        owners = await r.hgetall(key_ticket_owners())
+        if owners:
+            return {k: safe_int(v) for k, v in owners.items()}
+        return await rebuild_ticket_owners(r)
+
+    async def get_prizes(r):
+        ids = await r.smembers(key_prizes_set())
+        prizes = []
+        for pid_raw in ids:
+            pid = safe_int(pid_raw)
+            data = await r.hgetall(key_prize_item(pid))
+            if data:
+                prizes.append(
+                    {
+                        "id": pid,
+                        "name": data.get("name", ""),
+                        "description": data.get("description", ""),
+                        "order": safe_int(data.get("order"), 0),
+                    }
+                )
+        prizes.sort(key=lambda x: (x.get("order", 0), x.get("id", 0)))
+        return prizes
+
     @app.get("/api/ping")
     async def api_ping() -> Dict[str, Any]:
         return {"ok": True, "message": "pong"}
@@ -430,7 +502,7 @@ def register_routes(app: FastAPI):
 
     @app.post("/api/raffle/buy_ticket")
     async def api_buy_ticket(
-        body: RaffleBuyRequest,
+        body: Optional[RaffleBuyRequest] = None,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
         uid = auth.user_id
@@ -438,25 +510,43 @@ def register_routes(app: FastAPI):
         await ensure_user(uid)
 
         PRICE = 500
-        bal = safe_int(await r.get(key_balance(uid)))
-        if bal < PRICE:
-            return {"ok": False, "error": "not enough points"}
+        cnt = 1
+        if body and body.count:
+            try:
+                cnt = int(body.count)
+            except Exception:
+                cnt = 1
+        cnt = max(1, min(cnt, 20))
 
-        num = await r.incr(key_ticket_counter()) - 1
-        ticket = str(num).zfill(8)
+        bal = safe_int(await r.get(key_balance(uid)))
+        total_cost = PRICE * cnt
+        if bal < total_cost:
+            return {"ok": False, "error": "not_enough_points", "message": "Недостаточно очков"}
+
+        start_num = await r.incrby(key_ticket_counter(), cnt) - cnt
+        tickets_bought = []
+        owners_map = {}
+        for i in range(cnt):
+            ticket_val = start_num + i
+            ticket = str(ticket_val).zfill(8)
+            tickets_bought.append(ticket)
+            owners_map[ticket] = uid
 
         pipe = r.pipeline()
-        pipe.incrby(key_balance(uid), -PRICE)
-        pipe.zadd(USERS_ZSET, {uid: bal - PRICE})
-        pipe.rpush(key_user_tickets(uid), ticket)
+        pipe.incrby(key_balance(uid), -total_cost)
+        pipe.zadd(USERS_ZSET, {uid: bal - total_cost})
+        if tickets_bought:
+            pipe.rpush(key_user_tickets(uid), *tickets_bought)
+            pipe.hset(key_ticket_owners(), mapping={k: str(v) for k, v in owners_map.items()})
         await pipe.execute()
 
         tickets = await r.lrange(key_user_tickets(uid), 0, -1)
 
         return {
             "ok": True,
-            "ticket": ticket,
-            "balance": bal - PRICE,
+            "ticket": tickets_bought[0] if tickets_bought else None,
+            "tickets_bought": tickets_bought,
+            "balance": bal - total_cost,
             "tickets": tickets,
         }
 
@@ -474,6 +564,226 @@ def register_routes(app: FastAPI):
             "user_id": str(uid),
             "balance": bal,
             "tickets": tickets,
+        }
+
+    @app.post("/api/admin/login")
+    async def api_admin_login(body: AdminLoginRequest, response: Response) -> Dict[str, Any]:
+        username = (body.username or "").strip()
+        password = (body.password or "").strip()
+
+        authorized = False
+        if ADMIN_TOKEN and password == ADMIN_TOKEN:
+            authorized = True
+            username = username or ADMIN_USER
+        elif username == ADMIN_USER and password == ADMIN_PASS:
+            authorized = True
+
+        if not authorized:
+            raise HTTPException(status_code=401, detail="bad credentials")
+
+        session_id = secrets.token_urlsafe(32)
+        r = await get_redis()
+        await r.setex(key_admin_session(session_id), ADMIN_SESSION_TTL, username)
+
+        response.set_cookie(
+            "admin_session",
+            session_id,
+            httponly=True,
+            samesite="lax",
+            max_age=ADMIN_SESSION_TTL,
+        )
+        return {"ok": True, "user": username}
+
+    @app.post("/api/admin/logout")
+    async def api_admin_logout(request: Request) -> Dict[str, Any]:
+        session_id = request.cookies.get("admin_session") or request.headers.get("X-Admin-Session")
+        if session_id:
+            r = await get_redis()
+            await r.delete(key_admin_session(session_id))
+        return {"ok": True}
+
+    @app.get("/api/admin/session")
+    async def api_admin_session(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+        return {"ok": True, "user": username}
+
+    @app.get("/api/admin/raffle/prizes")
+    async def api_admin_get_prizes(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+        r = await get_redis()
+        prizes = await get_prizes(r)
+        return {"ok": True, "items": prizes}
+
+    @app.post("/api/admin/raffle/prizes")
+    async def api_admin_create_prize(
+        body: AdminPrizeRequest, username: str = Depends(get_admin_user)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        pid = await r.incr(key_prize_counter())
+        data = {"name": body.name, "description": body.description or "", "order": int(body.order or 0)}
+        pipe = r.pipeline()
+        pipe.sadd(key_prizes_set(), pid)
+        pipe.hset(key_prize_item(pid), mapping=data)
+        await pipe.execute()
+        data.update({"id": pid})
+        return {"ok": True, "prize": data}
+
+    @app.put("/api/admin/raffle/prizes/{prize_id}")
+    async def api_admin_update_prize(
+        prize_id: int,
+        body: AdminPrizeUpdateRequest,
+        username: str = Depends(get_admin_user),
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        exists = await r.sismember(key_prizes_set(), prize_id)
+        if not exists:
+            raise HTTPException(status_code=404, detail="prize not found")
+        updates: Dict[str, Any] = {}
+        if body.name is not None:
+            updates["name"] = body.name
+        if body.description is not None:
+            updates["description"] = body.description
+        if body.order is not None:
+            updates["order"] = int(body.order)
+        if updates:
+            await r.hset(key_prize_item(prize_id), mapping=updates)
+        prizes = await get_prizes(r)
+        return {"ok": True, "items": prizes}
+
+    @app.delete("/api/admin/raffle/prizes/{prize_id}")
+    async def api_admin_delete_prize(
+        prize_id: int, username: str = Depends(get_admin_user)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        pipe = r.pipeline()
+        pipe.srem(key_prizes_set(), prize_id)
+        pipe.delete(key_prize_item(prize_id))
+        await pipe.execute()
+        prizes = await get_prizes(r)
+        return {"ok": True, "items": prizes}
+
+    @app.get("/api/admin/raffle/winners")
+    async def api_admin_winners(username: str = Depends(get_admin_user)) -> Dict[str, Any]:
+        r = await get_redis()
+        raw = await r.lrange(key_raffle_winners(), 0, -1)
+        winners = []
+        for item in raw:
+            try:
+                winners.append(json.loads(item))
+            except Exception:
+                continue
+        return {"ok": True, "items": winners}
+
+    @app.post("/api/admin/raffle/draw")
+    async def api_admin_draw(
+        body: AdminDrawRequest, username: str = Depends(get_admin_user)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        prizes = await get_prizes(r)
+        if not prizes:
+            raise HTTPException(status_code=400, detail="no prizes")
+        owners = await get_ticket_owners(r)
+        total_tickets = len(owners)
+        if total_tickets == 0:
+            raise HTTPException(status_code=400, detail="no tickets")
+
+        if not body.force:
+            existing = await r.llen(key_raffle_winners())
+            if existing > 0:
+                raise HTTPException(status_code=400, detail="already drawn")
+
+        tickets_pool = list(owners.keys())
+        random.shuffle(tickets_pool)
+
+        used_users = set()
+        used_tickets = set()
+        winners = []
+
+        for prize in prizes:
+            available = [
+                t
+                for t in tickets_pool
+                if t not in used_tickets and owners.get(t) not in used_users
+            ]
+            if not available:
+                continue
+            ticket = random.choice(available)
+            uid = owners.get(ticket)
+            used_tickets.add(ticket)
+            if uid:
+                used_users.add(uid)
+            winners.append({"prize_id": prize.get("id"), "ticket": ticket, "user_id": uid})
+
+        pipe = r.pipeline()
+        pipe.delete(key_raffle_winners())
+        if winners:
+            pipe.rpush(key_raffle_winners(), *[json.dumps(w) for w in winners])
+            for w in winners:
+                pipe.rpush(key_user_raffle_wins(int(w.get("user_id"))), json.dumps(w))
+        await pipe.execute()
+
+        return {"ok": True, "items": winners, "total_tickets": total_tickets}
+
+    def normalize_nickname(name: str) -> str:
+        return (name or "").strip().lower()
+
+    async def find_user_by_nick(r, nickname: str):
+        target = normalize_nickname(nickname)
+        if not target:
+            return None
+        user_ids = await r.smembers(USERS_SET)
+        for uid_raw in user_ids:
+            uid = safe_int(uid_raw)
+            if uid <= 0:
+                continue
+            profile = await r.hgetall(key_profile(uid))
+            if normalize_nickname(profile.get("name")) == target:
+                bal = safe_int(await r.get(key_balance(uid)))
+                return {"user_id": uid, "profile": profile, "balance": bal}
+        return None
+
+    @app.post("/api/admin/users/by_nickname")
+    async def api_admin_user_by_nick(
+        body: AdminFindUserRequest, username: str = Depends(get_admin_user)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        user = await find_user_by_nick(r, body.nickname)
+        if not user:
+            raise HTTPException(status_code=404, detail="not found")
+        return {"ok": True, **user}
+
+    @app.post("/api/admin/users/set_points")
+    async def api_admin_set_points(
+        body: AdminSetPointsRequest, username: str = Depends(get_admin_user)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        uid = body.user_id
+        if (not uid or uid <= 0) and body.nickname:
+            user = await find_user_by_nick(r, body.nickname)
+            if user:
+                uid = user.get("user_id")
+        if not uid or uid <= 0:
+            raise HTTPException(status_code=400, detail="user_id required")
+
+        await ensure_user(uid)
+        cur_balance = safe_int(await r.get(key_balance(uid)))
+
+        if body.new_balance is not None:
+            new_balance = int(body.new_balance)
+        elif body.points_delta is not None:
+            new_balance = cur_balance + int(body.points_delta)
+        else:
+            raise HTTPException(status_code=400, detail="no changes provided")
+
+        pipe = r.pipeline()
+        pipe.set(key_balance(uid), new_balance)
+        pipe.zadd(USERS_ZSET, {uid: new_balance})
+        await pipe.execute()
+
+        profile = await r.hgetall(key_profile(uid))
+        return {
+            "ok": True,
+            "user_id": uid,
+            "balance": new_balance,
+            "profile": profile,
         }
 
     return app

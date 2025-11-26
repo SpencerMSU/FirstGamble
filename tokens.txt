@@ -5,3 +5,6 @@ REDIS_PORT=6379
 REDIS_DB=0
 WEBAPP_URL=https://firstgamble.ru/
 ConServeAuthToken=auth_conserve_82650245_XxX
+ADMIN_USER=admin
+ADMIN_PASS=supersecret
+ADMIN_TOKEN=

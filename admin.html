@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Админка розыгрышей — FirstClub</title>
+  <style>
+    :root{--bg:#0a0d12;--panel:#0d1117;--card:#111722;--stroke:rgba(255,255,255,.08);--blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;--danger:#ef4444;}
+    body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;background:linear-gradient(180deg,var(--bg) 0%,#06080d 100%);color:var(--text);min-height:100vh;display:flex;justify-content:center;padding:16px;}
+    .app{width:min(1100px,100%);background:var(--panel);border:1px solid var(--stroke);border-radius:14px;box-shadow:0 10px 30px rgba(0,0,0,.35);padding:16px;}
+    h1,h2,h3{margin:0;color:var(--text);} h2{font-size:18px;} h3{font-size:16px;}
+    .muted{color:var(--muted);font-size:13px;}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;} @media(max-width:860px){.grid{grid-template-columns:1fr;}}
+    .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:12px;}
+    .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
+    input,button,select,textarea{padding:10px;border-radius:10px;border:1px solid var(--stroke);background:#0f1520;color:var(--text);font-weight:700;}
+    button{cursor:pointer;background:linear-gradient(180deg,var(--blue),var(--blue2));border-color:rgba(59,130,246,.45);} button.danger{background:linear-gradient(180deg,#ef4444,#b91c1c);border-color:rgba(239,68,68,.45);} button.secondary{background:var(--card);color:var(--text);}
+    table{width:100%;border-collapse:collapse;margin-top:10px;} th,td{border:1px solid var(--stroke);padding:8px;text-align:left;} th{background:#0f1624;}
+    .hidden{display:none;}
+    .tag{padding:4px 10px;border-radius:999px;background:#0f1624;border:1px solid var(--stroke);font-weight:800;}
+    .error{color:#f87171;}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <div id="loginPanel" class="card">
+      <h1>Админ-панель</h1>
+      <div class="muted">Вход по логину и паролю из tokens.txt</div>
+      <div class="row" style="margin-top:12px;">
+        <input id="loginUser" placeholder="Логин" autocomplete="username">
+        <input id="loginPass" type="password" placeholder="Пароль" autocomplete="current-password">
+        <button id="loginBtn">Войти</button>
+      </div>
+      <div id="loginError" class="error" style="margin-top:8px;"></div>
+    </div>
+
+    <div id="adminApp" class="hidden">
+      <div class="row" style="justify-content:space-between;align-items:center;">
+        <div>
+          <h1>Розыгрыши • Admin</h1>
+          <div class="muted" id="adminUser"></div>
+        </div>
+        <button id="logoutBtn" class="secondary">Выйти</button>
+      </div>
+
+      <div class="grid" style="margin-top:12px;">
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h2>Призы розыгрыша</h2>
+            <button id="addPrizeBtn">Добавить</button>
+          </div>
+          <div class="muted">Укажите порядок для контроля выпадения (меньше — выше).</div>
+          <table id="prizeTable">
+            <thead><tr><th>ID</th><th>Название</th><th>Описание</th><th>Порядок</th><th></th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+
+        <div class="card">
+          <div class="row" style="justify-content:space-between;align-items:center;">
+            <h2>Итоги розыгрыша</h2>
+            <button id="drawBtn" class="danger">Сформировать итоги</button>
+          </div>
+          <div class="muted">Каждый пользователь получает не больше одного приза.</div>
+          <div id="winnersList" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;"></div>
+        </div>
+      </div>
+
+      <div class="card" style="margin-top:12px;">
+        <h2>Баланс игроков</h2>
+        <div class="row" style="margin-top:8px;">
+          <input id="findNickname" placeholder="Никнейм" style="min-width:220px;">
+          <button id="findUserBtn">Найти</button>
+          <span id="foundInfo" class="muted"></span>
+        </div>
+        <div class="row" style="margin-top:10px;">
+          <input id="deltaPoints" type="number" placeholder="Δ очков (можно -)" style="width:200px;">
+          <input id="newBalance" type="number" placeholder="Или новый баланс" style="width:200px;">
+          <button id="saveBalanceBtn">Сохранить</button>
+        </div>
+        <div id="balanceStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    const qs = (id) => document.getElementById(id);
+
+    async function api(path, method='GET', body=null){
+      const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
+      if(body) opts.body = JSON.stringify(body);
+      const res = await fetch(path, opts);
+      if(!res.ok){
+        const txt = await res.text();
+        throw new Error(txt || 'request failed');
+      }
+      return await res.json();
+    }
+
+    function renderPrizes(items){
+      const tbody = qs('prizeTable').querySelector('tbody');
+      tbody.innerHTML = '';
+      (items||[]).forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.description||''}</td><td>${p.order||0}</td>`;
+        const actions = document.createElement('td');
+        const edit = document.createElement('button');
+        edit.textContent = 'Изменить';
+        edit.className = 'secondary';
+        edit.onclick = async ()=>{
+          const name = prompt('Название', p.name)||p.name;
+          const description = prompt('Описание', p.description||'')||'';
+          const order = Number(prompt('Порядок', p.order||0) || p.order || 0);
+          const res = await api(`/api/admin/raffle/prizes/${p.id}`,'PUT',{name,description,order});
+          renderPrizes(res.items||[]);
+        };
+        const del = document.createElement('button');
+        del.textContent = 'Удалить';
+        del.className = 'danger';
+        del.onclick = async ()=>{
+          if(!confirm('Удалить приз?')) return;
+          const res = await api(`/api/admin/raffle/prizes/${p.id}`,'DELETE');
+          renderPrizes(res.items||[]);
+        };
+        actions.append(edit, del);
+        tr.appendChild(actions);
+        tbody.appendChild(tr);
+      });
+    }
+
+    function renderWinners(items){
+      const root = qs('winnersList');
+      root.innerHTML = '';
+      if(!items || items.length===0){
+        root.innerHTML = '<div class="muted">Итоги ещё не сформированы.</div>';
+        return;
+      }
+      items.forEach(w=>{
+        const row = document.createElement('div');
+        row.className = 'row';
+        row.innerHTML = `<span class="tag">Приз #${w.prize_id}</span><span class="tag">Билет ${w.ticket}</span><span class="tag">user ${w.user_id}</span>`;
+        root.appendChild(row);
+      });
+    }
+
+    async function loadPrizes(){
+      const res = await api('/api/admin/raffle/prizes');
+      renderPrizes(res.items||[]);
+    }
+
+    async function loadWinners(){
+      const res = await api('/api/admin/raffle/winners');
+      renderWinners(res.items||[]);
+    }
+
+    async function tryLogin(){
+      qs('loginError').textContent = '';
+      const username = qs('loginUser').value.trim();
+      const password = qs('loginPass').value.trim();
+      try{
+        await api('/api/admin/login','POST',{username,password});
+        qs('loginPanel').classList.add('hidden');
+        qs('adminApp').classList.remove('hidden');
+        qs('adminUser').textContent = username || 'admin';
+        loadPrizes();
+        loadWinners();
+      }catch(e){
+        qs('loginError').textContent = 'Ошибка входа';
+      }
+    }
+
+    async function checkSession(){
+      try{
+        const res = await api('/api/admin/session');
+        qs('adminUser').textContent = res.user || '';
+        qs('loginPanel').classList.add('hidden');
+        qs('adminApp').classList.remove('hidden');
+        loadPrizes();
+        loadWinners();
+      }catch(e){
+        qs('loginPanel').classList.remove('hidden');
+        qs('adminApp').classList.add('hidden');
+      }
+    }
+
+    qs('loginBtn').onclick = tryLogin;
+    qs('addPrizeBtn').onclick = async ()=>{
+      const name = prompt('Название приза');
+      if(!name) return;
+      const description = prompt('Описание') || '';
+      const order = Number(prompt('Порядок (число)') || 0);
+      const res = await api('/api/admin/raffle/prizes','POST',{name,description,order});
+      await loadPrizes();
+    };
+
+    qs('drawBtn').onclick = async ()=>{
+      if(!confirm('Сформировать итоги?')) return;
+      try{
+        const res = await api('/api/admin/raffle/draw','POST',{force:false});
+        renderWinners(res.items||[]);
+      }catch(e){
+        alert('Не удалось провести розыгрыш: '+ e.message);
+      }
+    };
+
+    qs('logoutBtn').onclick = async ()=>{
+      await api('/api/admin/logout','POST');
+      location.reload();
+    };
+
+    qs('findUserBtn').onclick = async ()=>{
+      qs('foundInfo').textContent = '';
+      qs('balanceStatus').textContent = '';
+      const nickname = qs('findNickname').value.trim();
+      if(!nickname) return;
+      try{
+        const res = await api('/api/admin/users/by_nickname','POST',{nickname});
+        qs('findUserBtn').dataset.uid = res.user_id;
+        qs('foundInfo').textContent = `user_id: ${res.user_id}, баланс: ${res.balance}`;
+      }catch(e){
+        qs('foundInfo').textContent = 'Не найден';
+        qs('findUserBtn').dataset.uid = '';
+      }
+    };
+
+    qs('saveBalanceBtn').onclick = async ()=>{
+      const uid = Number(qs('findUserBtn').dataset.uid||0);
+      const nickname = qs('findNickname').value.trim();
+      const points_delta = qs('deltaPoints').value ? Number(qs('deltaPoints').value) : null;
+      const new_balance = qs('newBalance').value ? Number(qs('newBalance').value) : null;
+      if(!uid && !nickname){
+        qs('balanceStatus').textContent = 'Сначала найдите пользователя по никнейму.';
+        return;
+      }
+      try{
+        const res = await api('/api/admin/users/set_points','POST',{user_id:uid||undefined,nickname,points_delta,new_balance});
+        qs('balanceStatus').textContent = `Новый баланс: ${res.balance}`;
+      }catch(e){
+        qs('balanceStatus').textContent = 'Не удалось сохранить: '+e.message;
+      }
+    };
+
+    checkSession();
+  </script>
+</body>
+</html>

@@ -50,3 +50,36 @@ class RpgConvertRequest(BaseModel):
 
 class RaffleBuyRequest(BaseModel):
     user_id: Optional[str] = None
+    count: Optional[int] = 1
+
+
+class AdminLoginRequest(BaseModel):
+    username: str
+    password: str
+
+
+class AdminPrizeRequest(BaseModel):
+    name: str
+    description: Optional[str] = ""
+    order: Optional[int] = 0
+
+
+class AdminPrizeUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    description: Optional[str] = None
+    order: Optional[int] = None
+
+
+class AdminDrawRequest(BaseModel):
+    force: Optional[bool] = False
+
+
+class AdminFindUserRequest(BaseModel):
+    nickname: str
+
+
+class AdminSetPointsRequest(BaseModel):
+    user_id: Optional[int] = None
+    nickname: Optional[str] = None
+    points_delta: Optional[int] = None
+    new_balance: Optional[int] = None

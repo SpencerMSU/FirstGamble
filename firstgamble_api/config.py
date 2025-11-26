@@ -40,3 +40,8 @@ if not WEBAPP_URL:
     raise SystemExit("WEBAPP_URL is missing in tokens.txt")
 
 logging.info(f"WEBAPP_URL = {WEBAPP_URL}")
+
+ADMIN_USER = config.get("ADMIN_USER", "admin")
+ADMIN_PASS = config.get("ADMIN_PASS", "admin")
+ADMIN_TOKEN = config.get("ADMIN_TOKEN")
+ADMIN_SESSION_TTL = int(config.get("ADMIN_SESSION_TTL", "86400"))

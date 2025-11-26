@@ -23,24 +23,12 @@
 </head>
 <body>
   <div class="app">
-    <div id="loginPanel" class="card">
-      <h1>Админ-панель</h1>
-      <div class="muted">Вход по логину и паролю из tokens.txt</div>
-      <div class="row" style="margin-top:12px;">
-        <input id="loginUser" placeholder="Логин" autocomplete="username">
-        <input id="loginPass" type="password" placeholder="Пароль" autocomplete="current-password">
-        <button id="loginBtn">Войти</button>
-      </div>
-      <div id="loginError" class="error" style="margin-top:8px;"></div>
-    </div>
-
-    <div id="adminApp" class="hidden">
+    <div id="adminApp">
       <div class="row" style="justify-content:space-between;align-items:center;">
         <div>
           <h1>Розыгрыши • Admin</h1>
           <div class="muted" id="adminUser"></div>
         </div>
-        <button id="logoutBtn" class="secondary">Выйти</button>
       </div>
 
       <div class="grid" style="margin-top:12px;">
@@ -158,37 +146,6 @@
       renderWinners(res.items||[]);
     }
 
-    async function tryLogin(){
-      qs('loginError').textContent = '';
-      const username = qs('loginUser').value.trim();
-      const password = qs('loginPass').value.trim();
-      try{
-        await api('/api/admin/login','POST',{username,password});
-        qs('loginPanel').classList.add('hidden');
-        qs('adminApp').classList.remove('hidden');
-        qs('adminUser').textContent = username || 'admin';
-        loadPrizes();
-        loadWinners();
-      }catch(e){
-        qs('loginError').textContent = 'Ошибка входа';
-      }
-    }
-
-    async function checkSession(){
-      try{
-        const res = await api('/api/admin/session');
-        qs('adminUser').textContent = res.user || '';
-        qs('loginPanel').classList.add('hidden');
-        qs('adminApp').classList.remove('hidden');
-        loadPrizes();
-        loadWinners();
-      }catch(e){
-        qs('loginPanel').classList.remove('hidden');
-        qs('adminApp').classList.add('hidden');
-      }
-    }
-
-    qs('loginBtn').onclick = tryLogin;
     qs('addPrizeBtn').onclick = async ()=>{
       const name = prompt('Название приза');
       if(!name) return;
@@ -218,14 +175,9 @@
       }
     };
 
-    qs('logoutBtn').onclick = async ()=>{
-      await api('/api/admin/logout','POST');
-      location.reload();
-    };
-
-    qs('findUserBtn').onclick = async ()=>{
-      qs('foundInfo').textContent = '';
-      qs('balanceStatus').textContent = '';
+      qs('findUserBtn').onclick = async ()=>{
+        qs('foundInfo').textContent = '';
+        qs('balanceStatus').textContent = '';
       const nickname = qs('findNickname').value.trim();
       if(!nickname) return;
       try{
@@ -254,8 +206,9 @@
         qs('balanceStatus').textContent = 'Не удалось сохранить: '+e.message;
       }
     };
-
-    checkSession();
+    qs('adminUser').textContent = 'Доступ открыт из WebApp';
+    loadPrizes();
+    loadWinners();
   </script>
 </body>
 </html>

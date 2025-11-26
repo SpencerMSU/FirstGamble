@@ -39,36 +39,10 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 .muted{color:var(--muted);font-size:13px;}
 .admin-fab{position:fixed;top:12px;left:12px;width:46px;height:46px;border-radius:50%;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);box-shadow:var(--shadow);color:var(--text);display:flex;align-items:center;justify-content:center;font-weight:900;cursor:pointer;z-index:9999;transition:.15s ease;}
 .admin-fab:hover{border-color:var(--stroke2);transform:translateY(-1px);} .admin-fab:active{transform:scale(.98);}
-.modal-backdrop{position:fixed;inset:0;background:rgba(0,0,0,.65);display:none;align-items:center;justify-content:center;padding:16px;z-index:9998;}
-.modal-backdrop.active{display:flex;}
-.modal-window{width:min(380px,100%);background:linear-gradient(180deg,var(--panel) 0%,var(--card) 100%);border:1px solid var(--stroke2);border-radius:16px;box-shadow:var(--shadow);padding:18px;}
-.modal-window h3{margin:0 0 4px;font-size:18px;}
-.modal-window label{display:block;font-size:13px;color:var(--muted);margin-top:10px;margin-bottom:6px;}
-.modal-window input{width:100%;padding:10px;border-radius:10px;border:1px solid var(--stroke);background:var(--card2);color:var(--text);font-weight:700;}
-.modal-actions{display:flex;gap:10px;margin-top:14px;}
-.modal-actions button{flex:1;padding:11px;border-radius:12px;border:1px solid var(--stroke2);cursor:pointer;font-weight:800;}
-.modal-actions button.primary{background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);color:var(--text);}
-.modal-actions button.secondary{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);border-style:dashed;}
 </style>
 </head>
 <body>
-<button id="admin-login-fab" class="admin-fab" type="button" title="Админка">⚙️</button>
-<div id="admin-login-modal" class="modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="admin-login-title">
-  <div class="modal-window">
-    <h3 id="admin-login-title">Вход в админку</h3>
-    <div class="muted">Доступ только по логину и паролю.</div>
-    <form id="admin-login-form">
-      <label for="admin-login">Логин</label>
-      <input id="admin-login" name="login" type="text" autocomplete="username" required>
-      <label for="admin-password">Пароль</label>
-      <input id="admin-password" name="password" type="password" autocomplete="current-password" required>
-      <div class="modal-actions">
-        <button type="submit" class="primary">Войти</button>
-        <button type="button" id="admin-login-cancel" class="secondary">Отмена</button>
-      </div>
-    </form>
-  </div>
-</div>
+<button id="admin-gear-btn" class="admin-fab" type="button" title="Админка">⚙️</button>
 <div class="app">
 <header>
 <div style="width:64px"></div>
@@ -136,8 +110,6 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 <script>
 const tgInstance = initTelegramGuard();
 const searchUid = new URLSearchParams(window.location.search).get("uid");
-const ADMIN_FLAG_KEY = "fg_is_admin";
-
 function getTgUserId(){
   try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
 }
@@ -159,74 +131,16 @@ async function loadBalance(){
   }
 }
 
-function isAdmin(){
-  return localStorage.getItem(ADMIN_FLAG_KEY) === "1";
-}
-
 function openAdminPanel(){
   window.location.href = "/admin";
 }
+document.getElementById("admin-gear-btn")?.addEventListener("click", openAdminPanel);
 
-function closeAdminModal(){
-  const modal = document.getElementById("admin-login-modal");
-  modal.classList.remove("active");
-  const form = document.getElementById("admin-login-form");
-  if(form){
-    form.reset();
-  }
+const adminMenuBtn = document.getElementById("admin-panel-btn");
+if(adminMenuBtn){
+  adminMenuBtn.style.display = "block";
+  adminMenuBtn.onclick = openAdminPanel;
 }
-
-function openAdminModal(){
-  const modal = document.getElementById("admin-login-modal");
-  modal.classList.add("active");
-  const loginInput = document.getElementById("admin-login");
-  setTimeout(() => loginInput?.focus(), 50);
-}
-
-function updateAdminButtons(){
-  const hasAccess = isAdmin();
-  const btn = document.getElementById("admin-panel-btn");
-  if(btn){
-    btn.style.display = hasAccess ? "block" : "none";
-    btn.onclick = openAdminPanel;
-  }
-  const fab = document.getElementById("admin-login-fab");
-  if(fab){
-    fab.title = hasAccess ? "Открыть админ-панель" : "Вход в админку";
-  }
-}
-
-document.getElementById("admin-login-fab")?.addEventListener("click", () => {
-  if(isAdmin()){
-    openAdminPanel();
-  }else{
-    openAdminModal();
-  }
-});
-
-document.getElementById("admin-login-cancel")?.addEventListener("click", closeAdminModal);
-
-document.getElementById("admin-login-modal")?.addEventListener("click", (e) => {
-  if(e.target === e.currentTarget){
-    closeAdminModal();
-  }
-});
-
-document.getElementById("admin-login-form")?.addEventListener("submit", (e) => {
-  e.preventDefault();
-  const login = document.getElementById("admin-login")?.value.trim();
-  const pass = document.getElementById("admin-password")?.value.trim();
-  if(login === "admin" && pass === "admin"){
-    localStorage.setItem(ADMIN_FLAG_KEY, "1");
-    closeAdminModal();
-    updateAdminButtons();
-    openAdminPanel();
-  }else{
-    alert("Неверный логин или пароль");
-  }
-});
-
-updateAdminButtons();
 
 (async () => {
   if(!tgInstance) return;

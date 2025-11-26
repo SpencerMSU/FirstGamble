@@ -7,11 +7,7 @@
 <script src="https://telegram.org/js/telegram-web-app.js"></script>
 <script src="/webapp_guard.js"></script>
 <style>
-:root{--bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;--stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);--blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;--shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);}
-html[data-theme="light"]{--bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;--stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);--blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;--shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);}
-html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
-*{box-sizing:border-box}
-body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+:root{--bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;--stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);--blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;--shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);} html[data-theme="light"]{--bg:#f4f7fb;--bg2:#eef2f7;--panel:#fff;--card:#fff;--card2:#f6f8fb;--stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);--blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;--shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);} html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}*{box-sizing:border-box}body{margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
 background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
 radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
 linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);min-height:100vh;display:flex;justify-content:center;padding:16px;}
@@ -19,19 +15,13 @@ linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);min-height:100vh;display:fl
 background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
 .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
-.title h1{margin:0;font-size:20px;font-weight:800;} .title span{font-size:12px;color:var(--muted);}
-.back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+.title h1{margin:0;font-size:20px;font-weight:800;} .title span{font-size:12px;color:var(--muted);} .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
 border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
-.back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
-.balance-pill{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
+.back:hover{border-color:var(--stroke2);transform:translateY(-1px);} .balance-pill{display:flex;align-items:center;gap:8px;padding:7px 10px;border-radius:999px;font-weight:800;font-size:14px;
 background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);border:1px solid var(--stroke);box-shadow:var(--shadow);min-width:64px;justify-content:center;}
 .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
 border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;position:relative;overflow:hidden;}
-.grid{display:grid;grid-template-columns:1.2fr 1fr;gap:12px;}
-.cardbtn{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:14px;border:1px solid var(--stroke);
-background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:pointer;transition:.15s ease;text-decoration:none;color:var(--text);}
-.cardbtn:hover{border-color:var(--stroke2);transform:translateY(-1px);} .cardbtn h3{margin:0;font-size:16px;font-weight:900;}
-.cardbtn p{margin:4px 0 0;font-size:12px;color:var(--muted);}
+.muted{color:var(--muted);} .prize-list{display:flex;flex-direction:column;gap:10px;margin-top:8px;} .prize-card{position:relative;border:1px solid var(--stroke);border-radius:12px;padding:12px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);box-shadow:var(--shadow);} .prize-card h3{margin:0;font-size:16px;} .prize-card p{margin:6px 0 0;font-size:13px;color:var(--muted);} .prize-meta{margin-top:8px;font-weight:800;display:flex;gap:8px;align-items:center;flex-wrap:wrap;} .badge{padding:4px 10px;border-radius:999px;border:1px solid var(--stroke);background:#0f1624;}
 @media (max-width:720px){.grid{grid-template-columns:1fr;}}
 @keyframes spin{from{transform:rotate(0deg);}to{transform:rotate(360deg);}}
 .container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}
@@ -43,22 +33,28 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 <a class="back" href="/">← Назад</a>
 <div class="title">
 <h1>Розыгрыши</h1>
-<span>Раздел в разработке</span>
+<span id="raffleSubtitle">Подготовка</span>
 </div>
 <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
 </header>
 <section class='section'>
   <div style="position:absolute;inset:0;pointer-events:none;background:radial-gradient(600px 280px at 30% 0%,rgba(59,130,246,.18),transparent 60%),radial-gradient(520px 240px at 80% 20%,rgba(37,99,235,.14),transparent 60%);"></div>
-  <div style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 14px;text-align:center;position:relative;z-index:1;">
+
+  <div id="preparingBlock" style="display:flex;flex-direction:column;align-items:center;gap:16px;padding:40px 14px;text-align:center;position:relative;z-index:1;">
     <div style="width:120px;height:120px;display:grid;place-items:center;position:relative;">
       <div style="position:absolute;inset:0;border-radius:50%;border:3px solid rgba(59,130,246,.18);"></div>
       <div style="position:absolute;inset:10px;border-radius:50%;border:3px solid transparent;border-top-color:var(--blue);border-right-color:var(--blue2);animation:spin 1.4s linear infinite;box-shadow:0 0 18px rgba(59,130,246,.45);"></div>
       <div style="width:46px;height:46px;border-radius:50%;background:linear-gradient(180deg,var(--blue),var(--blue2));box-shadow:0 12px 24px rgba(0,0,0,.35);display:grid;place-items:center;font-weight:900;letter-spacing:.4px;">FC</div>
     </div>
     <div style="max-width:520px;display:flex;flex-direction:column;gap:6px;">
-      <div style="font-size:18px;font-weight:900;letter-spacing:.3px;">Подготовка розыгрыша</div>
+      <div style="font-size:18px;font-weight:900;letter-spacing:.3px;" id="preparingTitle">Подготовка розыгрыша</div>
       <div style="font-size:13px;color:var(--muted);line-height:1.6;">Более подробная информация будет оперативно доноситься через Discord.</div>
     </div>
+  </div>
+
+  <div id="prizesBlock" style="display:none;flex-direction:column;gap:12px;position:relative;z-index:1;">
+    <div class="muted" id="raffleStatus"></div>
+    <div id="prizeList" class="prize-list"></div>
   </div>
 </section>
 </div>
@@ -74,12 +70,12 @@ function getTgUserId(){
 const uid = getTgUserId() || searchUid;
 
 async function loadBalance(){
-  const uid=getTgUserId() || searchUid;
+  const uidVal=getTgUserId() || searchUid;
   const el=document.getElementById("balanceValue");
   if(!el) return;
   try{
     let url = "/api/balance";
-    if(uid) url += "?user_id="+uid;
+    if(uidVal) url += "?user_id="+uidVal;
     const d = await apiGet(url);
     el.textContent=d.balance??0;
     localStorage.setItem("balance_local", el.textContent);
@@ -87,10 +83,90 @@ async function loadBalance(){
     el.textContent=localStorage.getItem("balance_local")||"0";
   }
 }
+
+function renderPrizes(state){
+  const prep = document.getElementById("preparingBlock");
+  const block = document.getElementById("prizesBlock");
+  const subtitle = document.getElementById("raffleSubtitle");
+  const statusEl = document.getElementById("raffleStatus");
+  const list = document.getElementById("prizeList");
+  if(!block || !prep || !subtitle || !statusEl || !list) return;
+
+  const status = (state.status || "preparing").toLowerCase();
+  list.innerHTML = "";
+
+  if(status === "preparing" || status === "closed"){
+    prep.style.display = "flex";
+    block.style.display = "none";
+    subtitle.textContent = "Подготовка";
+    return;
+  }
+
+  prep.style.display = "none";
+  block.style.display = "flex";
+  subtitle.textContent = status === "active" ? "Продажа билетов" : "Итоги розыгрыша";
+  statusEl.textContent = status === "active" ? "Билеты в продаже. Победители появятся после завершения." : "Розыгрыш завершён. Победители ниже.";
+
+  (state.prizes || []).forEach((p, idx) => {
+    const card = document.createElement("div");
+    card.className = "prize-card";
+    const title = document.createElement("h3");
+    title.textContent = `${idx+1}. ${p.name || 'Приз'}`;
+    const desc = document.createElement("p");
+    desc.textContent = p.description || "";
+    const meta = document.createElement("div");
+    meta.className = "prize-meta";
+
+    if(status === "finished"){
+      if(p.winner_name){
+        const winner = document.createElement("span");
+        winner.className = "badge";
+        winner.textContent = `Победитель: ${p.winner_name}`;
+        meta.appendChild(winner);
+        if(p.ticket_no){
+          const ticket = document.createElement("span");
+          ticket.className = "badge";
+          ticket.textContent = `билет №${p.ticket_no}`;
+          meta.appendChild(ticket);
+        }
+      } else {
+        const pending = document.createElement("span");
+        pending.className = "badge";
+        pending.textContent = "Ещё не разыгран";
+        meta.appendChild(pending);
+      }
+    } else {
+      const pending = document.createElement("span");
+      pending.className = "badge";
+      pending.textContent = "Победитель пока неизвестен";
+      meta.appendChild(pending);
+    }
+
+    card.appendChild(title);
+    if(desc.textContent){
+      card.appendChild(desc);
+    }
+    card.appendChild(meta);
+    list.appendChild(card);
+  });
+}
+
+async function loadRaffleState(){
+  try{
+    const state = await apiGet("/api/raffle/state");
+    if(state && state.ok){
+      renderPrizes(state);
+    }
+  }catch(e){
+    console.error("Failed to load raffle state", e);
+  }
+}
+
 (async () => {
   if(!tgInstance) return;
   await ensureNicknameOrRedirect(uid);
   loadBalance();
+  loadRaffleState();
 })();
 </script>
 </body>

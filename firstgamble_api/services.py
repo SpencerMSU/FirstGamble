@@ -105,6 +105,14 @@ def key_raffle_winners() -> str:
     return "raffle:winners"
 
 
+def key_last_raffle_winners() -> str:
+    return "raffle:last_winners"
+
+
+def key_raffle_status() -> str:
+    return "raffle:status"
+
+
 def key_user_raffle_wins(uid: int) -> str:
     return f"user:{uid}:raffle:wins"
 

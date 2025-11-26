@@ -59,7 +59,10 @@
         <div class="card">
           <div class="row" style="justify-content:space-between;align-items:center;">
             <h2>Итоги розыгрыша</h2>
-            <button id="drawBtn" class="danger">Сформировать итоги</button>
+            <div class="row" style="gap:6px;">
+              <button id="finishPayoutBtn" class="secondary">Завершить выдачу</button>
+              <button id="drawBtn" class="danger">Сформировать итоги</button>
+            </div>
           </div>
           <div class="muted">Каждый пользователь получает не больше одного приза.</div>
           <div id="winnersList" style="margin-top:10px;display:flex;flex-direction:column;gap:8px;"></div>
@@ -138,7 +141,9 @@
       items.forEach(w=>{
         const row = document.createElement('div');
         row.className = 'row';
-        row.innerHTML = `<span class="tag">Приз #${w.prize_id}</span><span class="tag">Билет ${w.ticket}</span><span class="tag">user ${w.user_id}</span>`;
+        const ticket = w.ticket_no || w.ticket;
+        const username = w.user_name || w.user_id;
+        row.innerHTML = `<span class="tag">Приз #${w.prize_id}</span><span class="tag">Билет ${ticket||'?'}</span><span class="tag">${username || ''}</span>`;
         root.appendChild(row);
       });
     }
@@ -200,6 +205,16 @@
         renderWinners(res.items||[]);
       }catch(e){
         alert('Не удалось провести розыгрыш: '+ e.message);
+      }
+    };
+
+    qs('finishPayoutBtn').onclick = async ()=>{
+      if(!confirm('Завершить выдачу и скрыть итоги с публичной страницы?')) return;
+      try{
+        await api('/api/admin/raffle/finish_payout','POST');
+        alert('Выдача завершена, публичная страница снова в режиме подготовки.');
+      }catch(e){
+        alert('Не удалось завершить выдачу: '+ e.message);
       }
     };
 

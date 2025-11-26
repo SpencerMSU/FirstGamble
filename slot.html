@@ -186,6 +186,11 @@
       return await apiPost("/api/add_point", {user_id:String(uid), game:String(game)||"slot"});
     }catch(err){ return {ok:false, error:String(err)}; }
   }
+  async function reportGame(uid, game, result){
+    try{
+      await apiPost("/api/report_game", {user_id:String(uid), game:String(game), result:String(result)});
+    }catch(e){}
+  }
   function showToast(t){
     const toast=document.getElementById("toast");
     toast.textContent=t;
@@ -300,11 +305,17 @@
     const [a,b,c]=final;
     if(a===b && b===c){
       setStatus(`Победа! ${a} ${b} ${c}`, "win");
+      const uid=getTgUserId();
+      if(uid) await reportGame(uid, "slot", "win");
       givePointIfWin();
     }else if(a===b || b===c || a===c){
       setStatus(`Почти! ${a} ${b} ${c}`, "draw");
+      const uid=getTgUserId();
+      if(uid) await reportGame(uid, "slot", "draw");
     }else{
       setStatus(`Мимо. ${a} ${b} ${c}`, "lose");
+      const uid=getTgUserId();
+      if(uid) await reportGame(uid, "slot", "lose");
     }
 
     if(autoLeft>0){

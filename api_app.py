@@ -488,12 +488,6 @@ async def api_add_point(
     await ensure_user(auth.user_id)
     new_balance = await add_points(auth.user_id, delta)
 
-    await r.hincrby(key_stats(auth.user_id), "wins", 1)
-    await r.hincrby(key_stats(auth.user_id), "games_total", 1)
-
-    await r.hincrby(key_gamestats(auth.user_id, game), "wins", 1)
-    await r.hincrby(key_gamestats(auth.user_id, game), "games_total", 1)
-
     return {"ok": True, "balance": new_balance}
 
 @app.post("/api/report_game")

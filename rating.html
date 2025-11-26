@@ -183,13 +183,20 @@
     const tr=document.createElement("tr");
     if(myId && String(r.user_id)===String(myId)) tr.classList.add("me");
 
-    const baseName = r.name || "";
-    const name = r.username
-      ? `${baseName} (@${r.username})`
-      : (baseName || `Игрок ${r.user_id}`);
+    const baseName = (r.name || "").trim();
+    let displayName = baseName;
+
+    if(!displayName){
+      const uname = (r.username || "").trim();
+      if(uname){
+        displayName = uname.replace(/^@+/, "");
+      }else{
+        displayName = `Игрок ${r.user_id}`;
+      }
+    }
     tr.innerHTML = `
       <td>${idx}</td>
-      <td>${name}</td>
+      <td>${displayName}</td>
       <td><b>${r.points}</b></td>
       <td>
         <span class="pill win">W ${r.wins}</span>

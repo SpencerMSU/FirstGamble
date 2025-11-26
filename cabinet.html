@@ -152,15 +152,13 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Твои билеты</h3>
     <div id="ticketGrid" class="ticket-grid"></div>
     <div id="emptyNote" class="note" style="margin-top:8px;">Билетов пока нет. Купи первый!</div>
-
-    <button id="buyTicketBtn" class="bigbtn" style="margin-top:12px;">🎟 Купить билет за 10 🪙</button>
+    <a class="bigbtn" style="margin-top:12px;" href="/shop">Перейти в магазин</a>
   </section>
 </div>
 
 <script>
 
 const tgInstance = initTelegramGuard();
-const RAFFLE_TICKET_PRICE = 10;
 
 let uid = null;
 
@@ -249,51 +247,14 @@ async function loadProfile(){
   }
 }
 
-async function buyTicket(){
-  if(balance < RAFFLE_TICKET_PRICE){
-    tg?.showAlert("Не хватает очков для покупки билета.");
-    return;
-  }
-  try{
-    const res = await apiPost("/api/raffle/buy_ticket", {count: 1});
-    if(!res.ok){
-      const msg = res.error === "not_enough_points"
-        ? "Недостаточно очков для покупки билета"
-        : (res.message || "Не удалось купить билет");
-      tg?.showAlert(msg);
-      return;
-    }
-    setBalance(res.balance ?? balance);
-
-    const bought = Array.isArray(res.bought) ? res.bought : [];
-    if(Array.isArray(res.tickets)){
-      tickets = res.tickets;
-    }else if(bought.length){
-      tickets = [...tickets, ...bought];
-    }
-
-    const ticketLabel = bought.length ? bought.map(t => `#${t}`).join(", ") : "";
-    const msg = ticketLabel ? `Куплен билет ${ticketLabel}. Баланс: ${res.balance}` : "Билет куплен.";
-    tg?.showPopup?.({message: msg});
-    renderTickets();
-  }catch(e){
-    console.error("raffle buy error", e);
-    tg?.showAlert("Техническая ошибка при покупке билета.");
-  }
-}
-
 (async function main(){
   if(!tgInstance) return;
   await ensureNicknameOrRedirect(uid);
-  const buyBtn = document.getElementById("buyTicketBtn");
-  buyBtn.textContent = `🎟 Купить билет за ${RAFFLE_TICKET_PRICE} 🪙`;
-  buyBtn.addEventListener("click", buyTicket);
   await loadProfile();
   if(uid){
     loadCabinet();
   }else{
     setTgIdLabel("нет TG id");
-    document.getElementById("buyTicketBtn").disabled = true;
   }
 })();
 </script>

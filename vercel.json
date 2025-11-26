@@ -25,6 +25,10 @@
       "destination": "/raffles.html"
     },
     {
+      "source": "/admin",
+      "destination": "/admin.html"
+    },
+    {
       "source": "/dice",
       "destination": "/dice.html"
     },

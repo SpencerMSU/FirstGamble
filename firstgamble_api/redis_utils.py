@@ -46,6 +46,10 @@ def key_gamestats(user_id: int, game: str) -> str:
     return f"user:{user_id}:game:{game}"  # hash: wins, losses, draws, games_total
 
 
+def key_admin_session(token: str) -> str:
+    return f"admin:session:{token}"
+
+
 USERS_ZSET = "leaderboard:points"  # zset: user_id -> points
 USERS_SET = "users:all"  # set of user_ids
 

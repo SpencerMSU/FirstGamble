@@ -151,7 +151,7 @@
         const row = document.createElement('div');
         row.className = 'row';
         const ticket = w.ticket_no || w.ticket;
-        const username = w.user_name || w.user_id;
+        const username = w.winner_username ? '@'+w.winner_username : (w.user_name || w.user_id);
         row.innerHTML = `<span class="tag">Приз #${w.prize_id}</span><span class="tag">Билет ${ticket||'?'}</span><span class="tag">${username || ''}</span>`;
         root.appendChild(row);
       });
@@ -165,18 +165,23 @@
     async function loadWinners(){
       const res = await api('/api/admin/raffle/winners');
       renderWinners(res.items||[]);
+      if(res.status === 'closed' && (!res.items || res.items.length === 0)){
+        qs('winnersList').innerHTML = '<div class="muted">Выдача завершена, итоги скрыты до нового розыгрыша.</div>';
+      }
     }
 
-    qs('addPrizeBtn').onclick = async ()=>{
+    qs('addPrizeBtn').addEventListener('click', async ()=>{
+      console.log('click add prize');
       const name = prompt('Название приза');
       if(!name) return;
       const description = prompt('Описание') || '';
       const order = Number(prompt('Порядок (число)') || 0);
       await api('/api/admin/raffle/prizes','POST',{name,description,order});
       await loadPrizes();
-    };
+    });
 
-    qs('drawBtn').onclick = async ()=>{
+    qs('drawBtn').addEventListener('click', async ()=>{
+      console.log('click draw results');
       if(!confirm('Сформировать итоги?')) return;
       try{
         const res = await api('/api/admin/raffle/draw','POST',{force:false});
@@ -187,38 +192,44 @@
           : e.message;
         alert('Не удалось провести розыгрыш: '+ msg);
       }
-    };
+    });
 
-    qs('finishPayoutBtn').onclick = async ()=>{
+    qs('finishPayoutBtn').addEventListener('click', async ()=>{
+      console.log('click finish payout');
       if(!confirm('Завершить выдачу и скрыть итоги с публичной страницы?')) return;
       try{
         await api('/api/admin/raffle/finish_payout','POST');
         alert('Выдача завершена, публичная страница снова в режиме подготовки.');
+        await loadWinners();
       }catch(e){
         alert('Не удалось завершить выдачу: '+ e.message);
       }
-    };
+    });
 
-      qs('findUserBtn').onclick = async ()=>{
+      qs('findUserBtn').addEventListener('click', async ()=>{
+        console.log('click find user');
         qs('foundInfo').textContent = '';
         qs('balanceStatus').textContent = '';
       const nickname = qs('findNickname').value.trim();
       if(!nickname) return;
       try{
         const res = await api('/api/admin/users/by_nickname','POST',{nickname});
+        if(!res.ok){
+          throw new Error(res.error || 'User not found');
+        }
         qs('findUserBtn').dataset.uid = res.user_id;
         qs('foundInfo').textContent = `user_id: ${res.user_id}, баланс: ${res.balance}`;
       }catch(e){
         qs('findUserBtn').dataset.uid = '';
-        if(e.code === 'not found'){
-          qs('foundInfo').textContent = 'Пользователь с таким никнеймом не найден';
-        }else{
-          qs('foundInfo').textContent = 'Ошибка запроса: ' + (e.message || e);
-        }
+        const errText = (e.code === 'not found' || /not found/i.test(e.message||''))
+          ? 'Пользователь с таким никнеймом не найден'
+          : 'Ошибка запроса: ' + (e.message || e);
+        qs('foundInfo').textContent = errText;
       }
-    };
+    });
 
-    qs('saveBalanceBtn').onclick = async ()=>{
+    qs('saveBalanceBtn').addEventListener('click', async ()=>{
+      console.log('click save balance');
       const uid = Number(qs('findUserBtn').dataset.uid||0);
       const nickname = qs('findNickname').value.trim();
       const points_delta = qs('deltaPoints').value ? Number(qs('deltaPoints').value) : null;
@@ -233,7 +244,7 @@
       }catch(e){
         qs('balanceStatus').textContent = 'Не удалось сохранить: '+e.message;
       }
-    };
+    });
     qs('adminUser').textContent = 'Доступ открыт из WebApp';
     loadPrizes();
     loadWinners();

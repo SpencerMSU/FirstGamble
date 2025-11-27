@@ -1,6 +1,7 @@
 import json
 import logging
 import random
+import re
 import time
 from secrets import token_urlsafe
 from typing import Any, Dict, Optional
@@ -34,6 +35,7 @@ from .config import (
 )
 from .redis_utils import (
     ALLOWED_GAMES,
+    USERS_SET,
     USERS_ZSET,
     add_points,
     ensure_user,
@@ -80,6 +82,7 @@ from .services import (
 logger = logging.getLogger(__name__)
 
 ADMIN_COOKIE_NAME = "admin_session"
+SLOT_WIN_POINTS = 1
 
 
 async def get_current_auth(
@@ -180,11 +183,9 @@ def register_routes(app: FastAPI):
         if not uid:
             return ""
         profile = await r.hgetall(key_profile(uid))
-        return (
-            profile.get("name")
-            or (f"@{profile.get('username')}" if profile.get("username") else "")
-            or f"user {uid}"
-        )
+        if profile.get("username"):
+            return f"@{profile.get('username')}"
+        return profile.get("name") or f"user {uid}"
 
     @app.get("/api/ping")
     async def api_ping() -> Dict[str, Any]:
@@ -248,9 +249,19 @@ def register_routes(app: FastAPI):
         delta = body.delta or 1
         if delta <= 0:
             delta = 1
+        if game == "slot":
+            delta = SLOT_WIN_POINTS
 
         await ensure_user(auth.user_id)
         new_balance = await add_points(auth.user_id, delta)
+
+        logger.info(
+            "add_point: user=%s game=%s delta=%s new_balance=%s",
+            auth.user_id,
+            game,
+            delta,
+            new_balance,
+        )
 
         return {"ok": True, "balance": new_balance}
 
@@ -307,10 +318,27 @@ def register_routes(app: FastAPI):
         name = (body.name or "").strip()
         username = (body.username or "").strip()
 
+        if not name:
+            logger.info("update_profile rejected: empty name user=%s", auth.user_id)
+            return {"ok": False, "error": "Nickname cannot be empty"}
+
+        if not re.match(r"^[A-Za-z0-9_-]{3,20}$", name):
+            logger.info("update_profile rejected: invalid format user=%s", auth.user_id)
+            return {
+                "ok": False,
+                "error": "Nickname must be 3-20 chars: letters, digits, _ or -",
+            }
+
         await ensure_user(auth.user_id)
 
         r = await get_redis()
         await r.hset(key_profile(auth.user_id), mapping={"name": name, "username": username})
+        logger.info(
+            "update_profile saved: user=%s name=%s username=%s",
+            auth.user_id,
+            name,
+            username,
+        )
         return {"ok": True}
 
     @app.get("/api/leaderboard")
@@ -675,6 +703,9 @@ def register_routes(app: FastAPI):
         body: AdminPrizeRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
         r = await get_redis()
+        prizes_count = await r.scard(key_prizes_set())
+        if prizes_count == 0:
+            await r.delete(key_prize_counter())
         pid = await r.incr(key_prize_counter())
         data = {"name": body.name, "description": body.description or "", "order": int(body.order or 0)}
         pipe = r.pipeline()
@@ -721,6 +752,10 @@ def register_routes(app: FastAPI):
     @app.get("/api/admin/raffle/winners")
     async def api_admin_winners(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
         r = await get_redis()
+        status = await get_raffle_status(r)
+        if status == "closed":
+            return {"ok": True, "items": [], "status": status}
+
         raw = await r.lrange(key_raffle_winners(), 0, -1)
         winners = []
         for item in raw:
@@ -731,14 +766,16 @@ def register_routes(app: FastAPI):
         enriched = []
         for w in winners:
             uid = safe_int(w.get("user_id"))
+            profile = await r.hgetall(key_profile(uid)) if uid else {}
             enriched.append(
                 {
                     **w,
                     "ticket_no": safe_int(w.get("ticket_no") or w.get("ticket")) or None,
                     "user_name": await resolve_winner_name(r, uid),
+                    "winner_username": profile.get("username") or None,
                 }
             )
-        return {"ok": True, "items": enriched}
+        return {"ok": True, "items": enriched, "status": status}
 
     @app.post("/api/admin/raffle/draw")
     async def api_admin_draw(
@@ -808,8 +845,11 @@ def register_routes(app: FastAPI):
         if winners:
             pipe.delete(key_last_raffle_winners())
             pipe.rpush(key_last_raffle_winners(), *winners)
+            pipe.delete(key_raffle_winners())
         pipe.set(key_raffle_status(), "closed")
         await pipe.execute()
+
+        logger.info("raffle finish payout: cleared active winners, status closed")
 
         return {"ok": True, "status": "closed"}
 
@@ -838,7 +878,14 @@ def register_routes(app: FastAPI):
         r = await get_redis()
         user = await find_user_by_nick(r, body.nickname)
         if not user:
-            raise HTTPException(status_code=404, detail="not found")
+            logger.info("admin find user: nickname=%s not found", body.nickname)
+            return {"ok": False, "error": "User not found"}
+        logger.info(
+            "admin find user: nickname=%s user_id=%s balance=%s",
+            body.nickname,
+            user.get("user_id"),
+            user.get("balance"),
+        )
         return {"ok": True, **user}
 
     @app.post("/api/admin/users/set_points")

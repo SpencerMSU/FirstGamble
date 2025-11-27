@@ -97,17 +97,20 @@ async function save(){
   saveBtn.disabled = true;
   saveBtn.textContent = LOADING_TEXT;
   try{
-    const res = await apiPost("/api/update_profile", {name: nick});
+    const res = await apiPost("/api/profile", {name: nick});
     if(res && res.ok){
       try{ tg?.showAlert?.("Никнейм сохранён!"); }catch(e){}
       redirectHome();
       return;
     }
-    throw new Error(res?.error || "Не удалось сохранить");
+    const message = res?.error || "Не удалось сохранить";
+    errorEl.textContent = message;
+    throw new Error(message);
   }catch(e){
+    console.error("Nickname save failed", e);
     saveBtn.disabled = false;
     saveBtn.textContent = SAVE_TEXT;
-    tg?.showAlert?.(String(e));
+    tg?.showAlert?.(String(e?.message || e));
   }
 }
 

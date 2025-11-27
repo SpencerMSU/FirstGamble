@@ -6,6 +6,7 @@ from secrets import token_urlsafe
 from typing import Any, Dict, Optional
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi.responses import JSONResponse
 
 from .models import (
     AddPointRequest,
@@ -747,7 +748,7 @@ def register_routes(app: FastAPI):
         r = await get_redis()
         prizes = await get_prizes(r)
         if not prizes:
-            raise HTTPException(status_code=400, detail="no prizes")
+            return JSONResponse({"ok": False, "error": "no_prizes"}, status_code=400)
         owners = await get_ticket_owners(r)
         total_tickets = len(owners)
         if total_tickets == 0:

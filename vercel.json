@@ -1,6 +1,10 @@
 {
   "rewrites": [
     {
+      "source": "/api/:match*",
+      "destination": "https://api.firstgamble.ru/api/:match*"
+    },
+    {
       "source": "/",
       "destination": "/index.html"
     },

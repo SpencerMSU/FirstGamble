@@ -75,22 +75,39 @@
   </div>
 
   <script>
+    const API_BASE = "https://api.firstgamble.ru";
     const qs = (id) => document.getElementById(id);
 
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
       if(body) opts.body = JSON.stringify(body);
-      const res = await fetch(path, opts);
+      const res = await fetch(API_BASE + path, opts);
       if(res.status === 401){
         window.location.href = "/";
         throw new Error('unauthorized');
       }
       if(!res.ok){
-        const txt = await res.text();
-        throw new Error(txt || 'request failed');
+        let detail = '';
+        try{
+          const data = await res.json();
+          detail = data?.detail || data?.error || '';
+        }catch(_e){
+          detail = await res.text();
+        }
+        const err = new Error(detail || 'request failed');
+        err.code = detail || undefined;
+        throw err;
       }
       return await res.json();
     }
+
+    ['findNickname','deltaPoints','newBalance'].forEach(id=>{
+      const el = qs(id);
+      if(el){
+        el.removeAttribute('readonly');
+        el.removeAttribute('disabled');
+      }
+    });
 
     function renderPrizes(items){
       const tbody = qs('prizeTable').querySelector('tbody');
@@ -155,7 +172,7 @@
       if(!name) return;
       const description = prompt('Описание') || '';
       const order = Number(prompt('Порядок (число)') || 0);
-      const res = await api('/api/admin/raffle/prizes','POST',{name,description,order});
+      await api('/api/admin/raffle/prizes','POST',{name,description,order});
       await loadPrizes();
     };
 
@@ -165,7 +182,10 @@
         const res = await api('/api/admin/raffle/draw','POST',{force:false});
         renderWinners(res.items||[]);
       }catch(e){
-        alert('Не удалось провести розыгрыш: '+ e.message);
+        const msg = e.code === 'no_prizes'
+          ? 'Нельзя сформировать итоги: сначала добавьте хотя бы один приз'
+          : e.message;
+        alert('Не удалось провести розыгрыш: '+ msg);
       }
     };
 
@@ -189,8 +209,12 @@
         qs('findUserBtn').dataset.uid = res.user_id;
         qs('foundInfo').textContent = `user_id: ${res.user_id}, баланс: ${res.balance}`;
       }catch(e){
-        qs('foundInfo').textContent = 'Не найден';
         qs('findUserBtn').dataset.uid = '';
+        if(e.code === 'not found'){
+          qs('foundInfo').textContent = 'Пользователь с таким никнеймом не найден';
+        }else{
+          qs('foundInfo').textContent = 'Ошибка запроса: ' + (e.message || e);
+        }
       }
     };
 

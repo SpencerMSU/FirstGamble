@@ -703,11 +703,13 @@ def register_routes(app: FastAPI):
         body: AdminPrizeRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
         r = await get_redis()
-        prizes_count = await r.scard(key_prizes_set())
+        prizes = await get_prizes(r)
+        prizes_count = len(prizes)
         if prizes_count == 0:
             await r.delete(key_prize_counter())
         pid = await r.incr(key_prize_counter())
-        data = {"name": body.name, "description": body.description or "", "order": int(body.order or 0)}
+        next_order = max([p.get("order", 0) for p in prizes], default=0) + 1
+        data = {"name": body.name, "description": "", "order": next_order}
         pipe = r.pipeline()
         pipe.sadd(key_prizes_set(), pid)
         pipe.hset(key_prize_item(pid), mapping=data)
@@ -728,10 +730,6 @@ def register_routes(app: FastAPI):
         updates: Dict[str, Any] = {}
         if body.name is not None:
             updates["name"] = body.name
-        if body.description is not None:
-            updates["description"] = body.description
-        if body.order is not None:
-            updates["order"] = int(body.order)
         if updates:
             await r.hset(key_prize_item(prize_id), mapping=updates)
         prizes = await get_prizes(r)

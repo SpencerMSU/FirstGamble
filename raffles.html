@@ -62,6 +62,7 @@ border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;posi
 <script>
 const tgInstance = initTelegramGuard();
 const searchUid = new URLSearchParams(window.location.search).get("uid");
+const medalForPlace = (place) => ({1:"🥇",2:"🥈",3:"🥉"}[place]||"");
 
 function getTgUserId(){
   try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
@@ -108,16 +109,24 @@ function renderPrizes(state){
   statusEl.textContent = status === "active" ? "Билеты в продаже. Победители появятся после завершения." : "Розыгрыш завершён. Победители ниже.";
 
   (state.prizes || []).forEach((p, idx) => {
+    const place = p.order || idx + 1;
+    const medal = medalForPlace(place);
     const card = document.createElement("div");
     card.className = "prize-card";
     const title = document.createElement("h3");
-    title.textContent = `${idx+1}. ${p.name || 'Приз'}`;
+    title.textContent = `${medal ? medal + ' ' : ''}${place}. ${p.name || 'Приз'}`;
     const desc = document.createElement("p");
     desc.textContent = p.description || "";
     const meta = document.createElement("div");
     meta.className = "prize-meta";
 
     if(status === "finished"){
+      if(medal){
+        const placeBadge = document.createElement("span");
+        placeBadge.className = "badge";
+        placeBadge.textContent = `${medal} ${place} место`;
+        meta.appendChild(placeBadge);
+      }
       if(p.winner_name){
         const winner = document.createElement("span");
         winner.className = "badge";

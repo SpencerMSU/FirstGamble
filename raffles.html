@@ -111,10 +111,11 @@ function renderPrizes(state){
   (state.prizes || []).forEach((p, idx) => {
     const place = p.order || idx + 1;
     const medal = medalForPlace(place);
+    const medalForTitle = status === "finished" ? "" : medal;
     const card = document.createElement("div");
     card.className = "prize-card";
     const title = document.createElement("h3");
-    title.textContent = `${medal ? medal + ' ' : ''}${place}. ${p.name || 'Приз'}`;
+    title.textContent = `${medalForTitle ? medalForTitle + ' ' : ''}${place}. ${p.name || 'Приз'}`;
     const desc = document.createElement("p");
     desc.textContent = p.description || "";
     const meta = document.createElement("div");

@@ -678,6 +678,11 @@ def register_routes(app: FastAPI):
                 ticket_no = safe_int(winner.get("ticket_no") or winner.get("ticket")) or None
                 winner_name = await resolve_winner_name(r, safe_int(winner.get("user_id"))) or None
 
+            if status == "finished" and not winner:
+                # Приз не был разыгран (например, участников меньше чем призов)
+                # — не показываем его в публичном списке итогов.
+                continue
+
             prize_rows.append(
                 {
                     "id": pid,
@@ -817,6 +822,7 @@ def register_routes(app: FastAPI):
             winners.append(
                 {
                     "prize_id": prize.get("id"),
+                    "prize_order": prize.get("order") or idx + 1,
                     "ticket": ticket,
                     "ticket_no": safe_int(ticket),
                     "user_id": uid,

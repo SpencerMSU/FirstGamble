@@ -21,8 +21,8 @@ local cjson = require("cjson")
 local API_URL = "https://api.firstgamble.ru/api/dice/award" 
 local SERVICE_TOKEN = "auth_conserve_82650245_XxX"
 
-local DICE_SUM = 7
-local NickName = "Player_123"
+local DICE_SUM = "хз как получаем"
+local NickName = "хз как парсим"
 
 local payload_table = {
   dice_sum = DICE_SUM,

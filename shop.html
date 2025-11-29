@@ -208,7 +208,8 @@ async function buyTicket(price){
     return;
   }
   setBalance(res.balance);
-  tg?.showPopup?.({message: `Куплен билет #${res.ticket}`});
+  const bought = res.bought || res.ticket || (res.tickets?.slice(-1)?.[0]);
+  tg?.showPopup?.({message: `Куплен билет #${bought}`});
   renderTickets();
 }
 
@@ -219,9 +220,13 @@ async function loadBalance(){
   if(r && r.ok){
     setBalance(r.balance);
     localStorage.setItem('balance_local', r.balance);
+    renderTickets();
   } else {
     const cached = localStorage.getItem('balance_local');
-    if(cached!==null) setBalance(Number(cached)||0);
+    if(cached!==null){
+      setBalance(Number(cached)||0);
+      renderTickets();
+    }
   }
 }
 

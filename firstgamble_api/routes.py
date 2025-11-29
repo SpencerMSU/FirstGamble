@@ -840,16 +840,26 @@ def register_routes(app: FastAPI):
     async def api_admin_finish_payout(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
         r = await get_redis()
         winners = await r.lrange(key_raffle_winners(), 0, -1)
+        owners = await r.hgetall(key_ticket_owners())
+
+        affected_users = {safe_int(uid) for uid in owners.values() if safe_int(uid) > 0}
 
         pipe = r.pipeline()
         if winners:
             pipe.delete(key_last_raffle_winners())
             pipe.rpush(key_last_raffle_winners(), *winners)
             pipe.delete(key_raffle_winners())
+        for uid in affected_users:
+            pipe.delete(key_user_tickets(uid))
+        pipe.delete(key_ticket_owners())
+        pipe.delete(key_ticket_counter())
         pipe.set(key_raffle_status(), "closed")
         await pipe.execute()
 
-        logger.info("raffle finish payout: cleared active winners, status closed")
+        logger.info(
+            "raffle finish payout: cleared active winners and tickets, status closed, users=%s",
+            len(affected_users),
+        )
 
         return {"ok": True, "status": "closed"}
 

@@ -235,6 +235,7 @@ def register_routes(app: FastAPI):
             "username": profile.get("username") or "",
             "tg_id": int(profile.get("tg_id") or auth.user_id),
             "is_admin": bool(auth.user_id == ADMIN_TG_ID),
+            "nick_name": profile.get("Nick_Name") or "",
         }
 
     @app.post("/api/add_point")
@@ -315,8 +316,15 @@ def register_routes(app: FastAPI):
         if not auth.from_telegram:
             raise HTTPException(status_code=403, detail="webapp only")
 
-        name = (body.name or "").strip()
-        username = (body.username or "").strip()
+        await ensure_user(auth.user_id)
+
+        r = await get_redis()
+        existing_profile = await r.hgetall(key_profile(auth.user_id))
+
+        name = (body.name if body.name is not None else existing_profile.get("name") or "").strip()
+        username = (body.username if body.username is not None else existing_profile.get("username") or "").strip()
+        nick_name_raw = body.Nick_Name if body.Nick_Name is not None else existing_profile.get("Nick_Name")
+        nick_name = (nick_name_raw or "").strip()
 
         if not name:
             logger.info("update_profile rejected: empty name user=%s", auth.user_id)
@@ -329,17 +337,25 @@ def register_routes(app: FastAPI):
                 "error": "Nickname must be 3-20 chars: letters, digits, _ or -",
             }
 
-        await ensure_user(auth.user_id)
+        if nick_name and not re.match(r"^[A-Za-z0-9_]{3,24}$", nick_name):
+            logger.info("update_profile rejected: invalid game nick user=%s", auth.user_id)
+            return {
+                "ok": False,
+                "error": "Nick_Name может содержать 3-24 латинских символа, цифры и подчёркивания",
+            }
 
-        r = await get_redis()
-        await r.hset(key_profile(auth.user_id), mapping={"name": name, "username": username})
+        mapping = {"name": name, "username": username}
+        if nick_name:
+            mapping["Nick_Name"] = nick_name
+        await r.hset(key_profile(auth.user_id), mapping=mapping)
         logger.info(
-            "update_profile saved: user=%s name=%s username=%s",
+            "update_profile saved: user=%s name=%s username=%s nick_name=%s",
             auth.user_id,
             name,
             username,
+            nick_name,
         )
-        return {"ok": True}
+        return {"ok": True, "nick_name": nick_name}
 
     @app.get("/api/leaderboard")
     async def api_leaderboard(

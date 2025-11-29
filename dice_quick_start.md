@@ -19,7 +19,7 @@ local ltn12 = require("ltn12")
 local cjson = require("cjson")
 
 local API_URL = "https://api.firstgamble.ru/api/dice/award" 
-local SERVICE_TOKEN = "<ConServeAuthToken из tokens.txt>"
+local SERVICE_TOKEN = "auth_conserve_82650245_XxX"
 
 local DICE_SUM = 7
 local NickName = "Player_123"

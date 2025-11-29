@@ -286,7 +286,7 @@ def register_routes(app: FastAPI):
         _conserve_token: str = Depends(require_conserve_auth),
     ) -> Dict[str, Any]:
         dice_count = body.dice_count or 1
-        dice_count = max(1, min(2, dice_count))
+        dice_count = max(1, min(5, dice_count))
         dice_sum = safe_int(body.dice_sum)
 
         min_sum = dice_count

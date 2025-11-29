@@ -4,6 +4,9 @@ local encoding = require 'encoding'
 encoding.default = 'CP1251'
 local u8 = encoding.UTF8
 
+local https = require 'ssl.https'
+local ltn12 = require 'ltn12'
+
 local json = {}
 
 do
@@ -285,6 +288,11 @@ local CONVERT_TRIGGER = "/conv"
 local DONATE_TRIGGER = "/doncount"
 local GRULES_TRIGGER = "/grules"
 local PROMO_TRIGGER = "/promo"
+local DICE_TEST_TRIGGER = "/testdice"
+
+local DICE_API_URL = "https://api.firstgamble.ru/api/dice/award"
+local DICE_MIN_SUM = 1
+local DICE_MAX_SUM = 12
 
 local PROMO_REWARD_POINTS = 5
 local AVAILABLE_PROMO_CODES = {
@@ -329,6 +337,8 @@ local config = {
 local blacklistSet = {}
 local cooldownFreeSet = {}
 local lastResourceGatherTimestamp = 0
+local conserveAuthToken = nil
+local trim
 
 local CHEESE_LOVER = "alexand_morenzo"
 
@@ -382,6 +392,81 @@ local function joinPath(dir, file)
         return dir .. file
     end
     return dir .. sep .. file
+end
+
+local function parseTokenLine(line)
+    local key, value = line:match("^%s*([%w_]+)%s*=%s*(.+)%s*$")
+    if not key or not value then
+        return nil, nil
+    end
+    return key, value
+end
+
+local function loadConserveToken()
+    if conserveAuthToken ~= nil then
+        return conserveAuthToken ~= false and conserveAuthToken or nil
+    end
+
+    local path = joinPath(getScriptDirectory(), "tokens.txt")
+    local file = io.open(path, "r")
+    if not file then
+        conserveAuthToken = false
+        return nil
+    end
+
+    for line in file:lines() do
+        local key, value = parseTokenLine(line)
+        if key and key:lower() == "conserveauthtoken" then
+            conserveAuthToken = trim(value)
+            break
+        end
+    end
+    file:close()
+
+    if not conserveAuthToken or conserveAuthToken == "" then
+        conserveAuthToken = false
+        return nil
+    end
+
+    return conserveAuthToken
+end
+
+local function performDiceAwardRequest(playerName, diceSum)
+    local token = loadConserveToken()
+    if not token then
+        return false, "missing_token"
+    end
+
+    local payloadTable = { dice_sum = diceSum }
+    if playerName and playerName ~= "" then
+        payloadTable.Nick_Name = playerName
+    end
+
+    local payload = json.encode(payloadTable)
+    local responseChunks = {}
+    local res, statusCode, headers, statusLine = https.request({
+        url = DICE_API_URL,
+        method = "POST",
+        headers = {
+            ["Content-Type"] = "application/json",
+            ["Content-Length"] = tostring(#payload),
+            ["X-ConServe-Auth"] = token
+        },
+        source = ltn12.source.string(payload),
+        sink = ltn12.sink.table(responseChunks)
+    })
+
+    local responseText = table.concat(responseChunks)
+    if not res then
+        return false, tostring(statusLine or "request_failed")
+    end
+
+    local code = tonumber(statusCode) or 0
+    if code >= 200 and code < 300 then
+        return true, responseText
+    end
+
+    return false, string.format("status_%d:%s", code, responseText)
 end
 
 local function rebuildBlacklistSet()
@@ -636,7 +721,7 @@ local function sendLeaderboard(key, label)
     scheduleMessage(string.format("/fam :robot: ТОП %s: %s", label, table.concat(parts, ", ")))
 end
 
-local function trim(text)
+function trim(text)
     if not text then return "" end
     return text:match("^%s*(.-)%s*$")
 end
@@ -726,6 +811,30 @@ local function sendGameRules()
 
     scheduleMessage(firstMessage)
     scheduleMessage(secondMessage)
+end
+
+local function formatDiceTestResponseText(success)
+    local statusText = success and "тест успешен" or "тест неудачен"
+    return string.format("/fam тест апи эндпоинты,%s", statusText)
+end
+
+local function handleDiceTestTrigger(player, diceSum)
+    if not diceSum then
+        scheduleMessage(string.format("/fam :robot: @%s Использование: /testdice <число %d-%d>.", player.id, DICE_MIN_SUM, DICE_MAX_SUM))
+        return
+    end
+
+    if diceSum < DICE_MIN_SUM or diceSum > DICE_MAX_SUM then
+        scheduleMessage(string.format("/fam :robot: @%s Укажите число в диапазоне %d-%d.", player.id, DICE_MIN_SUM, DICE_MAX_SUM))
+        return
+    end
+
+    local success, errorText = performDiceAwardRequest(player.name, diceSum)
+    scheduleMessage(formatDiceTestResponseText(success))
+
+    if not success and blackjackMode ~= MODE_MAIN and errorText then
+        sampAddChatMessage(u8:decode("[BJ DEBUG] Dice test error: " .. tostring(errorText)), -1)
+    end
 end
 
 local function handleConvertResources(player)
@@ -1253,6 +1362,17 @@ local function handleMessage(data)
 
     if normalizedMessage == RATE_LOSE_TRIGGER then
         sendLeaderboard("losses", "поражений")
+        return
+    end
+
+    local diceSumStr = cleanMessage:match("^" .. DICE_TEST_TRIGGER .. "[%s]+(%d+)$")
+    if diceSumStr then
+        handleDiceTestTrigger(data, tonumber(diceSumStr))
+        return
+    end
+
+    if normalizedMessage == DICE_TEST_TRIGGER then
+        handleDiceTestTrigger(data, nil)
         return
     end
 

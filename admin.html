@@ -37,9 +37,9 @@
             <h2>Призы розыгрыша</h2>
             <button id="addPrizeBtn">Добавить</button>
           </div>
-          <div class="muted">Укажите порядок для контроля выпадения (меньше — выше).</div>
+          <div class="muted">Призы добавляются по порядку: первый добавленный — 1 место, далее по списку.</div>
           <table id="prizeTable">
-            <thead><tr><th>ID</th><th>Название</th><th>Описание</th><th>Порядок</th><th></th></tr></thead>
+            <thead><tr><th>ID</th><th>Место</th><th>Название</th><th></th></tr></thead>
             <tbody></tbody>
           </table>
         </div>
@@ -77,6 +77,8 @@
   <script>
     const API_BASE = "https://api.firstgamble.ru";
     const qs = (id) => document.getElementById(id);
+    const medalForPlace = (place) => ({1:'🥇',2:'🥈',3:'🥉'}[place]||'');
+    let prizesCache = [];
 
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
@@ -112,18 +114,20 @@
     function renderPrizes(items){
       const tbody = qs('prizeTable').querySelector('tbody');
       tbody.innerHTML = '';
-      (items||[]).forEach(p => {
+      prizesCache = items || [];
+      (items||[]).forEach((p, idx) => {
         const tr = document.createElement('tr');
-        tr.innerHTML = `<td>${p.id}</td><td>${p.name}</td><td>${p.description||''}</td><td>${p.order||0}</td>`;
+        const place = p.order || idx + 1;
+        const medal = medalForPlace(place);
+        tr.innerHTML = `<td>${p.id}</td><td>${medal ? medal + ' ' : ''}${place} место</td><td>${p.name}</td>`;
         const actions = document.createElement('td');
         const edit = document.createElement('button');
         edit.textContent = 'Изменить';
         edit.className = 'secondary';
         edit.onclick = async ()=>{
-          const name = prompt('Название', p.name)||p.name;
-          const description = prompt('Описание', p.description||'')||'';
-          const order = Number(prompt('Порядок', p.order||0) || p.order || 0);
-          const res = await api(`/api/admin/raffle/prizes/${p.id}`,'PUT',{name,description,order});
+          const name = prompt('Название', p.name)?.trim();
+          if(!name || name === p.name) return;
+          const res = await api(`/api/admin/raffle/prizes/${p.id}`,'PUT',{name});
           renderPrizes(res.items||[]);
         };
         const del = document.createElement('button');
@@ -152,7 +156,10 @@
         row.className = 'row';
         const ticket = w.ticket_no || w.ticket;
         const username = w.winner_username ? '@'+w.winner_username : (w.user_name || w.user_id);
-        row.innerHTML = `<span class="tag">Приз #${w.prize_id}</span><span class="tag">Билет ${ticket||'?'}</span><span class="tag">${username || ''}</span>`;
+        const prize = prizesCache.find(p=>p.id===w.prize_id);
+        const place = prize?.order || '?';
+        const medal = medalForPlace(prize?.order);
+        row.innerHTML = `<span class="tag">${medal?medal+' ':''}${place} место</span><span class="tag">Билет ${ticket||'?'}</span><span class="tag">${username || ''}</span>`;
         root.appendChild(row);
       });
     }
@@ -163,6 +170,9 @@
     }
 
     async function loadWinners(){
+      if(!prizesCache.length){
+        await loadPrizes();
+      }
       const res = await api('/api/admin/raffle/winners');
       renderWinners(res.items||[]);
       if(res.status === 'closed' && (!res.items || res.items.length === 0)){
@@ -174,9 +184,7 @@
       console.log('click add prize');
       const name = prompt('Название приза');
       if(!name) return;
-      const description = prompt('Описание') || '';
-      const order = Number(prompt('Порядок (число)') || 0);
-      await api('/api/admin/raffle/prizes','POST',{name,description,order});
+      await api('/api/admin/raffle/prizes','POST',{name});
       await loadPrizes();
     });
 
@@ -246,8 +254,10 @@
       }
     });
     qs('adminUser').textContent = 'Доступ открыт из WebApp';
-    loadPrizes();
-    loadWinners();
+    (async()=>{
+      await loadPrizes();
+      await loadWinners();
+    })();
   </script>
 </body>
 </html>

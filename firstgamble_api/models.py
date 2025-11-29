@@ -59,14 +59,10 @@ class AdminLoginRequest(BaseModel):
 
 class AdminPrizeRequest(BaseModel):
     name: str
-    description: Optional[str] = ""
-    order: Optional[int] = 0
 
 
 class AdminPrizeUpdateRequest(BaseModel):
     name: Optional[str] = None
-    description: Optional[str] = None
-    order: Optional[int] = None
 
 
 class AdminDrawRequest(BaseModel):

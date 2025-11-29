@@ -37,6 +37,29 @@
     background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
     height:100%;overflow-y:auto;overscroll-behavior:none;
   }
+  .gate{
+    position:fixed;inset:0;display:flex;align-items:center;justify-content:center;
+    background:rgba(0,0,0,.6);backdrop-filter:blur(6px);z-index:20;padding:16px;
+  }
+  .gate-card{
+    width:min(340px,100%);
+    background:linear-gradient(180deg,var(--panel),var(--card));
+    border:1px solid var(--stroke);border-radius:16px;box-shadow:var(--shadow);
+    padding:16px;display:flex;flex-direction:column;gap:10px;align-items:stretch;
+  }
+  .gate-title{font-weight:900;font-size:18px;}
+  .gate-text{font-size:13px;color:var(--muted);}
+  .gate-input{
+    padding:10px 12px;border-radius:12px;border:1px solid var(--stroke);
+    background:linear-gradient(180deg,var(--card),var(--card2));color:var(--text);
+    font-weight:800;font-size:14px;
+  }
+  .gate-btn{
+    padding:11px 12px;border-radius:12px;border:1px solid var(--stroke2);
+    background:linear-gradient(180deg,var(--blue),var(--blue2));color:white;font-weight:900;
+    cursor:pointer;
+  }
+  .gate-error{color:var(--red);font-size:12px;min-height:14px;}
   .container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
 .title{display:flex;flex-direction:column;gap:2px;align-items:center;flex:1;}
@@ -99,7 +122,16 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 </style>
 </head>
 <body>
-<div class="app">
+<div id="rpgGate" class="gate hidden">
+  <div class="gate-card">
+    <div class="gate-title">🔒 Доступ к RPG</div>
+    <div class="gate-text">Введите код доступа, чтобы продолжить.</div>
+    <input id="gateInput" class="gate-input" type="password" placeholder="Код доступа">
+    <button id="gateBtn" class="gate-btn">Войти</button>
+    <div id="gateError" class="gate-error"></div>
+  </div>
+</div>
+<div class="app" id="appRoot" aria-hidden="true">
   <header>
     <a class="back" href="/">← Назад</a>
     <div class="title">
@@ -170,6 +202,54 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 
 <script>
 const tgInstance = initTelegramGuard();
+
+const ACCESS_CODE = "admin";
+const ACCESS_KEY = "rpg_access_ok";
+
+const gateEl = document.getElementById("rpgGate");
+const gateInput = document.getElementById("gateInput");
+const gateBtn = document.getElementById("gateBtn");
+const gateError = document.getElementById("gateError");
+const appRoot = document.getElementById("appRoot");
+
+function showGate(){
+  gateEl.classList.remove("hidden");
+  appRoot.setAttribute("aria-hidden", "true");
+  setTimeout(()=>gateInput?.focus(), 50);
+}
+
+function grantAccess(){
+  localStorage.setItem(ACCESS_KEY, "1");
+  gateEl.classList.add("hidden");
+  gateError.textContent = "";
+  appRoot.removeAttribute("aria-hidden");
+}
+
+function checkGate(){
+  const saved = localStorage.getItem(ACCESS_KEY);
+  if(saved === "1"){
+    grantAccess();
+    return;
+  }
+  showGate();
+}
+
+gateBtn?.addEventListener("click", ()=>{
+  const val = (gateInput?.value || "").trim();
+  if(val !== ACCESS_CODE){
+    gateError.textContent = "Неверный код";
+    return;
+  }
+  grantAccess();
+});
+
+gateInput?.addEventListener("keydown", (e)=>{
+  if(e.key === "Enter"){
+    gateBtn?.click();
+  }
+});
+
+checkGate();
 
 const RES_MAX = 999;
 

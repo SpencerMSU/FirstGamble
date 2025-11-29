@@ -18,9 +18,8 @@ class AddPointRequest(BaseModel):
 
 
 class DiceExternalAwardRequest(BaseModel):
-    Nick_Name: str
+    Nick_Name: Optional[str] = None
     dice_sum: int
-    dice_count: int = Field(2, ge=1, le=2)
 
 
 class ReportGameRequest(BaseModel):

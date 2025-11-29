@@ -285,8 +285,9 @@ def register_routes(app: FastAPI):
         body: DiceExternalAwardRequest,
         _conserve_token: str = Depends(require_conserve_auth),
     ) -> Dict[str, Any]:
-        dice_count = body.dice_count or 1
-        dice_count = max(1, min(5, dice_count))
+        # Внешний запрос не обязан передавать количество кубиков: используем
+        # фиксированное значение для проверки корректности суммы.
+        dice_count = 2
         dice_sum = safe_int(body.dice_sum)
 
         min_sum = dice_count
@@ -294,7 +295,9 @@ def register_routes(app: FastAPI):
         if dice_sum < min_sum or dice_sum > max_sum:
             raise HTTPException(status_code=400, detail="dice_sum out of range")
 
-        uid = await find_user_by_game_nick(body.Nick_Name)
+        uid = None
+        if body.Nick_Name:
+            uid = await find_user_by_game_nick(body.Nick_Name)
         if not uid:
             raise HTTPException(status_code=404, detail="Nick_Name is not linked")
 
@@ -315,7 +318,6 @@ def register_routes(app: FastAPI):
             "user_id": uid,
             "nick_name": body.Nick_Name,
             "dice_sum": dice_sum,
-            "dice_count": dice_count,
             "added_points": dice_sum,
             "balance": new_balance,
         }

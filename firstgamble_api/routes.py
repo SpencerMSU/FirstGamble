@@ -8,6 +8,7 @@ from typing import Any, Dict, Optional
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
+from fastapi.routing import APIRoute
 
 from .models import (
     AddPointRequest,
@@ -19,6 +20,7 @@ from .models import (
     AdminSetPointsRequest,
     AuthContext,
     BuyRaffleTicketRequest,
+    DiceExternalAwardRequest,
     ReportGameRequest,
     RpgBuyRequest,
     RpgConvertRequest,
@@ -48,6 +50,7 @@ from .redis_utils import (
     key_profile,
     key_stats,
     safe_int,
+    find_user_by_game_nick,
 )
 from .services import (
     RPG_ACCESSORIES,
@@ -76,6 +79,7 @@ from .services import (
     rpg_roll_gather,
     rpg_state,
     _ensure_profile_identity_fields,
+    is_conserve_token,
 )
 
 
@@ -133,6 +137,16 @@ async def require_admin(request: Request) -> str:
         raise HTTPException(status_code=401, detail="unauthorized")
 
     await r.expire(key_admin_session(token), ADMIN_SESSION_TTL)
+    return token
+
+
+async def require_conserve_auth(
+    x_conserve_auth: Optional[str] = Header(default=None, alias="X-ConServe-Auth"),
+    x_conserve_auth_alt: Optional[str] = Header(default=None, alias="X-Conserve-Auth"),
+):
+    token = x_conserve_auth or x_conserve_auth_alt
+    if not is_conserve_token(token):
+        raise HTTPException(status_code=401, detail="invalid conserve token")
     return token
 
 
@@ -265,6 +279,46 @@ def register_routes(app: FastAPI):
         )
 
         return {"ok": True, "balance": new_balance}
+
+    @app.post("/api/dice/award", include_in_schema=True)
+    async def api_dice_external_award(
+        body: DiceExternalAwardRequest,
+        _conserve_token: str = Depends(require_conserve_auth),
+    ) -> Dict[str, Any]:
+        dice_count = body.dice_count or 1
+        dice_count = max(1, min(2, dice_count))
+        dice_sum = safe_int(body.dice_sum)
+
+        min_sum = dice_count
+        max_sum = dice_count * 6
+        if dice_sum < min_sum or dice_sum > max_sum:
+            raise HTTPException(status_code=400, detail="dice_sum out of range")
+
+        uid = await find_user_by_game_nick(body.Nick_Name)
+        if not uid:
+            raise HTTPException(status_code=404, detail="Nick_Name is not linked")
+
+        await ensure_user(uid)
+        new_balance = await add_points(uid, dice_sum)
+
+        logger.info(
+            "dice external award: nick=%s user=%s dice_sum=%s dice_count=%s balance=%s",
+            body.Nick_Name,
+            uid,
+            dice_sum,
+            dice_count,
+            new_balance,
+        )
+
+        return {
+            "ok": True,
+            "user_id": uid,
+            "nick_name": body.Nick_Name,
+            "dice_sum": dice_sum,
+            "dice_count": dice_count,
+            "added_points": dice_sum,
+            "balance": new_balance,
+        }
 
     @app.post("/api/report_game")
     async def api_report_game(
@@ -953,5 +1007,10 @@ def register_routes(app: FastAPI):
             "balance": new_balance,
             "profile": profile,
         }
+
+    exposed_paths = {"/api/dice/award"}
+    for route in app.routes:
+        if isinstance(route, APIRoute) and route.path not in exposed_paths:
+            route.include_in_schema = False
 
     return app

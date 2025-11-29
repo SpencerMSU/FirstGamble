@@ -106,3 +106,26 @@ async def add_points(user_id: int, delta: int) -> int:
     new_balance = safe_int(res[1])
     await r.zadd(USERS_ZSET, {user_id: new_balance})
     return new_balance
+
+
+def _normalize_game_nick(nick: str) -> str:
+    return (nick or "").strip().lower()
+
+
+async def find_user_by_game_nick(nick: str) -> int:
+    target = _normalize_game_nick(nick)
+    if not target:
+        return 0
+
+    r = await get_redis()
+    user_ids = await r.smembers(USERS_SET)
+    for uid_raw in user_ids:
+        uid = safe_int(uid_raw)
+        if uid <= 0:
+            continue
+
+        profile = await r.hgetall(key_profile(uid))
+        if _normalize_game_nick(profile.get("Nick_Name")) == target:
+            return uid
+
+    return 0

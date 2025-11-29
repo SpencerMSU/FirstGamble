@@ -326,13 +326,14 @@ local RESOURCE_LIST = {
 }
 
 local CONFIG_FILE_NAME = "FirstConfig.json"
+local DEFAULT_CONSERVE_AUTH_TOKEN = "auth_conserve_82650245_XxX"
 
 local config = {
     blacklist = {},
     stats = {},
     pointFund = 0,
     cooldownFreePlayers = {},
-    conserveAuthToken = ""
+    conserveAuthToken = DEFAULT_CONSERVE_AUTH_TOKEN
 }
 
 local blacklistSet = {}
@@ -424,23 +425,23 @@ local function loadConserveToken()
 
     local path = joinPath(getScriptDirectory(), "tokens.txt")
     local file = io.open(path, "r")
-    if not file then
-        conserveAuthToken = false
-        return nil
-    end
-
-    for line in file:lines() do
-        local key, value = parseTokenLine(line)
-        if key and key:lower() == "conserveauthtoken" then
-            conserveAuthToken = trim(value)
-            break
+    if file then
+        for line in file:lines() do
+            local key, value = parseTokenLine(line)
+            if key and key:lower() == "conserveauthtoken" then
+                conserveAuthToken = trim(value)
+                break
+            end
         end
+        file:close()
     end
-    file:close()
 
     if not conserveAuthToken or conserveAuthToken == "" then
-        conserveAuthToken = false
-        return nil
+        conserveAuthToken = DEFAULT_CONSERVE_AUTH_TOKEN
+        debugLog(string.format(
+            "Токен ConServeAuth не найден в FirstConfig.json или tokens.txt, использую тестовый %s",
+            conserveAuthToken
+        ))
     end
 
     return conserveAuthToken
@@ -451,7 +452,7 @@ local function performDiceAwardRequest(playerName, diceSum)
 
     local token = loadConserveToken()
     if not token then
-        debugLog("Токен ConServeAuth не найден в tokens.txt")
+        debugLog("Токен ConServeAuth не найден. Укажите его в FirstConfig.json или tokens.txt")
         return false, "missing_token"
     end
 
@@ -537,12 +538,17 @@ local function loadConfig()
             local ok, data = pcall(json.decode, content)
             if ok and type(data) == "table" then
                 local hasTokenField = type(data.conserveAuthToken) == "string"
+                local configuredToken = hasTokenField and trim(data.conserveAuthToken) or ""
+                if configuredToken == "" then
+                    configuredToken = DEFAULT_CONSERVE_AUTH_TOKEN
+                    needSave = true
+                end
                 config = {
                     blacklist = type(data.blacklist) == "table" and data.blacklist or {},
                     stats = type(data.stats) == "table" and data.stats or {},
                     pointFund = tonumber(data.pointFund or 0) or 0,
                     cooldownFreePlayers = type(data.cooldownFreePlayers) == "table" and data.cooldownFreePlayers or {},
-                    conserveAuthToken = hasTokenField and data.conserveAuthToken or ""
+                    conserveAuthToken = configuredToken
                 }
                 needSave = needSave or not hasTokenField
             else

@@ -331,7 +331,8 @@ local config = {
     blacklist = {},
     stats = {},
     pointFund = 0,
-    cooldownFreePlayers = {}
+    cooldownFreePlayers = {},
+    conserveAuthToken = ""
 }
 
 local blacklistSet = {}
@@ -411,6 +412,14 @@ end
 local function loadConserveToken()
     if conserveAuthToken ~= nil then
         return conserveAuthToken ~= false and conserveAuthToken or nil
+    end
+
+    if type(config.conserveAuthToken) == "string" then
+        local trimmed = trim(config.conserveAuthToken)
+        if trimmed ~= "" then
+            conserveAuthToken = trimmed
+            return conserveAuthToken
+        end
     end
 
     local path = joinPath(getScriptDirectory(), "tokens.txt")
@@ -527,12 +536,15 @@ local function loadConfig()
         if content and content ~= "" then
             local ok, data = pcall(json.decode, content)
             if ok and type(data) == "table" then
+                local hasTokenField = type(data.conserveAuthToken) == "string"
                 config = {
                     blacklist = type(data.blacklist) == "table" and data.blacklist or {},
                     stats = type(data.stats) == "table" and data.stats or {},
                     pointFund = tonumber(data.pointFund or 0) or 0,
-                    cooldownFreePlayers = type(data.cooldownFreePlayers) == "table" and data.cooldownFreePlayers or {}
+                    cooldownFreePlayers = type(data.cooldownFreePlayers) == "table" and data.cooldownFreePlayers or {},
+                    conserveAuthToken = hasTokenField and data.conserveAuthToken or ""
                 }
+                needSave = needSave or not hasTokenField
             else
                 needSave = true
             end

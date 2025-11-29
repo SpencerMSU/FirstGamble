@@ -157,8 +157,8 @@
         const ticket = w.ticket_no || w.ticket;
         const username = w.winner_username ? '@'+w.winner_username : (w.user_name || w.user_id);
         const prize = prizesCache.find(p=>p.id===w.prize_id);
-        const place = prize?.order || '?';
-        const medal = medalForPlace(prize?.order);
+        const place = prize?.order || w.prize_order || '?';
+        const medal = medalForPlace(prize?.order || w.prize_order);
         row.innerHTML = `<span class="tag">${medal?medal+' ':''}${place} место</span><span class="tag">Билет ${ticket||'?'}</span><span class="tag">${username || ''}</span>`;
         root.appendChild(row);
       });

@@ -59,6 +59,12 @@
     background:linear-gradient(180deg,var(--blue),var(--blue2));color:white;font-weight:900;
     cursor:pointer;
   }
+  .gate-actions{display:flex;flex-wrap:wrap;gap:8px;}
+  .gate-btn.secondary{
+    background:linear-gradient(180deg,var(--card),var(--card2));
+    border-color:var(--stroke);
+    color:var(--text);
+  }
   .gate-error{color:var(--red);font-size:12px;min-height:14px;}
   .container,.content{height:100%;overflow-y:auto;overscroll-behavior:none;}
 header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
@@ -127,7 +133,10 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="gate-title">🔒 Доступ к RPG</div>
     <div class="gate-text">Введите код доступа, чтобы продолжить.</div>
     <input id="gateInput" class="gate-input" type="password" placeholder="Код доступа">
-    <button id="gateBtn" class="gate-btn">Войти</button>
+    <div class="gate-actions">
+      <button id="gateBack" class="gate-btn secondary">← Назад</button>
+      <button id="gateBtn" class="gate-btn">Войти</button>
+    </div>
     <div id="gateError" class="gate-error"></div>
   </div>
 </div>
@@ -209,6 +218,7 @@ const ACCESS_KEY = "rpg_access_ok";
 const gateEl = document.getElementById("rpgGate");
 const gateInput = document.getElementById("gateInput");
 const gateBtn = document.getElementById("gateBtn");
+const gateBack = document.getElementById("gateBack");
 const gateError = document.getElementById("gateError");
 const appRoot = document.getElementById("appRoot");
 
@@ -241,6 +251,14 @@ gateBtn?.addEventListener("click", ()=>{
     return;
   }
   grantAccess();
+});
+
+gateBack?.addEventListener("click", ()=>{
+  if(history.length > 1){
+    history.back();
+  } else {
+    location.href = "/";
+  }
 });
 
 gateInput?.addEventListener("keydown", (e)=>{

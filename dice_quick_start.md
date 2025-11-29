@@ -18,14 +18,14 @@ local http = require("socket.http")
 local ltn12 = require("ltn12")
 local cjson = require("cjson")
 
-local API_URL = "https://api.firstgamble.ru/api/dice/award" -- можно заменить на http://5.129.243.45/api/dice/award
+local API_URL = "https://api.firstgamble.ru/api/dice/award" 
 local SERVICE_TOKEN = "<ConServeAuthToken из tokens.txt>"
 
 local DICE_SUM = 7
-local NickName = "Player_123" -- укажите, если ник связан в кабинете; можно убрать поле
+local NickName = "Player_123"
 
 local payload_table = {
-  dice_sum = DICE_SUM, -- сумма броска двух кубиков (1–12)
+  dice_sum = DICE_SUM,
   Nick_Name = NickName
 }
 

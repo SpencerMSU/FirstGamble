@@ -402,6 +402,12 @@ local function parseTokenLine(line)
     return key, value
 end
 
+local function debugLog(text)
+    local prefix = "[LUDKA DEBUG] "
+    local message = prefix .. tostring(text)
+    sampAddChatMessage(u8:decode(message), -1)
+end
+
 local function loadConserveToken()
     if conserveAuthToken ~= nil then
         return conserveAuthToken ~= false and conserveAuthToken or nil
@@ -432,8 +438,11 @@ local function loadConserveToken()
 end
 
 local function performDiceAwardRequest(playerName, diceSum)
+    debugLog("Начало отправки запроса на начисление за кости")
+
     local token = loadConserveToken()
     if not token then
+        debugLog("Токен ConServeAuth не найден в tokens.txt")
         return false, "missing_token"
     end
 
@@ -441,6 +450,12 @@ local function performDiceAwardRequest(playerName, diceSum)
     if playerName and playerName ~= "" then
         payloadTable.Nick_Name = playerName
     end
+
+    debugLog(string.format(
+        "Готовлю payload для %s: сумма=%s",
+        tostring(payloadTable.Nick_Name or "без ника"),
+        tostring(diceSum)
+    ))
 
     local payload = json.encode(payloadTable)
     local responseChunks = {}
@@ -458,10 +473,12 @@ local function performDiceAwardRequest(playerName, diceSum)
 
     local responseText = table.concat(responseChunks)
     if not res then
+        debugLog(string.format("Запрос не выполнен: %s", tostring(statusLine or "request_failed")))
         return false, tostring(statusLine or "request_failed")
     end
 
     local code = tonumber(statusCode) or 0
+    debugLog(string.format("Ответ сервера: код=%d тело=%s", code, responseText ~= "" and responseText or "<пусто>"))
     if code >= 200 and code < 300 then
         return true, responseText
     end
@@ -819,22 +836,25 @@ local function formatDiceTestResponseText(success)
 end
 
 local function handleDiceTestTrigger(player, diceSum)
+    debugLog(string.format("Запрос /testdice от %s с суммой %s", player.name or "?", tostring(diceSum or "<нет>")))
     if not diceSum then
+        debugLog("Не передано число для теста /testdice")
         scheduleMessage(string.format("/fam :robot: @%s Использование: /testdice <число %d-%d>.", player.id, DICE_MIN_SUM, DICE_MAX_SUM))
         return
     end
 
     if diceSum < DICE_MIN_SUM or diceSum > DICE_MAX_SUM then
+        debugLog(string.format("Число вне диапазона: %s (нужно %d-%d)", tostring(diceSum), DICE_MIN_SUM, DICE_MAX_SUM))
         scheduleMessage(string.format("/fam :robot: @%s Укажите число в диапазоне %d-%d.", player.id, DICE_MIN_SUM, DICE_MAX_SUM))
         return
     end
 
+    debugLog("Отправляю тестовый запрос на сервер FirstClub")
     local success, errorText = performDiceAwardRequest(player.name, diceSum)
     scheduleMessage(formatDiceTestResponseText(success))
 
-    if not success and blackjackMode ~= MODE_MAIN and errorText then
-        sampAddChatMessage(u8:decode("[BJ DEBUG] Dice test error: " .. tostring(errorText)), -1)
-    end
+    local resultText = success and "Успех" or ("Ошибка: " .. tostring(errorText or "<нет описания>"))
+    debugLog("Результат теста дайсов: " .. resultText)
 end
 
 local function handleConvertResources(player)

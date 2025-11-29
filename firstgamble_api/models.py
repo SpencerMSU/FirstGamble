@@ -27,6 +27,7 @@ class UpdateProfileRequest(BaseModel):
     user_id: Optional[str] = None
     name: Optional[str] = None
     username: Optional[str] = None
+    Nick_Name: Optional[str] = None
 
 
 class RpgGatherRequest(BaseModel):

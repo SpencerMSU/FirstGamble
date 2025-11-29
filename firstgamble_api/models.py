@@ -17,6 +17,12 @@ class AddPointRequest(BaseModel):
     delta: Optional[int] = 1
 
 
+class DiceExternalAwardRequest(BaseModel):
+    Nick_Name: str
+    dice_sum: int
+    dice_count: int = Field(2, ge=1, le=2)
+
+
 class ReportGameRequest(BaseModel):
     user_id: Optional[str] = None
     game: str

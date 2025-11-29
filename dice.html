@@ -137,7 +137,7 @@
       <div class="controls">
         <label class="input">
           🧊 Кубиков:
-          <input id="diceCount" type="number" min="1" max="5" value="1" />
+          <input id="diceCount" type="number" min="1" max="2" value="1" />
         </label>
         <button id="rollBtn" class="btn">Бросить 🎲</button>
       </div>
@@ -197,9 +197,9 @@
     }
   }
 
-  async function sendPoint(userId, game){
+  async function sendPoint(userId, game, delta){
     const attempt = async ()=>{
-      return await apiPost("/api/add_point", { user_id: String(userId), game: String(game) || "dice" });
+      return await apiPost("/api/add_point", { user_id: String(userId), game: String(game) || "dice", delta: delta });
     };
     try{
       return await attempt();
@@ -236,7 +236,7 @@
   function clampDice(n){
     n = Number(n);
     if(!Number.isFinite(n)) n = 1;
-    return Math.max(1, Math.min(5, Math.floor(n)));
+    return Math.max(1, Math.min(2, Math.floor(n)));
   }
   function rollOne(){ return 1 + Math.floor(Math.random()*6); }
 
@@ -306,12 +306,12 @@
       resultTextEl.classList.add("win");
       if(userId){
         await reportGame(userId, "dice", "win");
-        const res = await sendPoint(userId, "dice");
+        const res = await sendPoint(userId, "dice", youSum);
         if(res.ok){
-          awardTextEl.textContent = "✅ +1 очко за победу добавлено";
+          awardTextEl.textContent = `✅ +${youSum} очков за победу добавлено`;
           document.getElementById("balanceValue").textContent = res.balance;
           localStorage.setItem("balance_local", res.balance);
-          showToast("+1 очко!");
+          showToast(`+${youSum} очков!`);
         }else{
           const friendly = (res.error||"").includes("Load failed")
             ? "Сеть в Telegram WebView. Попробуй ещё раз"

@@ -152,7 +152,7 @@
       <a class="back" href="/ludka">← Назад</a>
       <div class="title">
         <h1>Блэкджек</h1>
-        <span>Без ставок. Победа = +1 очко</span>
+        <span>Победа = +твоя сумма, поражение = +3 очка</span>
       </div>
       <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
     </header>
@@ -212,10 +212,15 @@
       el.textContent=localStorage.getItem("balance_local")||"0";
     }
   }
-  async function sendPoint(uid, game){
+  async function sendPoint(uid, game, delta){
+    const attempt=async()=>{
+      return await apiPost("/api/add_point", {user_id:String(uid), game:String(game)||"bj", delta});
+    };
     try{
-      return await apiPost("/api/add_point", {user_id:String(uid), game:String(game)||"bj"});
-    }catch(err){ return {ok:false, error:String(err)}; }
+      return await attempt();
+    }catch(err){
+      try{ return await attempt(); }catch(err2){ return {ok:false, error:String(err2)}; }
+    }
   }
   async function reportGame(uid, game, result){
     try{
@@ -321,23 +326,23 @@
     statusEl.textContent=text;
   }
 
-  async function givePointIfWin(){
-    if(pointGiven) return;
+  async function awardPoints(amount, message){
+    if(pointGiven || !amount) return;
     pointGiven=true;
     const uid=getTgUserId();
     if(!uid){
-      awardTextEl.textContent="⚠️ Нет TG id — очко не начислено.";
+      awardTextEl.textContent=`⚠️ Нет TG id — не удалось начислить ${amount} оч.`;
       pointGiven=false;
       return;
     }
-    const res=await sendPoint(uid, "bj");
+    const res=await sendPoint(uid, "bj", amount);
     if(res.ok){
-      awardTextEl.textContent="✅ +1 очко за победу добавлено";
+      awardTextEl.textContent=`✅ ${message} (+${amount} очков)`;
       document.getElementById("balanceValue").textContent=res.balance;
       localStorage.setItem("balance_local", res.balance);
-      showToast("+1 очко!");
+      showToast(`+${amount} очков`);
     }else{
-      awardTextEl.textContent="⚠️ Сервер не принял очко: " + (res.error||"unknown");
+      awardTextEl.textContent="⚠️ Сервер не принял очки: " + (res.error||"unknown");
       pointGiven=false;
     }
   }
@@ -355,17 +360,19 @@
     if(result==="player_bust"){
       if(uid) await reportGame(uid,"bj","loss");
       setStatus(`Перебор. Ты проиграл (${p})`, "lose");
+      await awardPoints(3, "Поражение — утешительные очки");
     }else if(result==="dealer_bust"){
       if(uid) await reportGame(uid,"bj","win");
       setStatus(`Дилер перебрал. Ты победил! (${p} против ${d})`, "win");
-      await givePointIfWin();
+      await awardPoints(p, "Победа по твоей сумме");
     }else if(result==="player_win"){
       if(uid) await reportGame(uid,"bj","win");
       setStatus(`Ты победил! (${p} против ${d})`, "win");
-      await givePointIfWin();
+      await awardPoints(p, "Победа по твоей сумме");
     }else if(result==="dealer_win"){
       if(uid) await reportGame(uid,"bj","loss");
       setStatus(`Ты проиграл (${p} против ${d})`, "lose");
+      await awardPoints(3, "Поражение — утешительные очки");
     }else{
       if(uid) await reportGame(uid,"bj","draw");
       setStatus(`Ничья (${p} = ${d})`, "draw");

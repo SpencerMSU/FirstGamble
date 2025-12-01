@@ -113,11 +113,15 @@
   const restartBtn = document.getElementById('restartBtn');
 
   let snake = [];
+  let previousSnake = [];
   let dir = {x:1,y:0};
   let nextDir = {x:1,y:0};
   let food = {x:5,y:5};
   let running = false;
   let loopId = null;
+  let lastFrameTime = 0;
+  let accumulator = 0;
+  const stepInterval = 0.12; // seconds between grid steps
   let resultSent = false;
 
   function api(path, method='GET', body){
@@ -153,19 +157,25 @@
   }
 
   function resetGame(){
+    if(loopId){ cancelAnimationFrame(loopId); loopId=null; }
     snake = [{x:10,y:10}];
+    previousSnake = snake.map(s=>({...s}));
     dir = {x:1,y:0};
     nextDir = {x:1,y:0};
     spawnFood();
     running = false;
     resultSent = false;
+    accumulator = 0;
+    lastFrameTime = 0;
     lengthEl.textContent = snake.length;
     scoreEl.textContent = 0;
     setStatus('Нажми «Играть», чтобы начать.', 'idle');
-    draw();
+    draw(0);
   }
 
-  function draw(){
+  function lerp(a,b,t){return a+(b-a)*t;}
+
+  function draw(progress=0){
     ctx.fillStyle = '#0b111b';
     ctx.fillRect(0,0,board.width,board.height);
 
@@ -192,8 +202,9 @@
 
     // snake
     snake.forEach((segment, idx)=>{
-      const x = segment.x*cellSize;
-      const y = segment.y*cellSize;
+      const prev = previousSnake[idx] || segment;
+      const x = lerp(prev.x, segment.x, progress) * cellSize;
+      const y = lerp(prev.y, segment.y, progress) * cellSize;
       const isHead = idx === 0;
       const grad = ctx.createLinearGradient(x,y,x,y+cellSize);
       grad.addColorStop(0,isHead?'#34d399':'#3b82f6');
@@ -211,6 +222,7 @@
   function samePos(a,b){ return a.x===b.x && a.y===b.y; }
 
   function step(){
+    previousSnake = snake.map(s=>({...s}));
     dir = {...nextDir};
     const head = {x:snake[0].x + dir.x, y:snake[0].y + dir.y};
 
@@ -237,15 +249,30 @@
   }
 
   function endGame(result, message){
-    if(loopId){ clearInterval(loopId); loopId=null; }
+    if(loopId){ cancelAnimationFrame(loopId); loopId=null; }
     running = false;
     setStatus(message, result==='win' ? 'win' : 'lose');
     reportResult(result);
   }
 
   function startLoop(){
-    if(loopId) clearInterval(loopId);
-    loopId = setInterval(step, 140);
+    if(loopId) cancelAnimationFrame(loopId);
+    accumulator = 0;
+    lastFrameTime = 0;
+    const loop = (timestamp)=>{
+      if(!lastFrameTime) lastFrameTime = timestamp;
+      const delta = Math.min(0.05, (timestamp - lastFrameTime)/1000);
+      lastFrameTime = timestamp;
+      accumulator += delta;
+      while(running && accumulator >= stepInterval){
+        step();
+        accumulator -= stepInterval;
+      }
+      const progress = Math.min(accumulator / stepInterval, 1);
+      draw(progress);
+      if(running){ loopId = requestAnimationFrame(loop); }
+    };
+    loopId = requestAnimationFrame(loop);
   }
 
   function handleDirection(nx, ny){

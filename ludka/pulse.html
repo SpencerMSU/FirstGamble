@@ -1,0 +1,379 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Неоновый ритм — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#05070d; --bg2:#0b1220; --panel:#0d1117;
+      --card:#0f1624; --card2:#11182a;
+      --stroke:rgba(255,255,255,.08); --stroke2:rgba(99,143,255,.35);
+      --blue:#60a5fa; --blue2:#3b82f6; --pink:#ec4899; --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
+      --text:#e6edf3; --muted:#9ca3af; --shadow:0 0 0 1px var(--stroke),0 8px 32px rgba(0,0,0,.7);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08); --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8; --pink:#db2777;
+      --text:#0b1220; --muted:#52607a; --shadow:0 0 0 1px var(--stroke),0 10px 24px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box;}
+    body{
+      margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--text);
+      background:
+        radial-gradient(900px 540px at 15% -20%, rgba(96,165,250,.28), transparent 60%),
+        radial-gradient(900px 520px at 120% 0%, rgba(236,72,153,.25), transparent 55%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+      min-height:100vh; display:flex; justify-content:center; padding:16px;
+    }
+    .app{width:min(1000px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+      background:linear-gradient(180deg,var(--card) 0%, var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
+      cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .layout{display:grid;grid-template-columns:1fr 320px;gap:12px;align-items:start;}
+    @media(max-width:900px){.layout{grid-template-columns:1fr;}}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 90%,transparent) 100%);
+      border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);}
+    .pill{display:inline-flex;align-items:center;gap:6px;padding:6px 10px;border-radius:999px;font-weight:800;font-size:13px;
+      border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);}
+    .grid{display:flex;flex-wrap:wrap;gap:8px;}
+    .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 6px 18px rgba(59,130,246,.35);}
+    .btn.secondary{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);border-color:var(--stroke);box-shadow:none;}
+    .btn:disabled{opacity:.6;cursor:not-allowed;}
+    canvas{width:100%;border-radius:16px;border:1px solid var(--stroke);background:linear-gradient(180deg,#0a0f1d,#0b1220);
+      box-shadow:inset 0 0 24px rgba(0,0,0,.4);}
+    .stats{display:flex;gap:8px;flex-wrap:wrap;margin:10px 0;}
+    .note{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.6;}
+    .status{font-size:16px;font-weight:900;margin:8px 0 0;}
+    .status.win{color:var(--green);} .status.lose{color:var(--red);} .status.idle{color:var(--muted);}
+    .badge{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:13px;}
+    .lane-legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .legend-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:12px;border:1px solid var(--stroke);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);}
+    .legend-swatch{width:16px;height:16px;border-radius:6px;}
+    .gallery{display:flex;gap:8px;flex-wrap:wrap;}
+    .gallery img{width:36px;height:36px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);}
+    .toast{position:fixed;left:50%;bottom:18px;transform:translateX(-50%) translateY(20px);
+      background:rgba(11,16,24,.94);border:1px solid var(--stroke2);color:var(--text);padding:10px 14px;border-radius:12px;
+      font-size:13px;opacity:0;transition:.2s ease;box-shadow:var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;}
+    .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/ludka">← Назад</a>
+      <div class="title">
+        <h1>Неоновый ритм</h1>
+        <span>Кликай по дорожкам в такт — без ставок, только драйв</span>
+      </div>
+      <div class="gallery" aria-label="Пульс иконки">
+        <img src="https://img.icons8.com/fluency/48/rocket.png" alt="Ракета">
+        <img src="https://img.icons8.com/fluency/48/music.png" alt="Нота">
+        <img src="https://img.icons8.com/fluency/48/light-on.png" alt="Импульс">
+      </div>
+    </header>
+
+    <div class="layout">
+      <section class="section" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+        <canvas id="board" width="720" height="420"></canvas>
+        <div class="stats">
+          <span class="pill">🎯 Цель: 20 точных попаданий</span>
+          <span class="pill">🔥 Серия: <span id="streak">0</span></span>
+          <span class="pill">⭐ Очки: <span id="score">0</span></span>
+          <span class="pill">❤️ Жизни: <span id="lives">3</span></span>
+        </div>
+        <div class="controls">
+          <button id="startBtn" class="btn">Играть</button>
+          <button id="restartBtn" class="btn secondary">Сбросить</button>
+          <div class="badge">A / S / D или тап по дорожке</div>
+        </div>
+        <div style="width:100%;max-width:840px;">
+          <div id="status" class="status idle">Лови ноты в зоне подсветки, чтобы удержать пульс арены.</div>
+          <p class="note">Каждый точный клик даёт очко и ускоряет поток. Промахи снимают жизнь. На серии из 5+ ходов активируется
+            «турбо» режим: световые дорожки ускоряются, но дают двойной множитель. Победа засчитывается после 20 точных попаданий.
+            Игра работает прямо в браузере на 60 FPS, без ставок и доната.</p>
+        </div>
+      </section>
+
+      <section class="section" style="display:flex;flex-direction:column;gap:12px;">
+        <div class="lane-legend">
+          <div class="legend-item"><span class="legend-swatch" style="background:#60a5fa;"></span><strong>Левая</strong> · A</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#ec4899;"></span><strong>Центр</strong> · S</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#22c55e;"></span><strong>Правая</strong> · D</div>
+        </div>
+        <p class="note">Ядро логики вынесено в отдельные файлы на разных языках (C++, PHP, JavaScript) — можно использовать их
+          для ботов, симуляторов и быстрой проверки баланса. Всё вращается вокруг одной формулы попадания в тайминг, чтобы игра
+          оставалась честной и предсказуемой.</p>
+      </section>
+    </div>
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+  const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get("uid");
+
+  const board = document.getElementById('board');
+  const ctx = board.getContext('2d');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+  const statusEl = document.getElementById('status');
+  const scoreEl = document.getElementById('score');
+  const livesEl = document.getElementById('lives');
+  const streakEl = document.getElementById('streak');
+  const toast = document.getElementById('toast');
+
+  const lanes = [board.width * 0.22, board.width * 0.5, board.width * 0.78];
+  const laneColors = ['#60a5fa', '#ec4899', '#22c55e'];
+  const targetY = board.height * 0.78;
+  const hitWindow = 42;
+  const goal = 20;
+
+  let notes = [];
+  let running = false;
+  let lives = 3;
+  let score = 0;
+  let streak = 0;
+  let lastTime = 0;
+  let spawnTimer = 0;
+  let spawnDelay = 0.9;
+  let rafId = null;
+  let resultSent = false;
+
+  function lerp(a,b,t){return a+(b-a)*t;}
+
+  function setStatus(text, cls='idle'){
+    statusEl.className = 'status '+cls;
+    statusEl.textContent = text;
+  }
+
+  function showToast(text){
+    toast.textContent = text;
+    toast.style.display = 'block';
+    toast.classList.add('show');
+    setTimeout(()=>toast.classList.remove('show'), 1400);
+  }
+
+  function spawnNote(){
+    notes.push({lane: Math.floor(Math.random()*lanes.length), y: -30, speed: 180 + Math.random()*70});
+  }
+
+  function resetGame(){
+    notes = [];
+    running = false;
+    lives = 3;
+    score = 0;
+    streak = 0;
+    spawnTimer = 0;
+    spawnDelay = 0.9;
+    resultSent = false;
+    updateUi();
+    setStatus('Нажми «Играть» или A/S/D, чтобы стартовать.', 'idle');
+    draw(0);
+  }
+
+  function updateUi(){
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
+    streakEl.textContent = streak;
+  }
+
+  function draw(progress){
+    ctx.clearRect(0,0,board.width,board.height);
+
+    // background grid
+    const grad = ctx.createLinearGradient(0,0,0,board.height);
+    grad.addColorStop(0,'#0a0f1d'); grad.addColorStop(1,'#060910');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,board.width,board.height);
+
+    // lanes
+    lanes.forEach((x,i)=>{
+      ctx.strokeStyle = laneColors[i];
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6,10]);
+      ctx.beginPath();
+      ctx.moveTo(x, 20);
+      ctx.lineTo(x, board.height-20);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    });
+
+    // target zone
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(0, targetY-hitWindow, board.width, hitWindow*2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(12, targetY-hitWindow, board.width-24, hitWindow*2);
+
+    // notes
+    notes.forEach((note)=>{
+      const laneX = lanes[note.lane];
+      ctx.shadowColor = laneColors[note.lane];
+      ctx.shadowBlur = 14;
+      const size = 26;
+      ctx.fillStyle = laneColors[note.lane];
+      ctx.beginPath();
+      ctx.roundRect(laneX-18, note.y-18, size+4, size+4, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.beginPath();
+      ctx.roundRect(laneX-10, note.y-10, size-12, size-12, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // pulse line
+    const pulse = 0.35 + 0.25*Math.sin(performance.now()/240);
+    ctx.strokeStyle = `rgba(236,72,153,${pulse})`;
+    ctx.lineWidth = 6;
+    ctx.beginPath();
+    ctx.moveTo(24,targetY+4);
+    ctx.lineTo(board.width-24,targetY+4);
+    ctx.stroke();
+  }
+
+  function step(dt){
+    spawnTimer += dt;
+    if(spawnTimer >= spawnDelay){
+      spawnTimer = 0;
+      spawnDelay = Math.max(0.45, spawnDelay * 0.98);
+      spawnNote();
+    }
+
+    notes.forEach(n=>{ n.y += n.speed * dt; });
+    const missed = notes.filter(n => n.y > targetY + hitWindow + 28);
+    if(missed.length){
+      lives -= missed.length;
+      streak = 0;
+      notes = notes.filter(n=>n.y <= targetY + hitWindow + 28);
+      setStatus('Промах! Осталось жизней: '+lives, lives>0 ? 'lose':'');
+      showToast('−'+missed.length+' жизнь');
+      if(lives <= 0){
+        finish('loss', 'Пульс погас. Попробуй ещё раз.');
+      }
+    }
+  }
+
+  function hit(lane){
+    if(!running){ startGame(); }
+    const note = notes.find(n=>n.lane===lane);
+    if(!note){
+      streak = 0;
+      updateUi();
+      setStatus('Мимо — держи ритм!', 'lose');
+      return;
+    }
+    const diff = Math.abs(note.y - targetY);
+    if(diff <= hitWindow){
+      streak += 1;
+      const multiplier = streak>=5 ? 2 : 1;
+      score += 1 * multiplier;
+      notes = notes.filter(n=>n!==note);
+      setStatus(`Попадание! x${multiplier}`, 'win');
+      showToast(`+${multiplier} очко`);
+      if(score >= goal){
+        finish('win','Ты зарядил арену! +1 очко рейтинга.');
+        return;
+      }
+      spawnDelay = Math.max(0.4, spawnDelay*0.985);
+    }else{
+      streak = 0;
+      setStatus('Чуть неточно, попробуй в такт.', 'lose');
+    }
+    updateUi();
+  }
+
+  function gameLoop(ts){
+    if(!lastTime) lastTime = ts;
+    const dt = Math.min(0.033, (ts-lastTime)/1000);
+    lastTime = ts;
+    if(running){
+      step(dt);
+      draw(dt);
+      rafId = requestAnimationFrame(gameLoop);
+    }
+  }
+
+  function startGame(){
+    if(running) return;
+    running = true;
+    lastTime = 0;
+    spawnTimer = 0;
+    setStatus('Держи ритм! Попадай в подсветку.', '');
+    if(rafId) cancelAnimationFrame(rafId);
+    rafId = requestAnimationFrame(gameLoop);
+  }
+
+  function finish(result, message){
+    running = false;
+    if(rafId) cancelAnimationFrame(rafId);
+    setStatus(message, result==='win'?'win':'lose');
+    reportResult(result);
+  }
+
+  async function apiPost(url, data){
+    try{
+      const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      return await res.json();
+    }catch(e){return {ok:false,error:String(e)}}
+  }
+
+  async function reportResult(result){
+    if(resultSent) return;
+    resultSent = true;
+    const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+    if(!uid) return;
+    await apiPost('/api/report_game', {user_id:String(uid), game:'pulse', result});
+    if(result === 'win'){
+      await apiPost('/api/add_point', {user_id:String(uid), game:'pulse', delta:1});
+    }
+  }
+
+  startBtn.addEventListener('click', ()=>{ startGame(); });
+  restartBtn.addEventListener('click', ()=>{ resetGame(); });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.code === 'KeyA') hit(0);
+    if(e.code === 'KeyS') hit(1);
+    if(e.code === 'KeyD') hit(2);
+  });
+
+  board.addEventListener('click',(e)=>{
+    const rect = board.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let closest = 0; let best = Infinity;
+    lanes.forEach((laneX, idx)=>{
+      const d = Math.abs(laneX - x);
+      if(d<best){best=d;closest=idx;}
+    });
+    hit(closest);
+  });
+
+  resetGame();
+
+  (async()=>{
+    if(!tgInstance) return;
+    const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+    await ensureNicknameOrRedirect(uid);
+  })();
+</script>
+</body>
+</html>

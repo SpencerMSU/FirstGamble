@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Миниигры — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb;--bg2:#eef2f7;--panel:#ffffff;--card:#ffffff;--card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box;}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
+      radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
+      linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{position:relative;width:min(900px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
+      border-radius:16px;padding:14px;box-shadow:var(--shadow);}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+    .cardbtn{display:flex;justify-content:space-between;align-items:center;padding:14px;border-radius:14px;border:1px solid var(--stroke);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:pointer;transition:.15s ease;text-decoration:none;color:var(--text);}
+    .cardbtn:hover{border-color:var(--stroke2);transform:translateY(-1px);} 
+    .cardbtn h3{margin:0;font-size:16px;font-weight:900;}
+    .cardbtn p{margin:4px 0 0;font-size:12px;color:var(--muted);}
+    .cardbtn.disabled{opacity:.7;border-style:dashed;cursor:not-allowed;}
+    .cardbtn.disabled:hover{transform:none;border-color:var(--stroke);}
+    @media(max-width:720px){.grid{grid-template-columns:1fr;}}
+    .muted{color:var(--muted);font-size:13px;margin:0;}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/">← Главная</a>
+      <div class="title">
+        <h1>Миниигры</h1>
+        <span>Выбирай и запускай мини‑игры FirstClub</span>
+      </div>
+      <div style="width:64px"></div>
+    </header>
+
+    <section class="section">
+      <p class="muted">Меню мини‑игр клуба. Запускай понравившиеся режимы или следи за обновлениями — новые игры уже в пути.</p>
+      <div class="grid">
+        <a class="cardbtn" href="/minigames/rpg">
+          <div>
+            <h3>🗺️ RPG</h3>
+            <p>Прокачка и приключения (скоро)</p>
+          </div>
+          <div>→</div>
+        </a>
+
+        <a class="cardbtn" href="/minigames/mr_runner">
+          <div>
+            <h3>🏃‍♂️ МистерБегун</h3>
+            <p>Аркадный раннер, релиз скоро</p>
+          </div>
+          <div>→</div>
+        </a>
+
+        <button class="cardbtn disabled" type="button" data-disabled="true">
+          <div>
+            <h3>🎮 Мини‑игра 3</h3>
+            <p>В разработке</p>
+          </div>
+          <div>…</div>
+        </button>
+
+        <button class="cardbtn disabled" type="button" data-disabled="true">
+          <div>
+            <h3>🎯 Мини‑игра 4</h3>
+            <p>Скоро</p>
+          </div>
+          <div>…</div>
+        </button>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tgInstance = initTelegramGuard();
+
+    document.querySelectorAll('[data-disabled]')
+      .forEach(btn => btn.addEventListener('click', () => alert('В разработке')));
+
+    (async () => {
+      if(!tgInstance) return;
+      await ensureNicknameOrRedirect();
+    })();
+  </script>
+</body>
+</html>

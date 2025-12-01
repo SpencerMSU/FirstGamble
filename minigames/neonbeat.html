@@ -3,22 +3,23 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Грави-ритм — FirstClub</title>
+  <title>Неоновый бит — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/webapp_guard.js"></script>
-  <script src="/ludka/gravirun_logic_adapter.js"></script>
+  <script src="/ludka/pulse_logic_adapter.js"></script>
   <style>
     :root{
-      --bg:#05070c; --bg2:#0a0f1d; --panel:#0d1117;
-      --card:#0f1624; --card2:#0f172a;
+      --bg:#05070d; --bg2:#0b1220; --panel:#0d1117;
+      --card:#0f1624; --card2:#11182a;
       --stroke:rgba(255,255,255,.08); --stroke2:rgba(99,143,255,.35);
-      --blue:#60a5fa; --violet:#8b5cf6; --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
+      --blue:#60a5fa; --blue2:#3b82f6; --pink:#ec4899; --green:#22c55e; --amber:#f59e0b; --red:#ef4444;
       --text:#e6edf3; --muted:#9ca3af; --shadow:0 0 0 1px var(--stroke),0 8px 32px rgba(0,0,0,.7);
     }
     html[data-theme="light"]{
       --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
       --card:#ffffff; --card2:#f6f8fb;
       --stroke:rgba(10,20,40,.08); --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8; --pink:#db2777;
       --text:#0b1220; --muted:#52607a; --shadow:0 0 0 1px var(--stroke),0 10px 24px rgba(10,20,40,.08);
     }
     html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
@@ -27,7 +28,7 @@
       margin:0; font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif; color:var(--text);
       background:
         radial-gradient(900px 540px at 15% -20%, rgba(96,165,250,.28), transparent 60%),
-        radial-gradient(900px 520px at 120% 0%, rgba(139,92,246,.24), transparent 55%),
+        radial-gradient(900px 520px at 120% 0%, rgba(236,72,153,.25), transparent 55%),
         linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
       min-height:100vh; display:flex; justify-content:center; padding:16px;
     }
@@ -51,8 +52,8 @@
     .grid{display:flex;flex-wrap:wrap;gap:8px;}
     .controls{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
     .btn{padding:10px 14px;border-radius:12px;border:1px solid var(--stroke2);
-      background:linear-gradient(180deg,var(--violet) 0%,var(--blue) 100%);
-      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 6px 18px rgba(99,102,241,.35);}
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 6px 18px rgba(59,130,246,.35);}
     .btn.secondary{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);border-color:var(--stroke);box-shadow:none;}
     .btn:disabled{opacity:.6;cursor:not-allowed;}
     canvas{width:100%;border-radius:16px;border:1px solid var(--stroke);background:linear-gradient(180deg,#0a0f1d,#0b1220);
@@ -62,8 +63,9 @@
     .status{font-size:16px;font-weight:900;margin:8px 0 0;}
     .status.win{color:var(--green);} .status.lose{color:var(--red);} .status.idle{color:var(--muted);}
     .badge{display:inline-flex;align-items:center;gap:6px;font-weight:800;font-size:13px;}
-    .legend{display:flex;flex-direction:column;gap:10px;}
-    .legend-row{display:flex;align-items:center;gap:8px;}
+    .lane-legend{display:flex;gap:10px;align-items:center;flex-wrap:wrap;}
+    .legend-item{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:12px;border:1px solid var(--stroke);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);}
     .legend-swatch{width:16px;height:16px;border-radius:6px;}
     .gallery{display:flex;gap:8px;flex-wrap:wrap;}
     .gallery img{width:36px;height:36px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);}
@@ -72,10 +74,10 @@
       font-size:13px;opacity:0;transition:.2s ease;box-shadow:var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
     .mobile-controls{display:none;gap:10px;width:100%;justify-content:center;flex-wrap:wrap;}
-    .mobile-controls .tap{flex:1;min-width:96px;max-width:160px;padding:12px;border-radius:14px;border:1px solid var(--stroke2);
+    .mobile-controls .tap{flex:1;min-width:84px;max-width:140px;padding:12px;border-radius:14px;border:1px solid var(--stroke2);
       background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);font-weight:800;font-size:14px;
       box-shadow:0 10px 26px rgba(0,0,0,.35);}
-    @media(max-width:900px){
+    @media(max-width:820px){
       .mobile-controls{display:flex;}
     }
   </style>
@@ -83,15 +85,15 @@
 <body>
   <div class="app">
     <header>
-      <a class="back" href="/ludka">← Назад</a>
+      <a class="back" href="/minigames">← Миниигры</a>
       <div class="title">
-        <h1>Грави-ритм</h1>
-        <span>Перестраивайся между лучами, собирай кристаллы и не задевай шипы</span>
+        <h1>Неоновый бит</h1>
+        <span>Кликай по дорожкам в такт — без ставок, только драйв</span>
       </div>
-      <div class="gallery" aria-label="Иконки грави-ритма">
-        <img src="https://img.icons8.com/fluency/48/comet.png" alt="Комета">
-        <img src="https://img.icons8.com/fluency/48/asteroid.png" alt="Астероид">
-        <img src="https://img.icons8.com/fluency/48/flash-on.png" alt="Буст">
+      <div class="gallery" aria-label="Иконки Неонового бита">
+        <img src="https://img.icons8.com/fluency/48/rocket.png" alt="Ракета">
+        <img src="https://img.icons8.com/fluency/48/music.png" alt="Нота">
+        <img src="https://img.icons8.com/fluency/48/light-on.png" alt="Импульс">
       </div>
     </header>
 
@@ -99,35 +101,32 @@
       <section class="section" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
         <canvas id="board" width="720" height="420"></canvas>
         <div class="stats">
-          <span class="pill">🎯 Цель: 25 кристаллов</span>
+          <span class="pill">🎯 Цель: 20 точных попаданий</span>
           <span class="pill">🔥 Серия: <span id="streak">0</span></span>
           <span class="pill">⭐ Очки: <span id="score">0</span></span>
           <span class="pill">❤️ Жизни: <span id="lives">3</span></span>
-          <span class="pill">⚡ Буст: <span id="boost">готов</span></span>
         </div>
         <div class="controls">
           <button id="startBtn" class="btn">Играть</button>
           <button id="restartBtn" class="btn secondary">Сбросить</button>
-          <div class="badge">← / → / SPACE или тап по кнопкам</div>
+          <div class="badge">A / S / D или тап по дорожке</div>
         </div>
         <div class="mobile-controls" aria-label="Кнопки для телефона">
-          <button class="tap" data-action="left">👈 Влево</button>
-          <button class="tap" data-action="dash">⚡ Буст</button>
-          <button class="tap" data-action="right">👉 Вправо</button>
+          <button class="tap" data-lane="0">👈 A</button>
+          <button class="tap" data-lane="1">🎵 S</button>
+          <button class="tap" data-lane="2">👉 D</button>
         </div>
         <div style="width:100%;max-width:840px;">
-          <div id="status" class="status idle">Уворачивайся от шипов, собирай кристаллы и копи буст.</div>
+          <div id="status" class="status idle">Лови ноты в зоне подсветки, чтобы удержать пульс арены.</div>
+
         </div>
       </section>
 
       <section class="section" style="display:flex;flex-direction:column;gap:12px;">
-        <div class="legend">
-          <div class="legend-row"><span class="legend-swatch" style="background:#60a5fa;"></span><strong>Кристаллы</strong> —
-            +1 очко, +1 к серии</div>
-          <div class="legend-row"><span class="legend-swatch" style="background:#ef4444;"></span><strong>Шипы</strong> —
-            −1 жизнь, серия сбрасывается</div>
-          <div class="legend-row"><span class="legend-swatch" style="background:#f59e0b;"></span><strong>Буст</strong> —
-            щит на 1.5 сек и двойные очки</div>
+        <div class="lane-legend">
+          <div class="legend-item"><span class="legend-swatch" style="background:#60a5fa;"></span><strong>Левая</strong> · A</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#ec4899;"></span><strong>Центр</strong> · S</div>
+          <div class="legend-item"><span class="legend-swatch" style="background:#22c55e;"></span><strong>Правая</strong> · D</div>
         </div>
       </section>
     </div>
@@ -136,7 +135,7 @@
   <div id="toast" class="toast" style="display:none;"></div>
 
 <script>
-  const tgInstance = initTelegramGuard();
+    const tgInstance = initTelegramGuard();
   const searchUid = new URLSearchParams(window.location.search).get("uid");
 
   const board = document.getElementById('board');
@@ -147,21 +146,34 @@
   const scoreEl = document.getElementById('score');
   const livesEl = document.getElementById('lives');
   const streakEl = document.getElementById('streak');
-  const boostEl = document.getElementById('boost');
   const toast = document.getElementById('toast');
+  const mobileControls = document.querySelector('.mobile-controls');
   const tapButtons = document.querySelectorAll('.mobile-controls .tap');
 
-  const lanes = [board.width * 0.15, board.width * 0.35, board.width * 0.55, board.width * 0.78];
-  const laneColors = ['#60a5fa', '#8b5cf6', '#22c55e', '#f59e0b'];
-  const playerY = board.height * 0.8;
-  const goal = 25;
+  const lanes = [board.width * 0.22, board.width * 0.5, board.width * 0.78];
+  const laneColors = ['#60a5fa', '#ec4899', '#22c55e'];
+  const targetY = board.height * 0.78;
+  const hitWindow = 42;
+  const goal = 20;
 
-  let cppState = GravirunCpp.makeState();
-  let streak = 0;
+  let notes = [];
   let running = false;
+  let lives = 3;
+  let score = 0;
+  let streak = 0;
   let lastTime = 0;
+  let spawnTimer = 0;
+  let spawnDelay = 0.9;
   let rafId = null;
   let resultSent = false;
+
+  function lerp(a,b,t){return a+(b-a)*t;}
+
+  const isDesktopTelegram = tgInstance && ['tdesktop','desktop','web'].includes(tgInstance.platform);
+  if(isDesktopTelegram && mobileControls){
+    mobileControls.style.display = 'none';
+    mobileControls.setAttribute('aria-hidden','true');
+  }
 
   function setStatus(text, cls='idle'){
     statusEl.className = 'status '+cls;
@@ -175,138 +187,133 @@
     setTimeout(()=>toast.classList.remove('show'), 1400);
   }
 
+  function spawnNote(){
+    notes.push({lane: Math.floor(Math.random()*lanes.length), y: -30, speed: 180 + Math.random()*70});
+  }
+
   function resetGame(){
-    cppState = GravirunCpp.makeState();
-    streak = 0;
+    notes = [];
     running = false;
+    lives = 3;
+    score = 0;
+    streak = 0;
+    spawnTimer = 0;
+    spawnDelay = 0.9;
     resultSent = false;
     updateUi();
-    setStatus('Нажми «Играть» или стрелки, чтобы стартовать.', 'idle');
+    setStatus('Нажми «Играть» или A/S/D, чтобы стартовать.', 'idle');
     draw(0);
   }
 
   function updateUi(){
-    scoreEl.textContent = cppState.score;
-    livesEl.textContent = cppState.lives;
+    scoreEl.textContent = score;
+    livesEl.textContent = lives;
     streakEl.textContent = streak;
-    boostEl.textContent = cppState.boostTimer > 0 ? 'активен' : 'нет';
   }
 
   function draw(progress){
     ctx.clearRect(0,0,board.width,board.height);
+
+    // background grid
     const grad = ctx.createLinearGradient(0,0,0,board.height);
-    grad.addColorStop(0,'#0b1220'); grad.addColorStop(1,'#060910');
+    grad.addColorStop(0,'#0a0f1d'); grad.addColorStop(1,'#060910');
     ctx.fillStyle = grad;
     ctx.fillRect(0,0,board.width,board.height);
 
-    ctx.setLineDash([6,10]);
-    ctx.lineWidth = 3;
-    lanes.forEach((x)=>{
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    // lanes
+    lanes.forEach((x,i)=>{
+      ctx.strokeStyle = laneColors[i];
+      ctx.lineWidth = 3;
+      ctx.setLineDash([6,10]);
       ctx.beginPath();
-      ctx.moveTo(x, 24);
-      ctx.lineTo(x, board.height-24);
+      ctx.moveTo(x, 20);
+      ctx.lineTo(x, board.height-20);
       ctx.stroke();
-    });
-    ctx.setLineDash([]);
-
-    ctx.fillStyle = 'rgba(255,255,255,0.05)';
-    ctx.fillRect(16, playerY-36, board.width-32, 70);
-
-    cppState.objects.forEach(obj=>{
-      const laneX = lanes[obj.lane];
-      const size = 30;
-      const objY = obj.y * board.height;
-      if(obj.type === 'c'){
-        const g = ctx.createLinearGradient(laneX-size/2, objY-size/2, laneX+size/2, objY+size/2);
-        g.addColorStop(0,'#60a5fa'); g.addColorStop(1,'#22d3ee');
-        ctx.fillStyle = g;
-        ctx.shadowColor = '#60a5fa';
-        ctx.shadowBlur = 10;
-        ctx.beginPath();
-        ctx.moveTo(laneX, objY-size/1.2);
-        ctx.lineTo(laneX+size/1.8, objY);
-        ctx.lineTo(laneX, objY+size/1.2);
-        ctx.lineTo(laneX-size/1.8, objY);
-        ctx.closePath();
-        ctx.fill();
-        ctx.shadowBlur = 0;
-      }else if(obj.type === 's'){
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(laneX, objY-size/1.4);
-        ctx.lineTo(laneX+size/2.4, objY+size/1.4);
-        ctx.lineTo(laneX-size/2.4, objY+size/1.4);
-        ctx.closePath();
-        ctx.fill();
-      }else{
-        ctx.fillStyle = '#f59e0b';
-        ctx.beginPath();
-        ctx.arc(laneX, objY, size/2.6, 0, Math.PI*2);
-        ctx.fill();
-        ctx.strokeStyle = 'rgba(255,255,255,0.25)';
-        ctx.lineWidth = 2;
-        ctx.beginPath();
-        ctx.arc(laneX, objY, size/2.6+4, 0, Math.PI*2);
-        ctx.stroke();
-      }
+      ctx.setLineDash([]);
     });
 
-    const px = lanes[cppState.playerLane];
-    const bodyGrad = ctx.createLinearGradient(px-30, playerY-10, px+30, playerY+10);
-    bodyGrad.addColorStop(0,'#8b5cf6'); bodyGrad.addColorStop(1,'#22d3ee');
-    ctx.fillStyle = bodyGrad;
-    ctx.shadowColor = cppState.boostTimer>0 ? '#f59e0b' : '#8b5cf6';
-    ctx.shadowBlur = cppState.boostTimer>0 ? 18 : 8;
+    // target zone
+    ctx.fillStyle = 'rgba(255,255,255,0.04)';
+    ctx.fillRect(0, targetY-hitWindow, board.width, hitWindow*2);
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(12, targetY-hitWindow, board.width-24, hitWindow*2);
+
+    // notes
+    notes.forEach((note)=>{
+      const laneX = lanes[note.lane];
+      ctx.shadowColor = laneColors[note.lane];
+      ctx.shadowBlur = 14;
+      const size = 26;
+      ctx.fillStyle = laneColors[note.lane];
+      ctx.beginPath();
+      ctx.roundRect(laneX-18, note.y-18, size+4, size+4, 8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(0,0,0,.25)';
+      ctx.beginPath();
+      ctx.roundRect(laneX-10, note.y-10, size-12, size-12, 6);
+      ctx.fill();
+      ctx.shadowBlur = 0;
+    });
+
+    // pulse line
+    const pulse = 0.35 + 0.25*Math.sin(performance.now()/240);
+    ctx.strokeStyle = `rgba(236,72,153,${pulse})`;
+    ctx.lineWidth = 6;
     ctx.beginPath();
-    ctx.roundRect(px-26, playerY-20, 52, 40, 12);
-    ctx.fill();
-    ctx.shadowBlur = 0;
-
-    ctx.fillStyle = '#0b0f14';
-    ctx.beginPath();
-    ctx.arc(px-10, playerY-4, 4, 0, Math.PI*2);
-    ctx.arc(px-10, playerY+4, 4, 0, Math.PI*2);
-    ctx.fill();
+    ctx.moveTo(24,targetY+4);
+    ctx.lineTo(board.width-24,targetY+4);
+    ctx.stroke();
   }
 
-  function moveLane(delta){
-    cppState.playerLane = Math.min(lanes.length-1, Math.max(0, cppState.playerLane + delta));
-    setStatus('Линия: '+(cppState.playerLane+1), '');
-  }
-
-  function activateBoost(){
-    showToast('Буст включается автоматически при сборе');
-    setStatus('Лови буст — он включит щит сам', 'idle');
-  }
-
-  function applyCppEvents(events){
-    events.forEach(ev=>{
-      if(ev.type === 'crystal'){
-        streak += 1;
-        showToast(`+${ev.points} очко`);
-        if(cppState.score >= goal){
-          finish('win','Аттрактор заряжен! +1 очко рейтинга.');
-        }
-      }else if(ev.type === 'spike'){
-        if(ev.lifeLost){
-          streak = 0;
-          setStatus('Больной контакт! Осталось жизней: '+cppState.lives, 'lose');
-          showToast('−1 жизнь');
-          if(cppState.lives <= 0){
-            finish('loss','Корабль разбит. Попробуй ещё.');
-          }
-        }else{
-          showToast('Щит спасает');
-        }
-      }else if(ev.type === 'boost'){
-        showToast('Буст активирован');
-        setStatus('Щит на 1.5 сек — очки удваиваются', 'win');
-      }
-    });
-    if(!events.length && cppState.boostTimer <= 0 && running){
-      setStatus('Держи курс и собирай кристаллы.', '');
+  function step(dt){
+    spawnTimer += dt;
+    if(spawnTimer >= spawnDelay){
+      spawnTimer = 0;
+      spawnDelay = Math.max(0.45, spawnDelay * 0.98);
+      spawnNote();
     }
+
+    const before = notes.length;
+    notes = PulseCpp.stepNotes(notes, dt, targetY, hitWindow);
+    const missed = before - notes.length;
+    if(missed){
+      lives -= missed;
+      streak = 0;
+      setStatus('Промах! Осталось жизней: '+lives, lives>0 ? 'lose':'');
+      showToast('−'+missed+' жизнь');
+      if(lives <= 0){
+        finish('loss', 'Пульс погас. Попробуй ещё раз.');
+      }
+    }
+  }
+
+  function hit(lane){
+    if(!running){ startGame(); }
+    const note = notes.find(n=>n.lane===lane);
+    if(!note){
+      streak = 0;
+      updateUi();
+      setStatus('Мимо — держи ритм!', 'lose');
+      return;
+    }
+    if(PulseCpp.isHit(note, targetY, hitWindow)){
+      streak += 1;
+      const multiplier = streak>=5 ? 2 : 1;
+      score += 1 * multiplier;
+      notes = notes.filter(n=>n!==note);
+      setStatus(`Попадание! x${multiplier}`, 'win');
+      showToast(`+${multiplier} очко`);
+      if(score >= goal){
+        finish('win','Ты зарядил арену! +1 очко рейтинга.');
+        return;
+      }
+      spawnDelay = Math.max(0.4, spawnDelay*0.985);
+    }else{
+      streak = 0;
+      setStatus('Чуть неточно, попробуй в такт.', 'lose');
+    }
+    updateUi();
   }
 
   function gameLoop(ts){
@@ -314,10 +321,7 @@
     const dt = Math.min(0.033, (ts-lastTime)/1000);
     lastTime = ts;
     if(running){
-      const result = GravirunCpp.gravirunStepCpp(cppState, dt, {boardHeight: board.height});
-      cppState = result.state;
-      applyCppEvents(result.events);
-      updateUi();
+      step(dt);
       draw(dt);
       rafId = requestAnimationFrame(gameLoop);
     }
@@ -327,7 +331,8 @@
     if(running) return;
     running = true;
     lastTime = 0;
-    setStatus('Держи курс и собирай кристаллы.', '');
+    spawnTimer = 0;
+    setStatus('Держи ритм! Попадай в подсветку.', '');
     if(rafId) cancelAnimationFrame(rafId);
     rafId = requestAnimationFrame(gameLoop);
   }
@@ -351,9 +356,9 @@
     resultSent = true;
     const uid = tg?.initDataUnsafe?.user?.id || searchUid;
     if(!uid) return;
-    await apiPost('/api/report_game', {user_id:String(uid), game:'gravirun', result});
+    await apiPost('/api/report_game', {user_id:String(uid), game:'pulse', result});
     if(result === 'win'){
-      await apiPost('/api/add_point', {user_id:String(uid), game:'gravirun', delta:1});
+      await apiPost('/api/add_point', {user_id:String(uid), game:'pulse', delta:1});
     }
   }
 
@@ -361,18 +366,27 @@
   restartBtn.addEventListener('click', ()=>{ resetGame(); });
 
   document.addEventListener('keydown', (e)=>{
-    if(e.code === 'ArrowLeft' || e.code === 'KeyA'){ moveLane(-1); if(!running) startGame(); }
-    if(e.code === 'ArrowRight' || e.code === 'KeyD'){ moveLane(1); if(!running) startGame(); }
-    if(e.code === 'Space'){ if(!running) startGame(); activateBoost(); }
+    if(e.code === 'KeyA') hit(0);
+    if(e.code === 'KeyS') hit(1);
+    if(e.code === 'KeyD') hit(2);
+  });
+
+  board.addEventListener('click',(e)=>{
+    const rect = board.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    let closest = 0; let best = Infinity;
+    lanes.forEach((laneX, idx)=>{
+      const d = Math.abs(laneX - x);
+      if(d<best){best=d;closest=idx;}
+    });
+    hit(closest);
   });
 
   tapButtons.forEach(btn=>{
     btn.addEventListener('click', ()=>{
-      const action = btn.dataset.action;
+      const lane = Number(btn.dataset.lane || 0);
       btn.animate({transform:['translateY(0)','translateY(2px)'], opacity:[1,0.9]}, {duration:140});
-      if(action === 'left'){ moveLane(-1); if(!running) startGame(); }
-      if(action === 'right'){ moveLane(1); if(!running) startGame(); }
-      if(action === 'dash'){ if(!running) startGame(); activateBoost(); }
+      hit(lane);
     });
   });
 

@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RPG — скоро</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb;--bg2:#eef2f7;--panel:#ffffff;--card:#ffffff;--card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box;}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
+      radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
+      linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{position:relative;width:min(780px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
+      border-radius:16px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid var(--stroke2);color:var(--text);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);font-weight:800;width:max-content;}
+    .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.4;}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/minigames">← Миниигры</a>
+      <div class="title">
+        <h1>RPG</h1>
+        <span>Раздел находится в разработке</span>
+      </div>
+      <div style="width:64px"></div>
+    </header>
+
+    <section class="section">
+      <div class="pill">Скоро</div>
+      <p class="muted">Мы готовим обновлённый режим RPG с прогрессией, квестами и наградами. Следи за новостями — запуск уже скоро.</p>
+    </section>
+  </div>
+
+  <script>
+    const tgInstance = initTelegramGuard();
+    (async () => {
+      if(!tgInstance) return;
+      await ensureNicknameOrRedirect();
+    })();
+  </script>
+</body>
+</html>

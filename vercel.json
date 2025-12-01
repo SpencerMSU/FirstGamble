@@ -14,55 +14,59 @@
     },
     {
       "source": "/ludka",
-      "destination": "/ludka.html"
+      "destination": "/ludka/ludka.html"
     },
     {
-      "source": "/prices",
-      "destination": "/prices.html"
+      "source": "/dice",
+      "destination": "/ludka/dice.html"
     },
     {
-      "source": "/rpg",
-      "destination": "/rpg.html"
+      "source": "/bj",
+      "destination": "/ludka/bj.html"
+    },
+    {
+      "source": "/slot",
+      "destination": "/ludka/slot.html"
+    },
+    {
+      "source": "/rating",
+      "destination": "/ludka/rating.html"
+    },
+    {
+      "source": "/minigames",
+      "destination": "/minigames/minigames.html"
     },
     {
       "source": "/shop",
-      "destination": "/shop.html"
+      "destination": "/shop/shop.html"
     },
     {
       "source": "/raffles",
-      "destination": "/raffles.html"
+      "destination": "/raffles/raffles.html"
     },
     {
       "source": "/admin",
       "destination": "/admin.html"
     },
     {
-      "source": "/dice",
-      "destination": "/dice.html"
-    },
-    {
-      "source": "/bj",
-      "destination": "/bj.html"
-    },
-    {
-      "source": "/slot",
-      "destination": "/slot.html"
-    },
-    {
-      "source": "/rating",
-      "destination": "/rating.html"
-    },
-    {
       "source": "/cabinet",
-      "destination": "/cabinet.html"
+      "destination": "/cabinet/cabinet.html"
+    },
+    {
+      "source": "/prices",
+      "destination": "/prices/prices.html"
     },
     {
       "source": "/nickname",
-      "destination": "/nickname.html"
+      "destination": "/nickname/nickname.html"
     },
     {
       "source": "/error_notg",
       "destination": "/error_notg.html"
+    },
+    {
+      "source": "/rpg",
+      "destination": "/minigames/minigames.html"
     }
   ]
 }

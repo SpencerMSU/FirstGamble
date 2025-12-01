@@ -72,6 +72,13 @@
       background:rgba(11,16,24,.94);border:1px solid var(--stroke2);color:var(--text);padding:10px 14px;border-radius:12px;
       font-size:13px;opacity:0;transition:.2s ease;box-shadow:var(--shadow);z-index:9999;pointer-events:none;white-space:nowrap;}
     .toast.show{opacity:1;transform:translateX(-50%) translateY(0);}
+    .mobile-controls{display:none;gap:10px;width:100%;justify-content:center;flex-wrap:wrap;}
+    .mobile-controls .tap{flex:1;min-width:84px;max-width:140px;padding:12px;border-radius:14px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);font-weight:800;font-size:14px;
+      box-shadow:0 10px 26px rgba(0,0,0,.35);}
+    @media(max-width:820px){
+      .mobile-controls{display:flex;}
+    }
   </style>
 </head>
 <body>
@@ -102,6 +109,11 @@
           <button id="startBtn" class="btn">Играть</button>
           <button id="restartBtn" class="btn secondary">Сбросить</button>
           <div class="badge">A / S / D или тап по дорожке</div>
+        </div>
+        <div class="mobile-controls" aria-label="Кнопки для телефона">
+          <button class="tap" data-lane="0">👈 A</button>
+          <button class="tap" data-lane="1">🎵 S</button>
+          <button class="tap" data-lane="2">👉 D</button>
         </div>
         <div style="width:100%;max-width:840px;">
           <div id="status" class="status idle">Лови ноты в зоне подсветки, чтобы удержать пульс арены.</div>
@@ -139,6 +151,7 @@
   const livesEl = document.getElementById('lives');
   const streakEl = document.getElementById('streak');
   const toast = document.getElementById('toast');
+  const tapButtons = document.querySelectorAll('.mobile-controls .tap');
 
   const lanes = [board.width * 0.22, board.width * 0.5, board.width * 0.78];
   const laneColors = ['#60a5fa', '#ec4899', '#22c55e'];
@@ -365,6 +378,14 @@
       if(d<best){best=d;closest=idx;}
     });
     hit(closest);
+  });
+
+  tapButtons.forEach(btn=>{
+    btn.addEventListener('click', ()=>{
+      const lane = Number(btn.dataset.lane || 0);
+      btn.animate({transform:['translateY(0)','translateY(2px)'], opacity:[1,0.9]}, {duration:140});
+      hit(lane);
+    });
   });
 
   resetGame();

@@ -17,6 +17,10 @@
       "destination": "/ludka/ludka.html"
     },
     {
+      "source": "/pulse",
+      "destination": "/ludka/pulse.html"
+    },
+    {
       "source": "/dice",
       "destination": "/ludka/dice.html"
     },

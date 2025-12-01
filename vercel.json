@@ -18,7 +18,7 @@
     },
     {
       "source": "/pulse",
-      "destination": "/ludka/pulse.html"
+      "destination": "/minigames/neonbeat.html"
     },
     {
       "source": "/dice",
@@ -33,12 +33,20 @@
       "destination": "/ludka/slot.html"
     },
     {
-      "source": "/rating",
-      "destination": "/ludka/rating.html"
-    },
-    {
       "source": "/minigames",
       "destination": "/minigames/minigames.html"
+    },
+    {
+      "source": "/neonbeat",
+      "destination": "/minigames/neonbeat.html"
+    },
+    {
+      "source": "/gravidrive",
+      "destination": "/minigames/gravidrive.html"
+    },
+    {
+      "source": "/gravirun",
+      "destination": "/minigames/gravidrive.html"
     },
     {
       "source": "/snake",
@@ -51,6 +59,10 @@
     {
       "source": "/shop",
       "destination": "/shop/shop.html"
+    },
+    {
+      "source": "/rating",
+      "destination": "/ludka/rating.html"
     },
     {
       "source": "/raffles",

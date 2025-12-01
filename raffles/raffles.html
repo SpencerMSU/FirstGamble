@@ -48,7 +48,7 @@ border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;posi
     </div>
     <div style="max-width:520px;display:flex;flex-direction:column;gap:6px;">
       <div style="font-size:18px;font-weight:900;letter-spacing:.3px;" id="preparingTitle">Подготовка розыгрыша</div>
-      <div style="font-size:13px;color:var(--muted);line-height:1.6;">Более подробная информация будет оперативно доноситься через Discord.</div>
+      <div id="preparingDescription" style="font-size:13px;color:var(--muted);line-height:1.6;">Более подробная информация будет оперативно доноситься через Discord.</div>
     </div>
   </div>
 
@@ -91,15 +91,29 @@ function renderPrizes(state){
   const subtitle = document.getElementById("raffleSubtitle");
   const statusEl = document.getElementById("raffleStatus");
   const list = document.getElementById("prizeList");
+  const prepTitle = document.getElementById("preparingTitle");
+  const prepDesc = document.getElementById("preparingDescription");
   if(!block || !prep || !subtitle || !statusEl || !list) return;
 
   const status = (state.status || "preparing").toLowerCase();
+  const prizesVisible = !!state.prizes_visible;
   list.innerHTML = "";
 
   if(status === "preparing" || status === "closed"){
     prep.style.display = "flex";
     block.style.display = "none";
     subtitle.textContent = "Подготовка";
+    if(prepTitle){ prepTitle.textContent = "Подготовка розыгрыша"; }
+    if(prepDesc){ prepDesc.textContent = "Более подробная информация будет оперативно доноситься через Discord."; }
+    return;
+  }
+
+  if(status === "active" && !prizesVisible){
+    prep.style.display = "flex";
+    block.style.display = "none";
+    subtitle.textContent = "Продажа билетов";
+    if(prepTitle){ prepTitle.textContent = "Билеты в продаже"; }
+    if(prepDesc){ prepDesc.textContent = "Призы пока скрыты и появятся после публикации админом. Покупайте билеты!"; }
     return;
   }
 

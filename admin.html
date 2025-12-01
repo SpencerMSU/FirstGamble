@@ -35,7 +35,10 @@
         <div class="card">
           <div class="row" style="justify-content:space-between;align-items:center;">
             <h2>Призы розыгрыша</h2>
-            <button id="addPrizeBtn">Добавить</button>
+            <div class="row" style="gap:6px;">
+              <button id="publishPrizesBtn" class="secondary">Показать призы</button>
+              <button id="addPrizeBtn">Добавить</button>
+            </div>
           </div>
           <div class="muted">Призы добавляются по порядку: первый добавленный — 1 место, далее по списку.</div>
           <table id="prizeTable">
@@ -79,6 +82,7 @@
     const qs = (id) => document.getElementById(id);
     const medalForPlace = (place) => ({1:'🥇',2:'🥈',3:'🥉'}[place]||'');
     let prizesCache = [];
+    let prizesVisible = false;
 
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
@@ -164,8 +168,17 @@
       });
     }
 
+    function updatePublishBtn(){
+      const btn = qs('publishPrizesBtn');
+      if(!btn) return;
+      btn.textContent = prizesVisible ? 'Скрыть призы' : 'Показать призы';
+      btn.classList.toggle('secondary', prizesVisible);
+    }
+
     async function loadPrizes(){
       const res = await api('/api/admin/raffle/prizes');
+      prizesVisible = !!res.prizes_visible;
+      updatePublishBtn();
       renderPrizes(res.items||[]);
     }
 
@@ -186,6 +199,18 @@
       if(!name) return;
       await api('/api/admin/raffle/prizes','POST',{name});
       await loadPrizes();
+    });
+
+    qs('publishPrizesBtn').addEventListener('click', async ()=>{
+      try{
+        const next = !prizesVisible;
+        await api('/api/admin/raffle/publish_prizes','POST',{visible: next});
+        prizesVisible = next;
+        updatePublishBtn();
+        alert(next ? 'Призы опубликованы на публичной странице.' : 'Призы скрыты с публичной страницы.');
+      }catch(e){
+        alert('Не удалось изменить видимость призов: ' + e.message);
+      }
     });
 
     qs('drawBtn').addEventListener('click', async ()=>{

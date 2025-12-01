@@ -17,6 +17,7 @@ from .models import (
     AdminLoginRequest,
     AdminPrizeRequest,
     AdminPrizeUpdateRequest,
+    AdminPublishPrizesRequest,
     AdminSetPointsRequest,
     AuthContext,
     BuyRaffleTicketRequest,
@@ -65,6 +66,7 @@ from .services import (
     key_rpg_res,
     key_prize_counter,
     key_prize_item,
+    key_prizes_visible,
     key_prizes_set,
     key_raffle_status,
     key_last_raffle_winners,
@@ -721,7 +723,10 @@ def register_routes(app: FastAPI):
         r = await get_redis()
         status = await get_raffle_status(r)
 
-        result = {"ok": True, "status": status, "prizes": []}
+        prizes_visible = bool(safe_int(await r.get(key_prizes_visible()), 0))
+
+        result = {"ok": True, "status": status, "prizes": [], "prizes_visible": prizes_visible}
+        
         if status in {"preparing", "closed"}:
             return result
 
@@ -739,6 +744,10 @@ def register_routes(app: FastAPI):
             pid = safe_int(w.get("prize_id"))
             if pid:
                 winners_by_prize[pid] = w
+
+        if status == "active" and not prizes_visible:
+            # Призы скрыты до публикации админом
+            return result
 
         prize_rows = []
         for prize in prizes:
@@ -773,7 +782,8 @@ def register_routes(app: FastAPI):
     async def api_admin_get_prizes(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
         r = await get_redis()
         prizes = await get_prizes(r)
-        return {"ok": True, "items": prizes}
+        visible = bool(safe_int(await r.get(key_prizes_visible()), 0))
+        return {"ok": True, "items": prizes, "prizes_visible": visible}
 
     @app.post("/api/admin/raffle/prizes")
     async def api_admin_create_prize(
@@ -823,6 +833,15 @@ def register_routes(app: FastAPI):
         await pipe.execute()
         prizes = await get_prizes(r)
         return {"ok": True, "items": prizes}
+
+    @app.post("/api/admin/raffle/publish_prizes")
+    async def api_admin_publish_prizes(
+        body: AdminPublishPrizesRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        flag = "1" if body.visible else "0"
+        await r.set(key_prizes_visible(), flag)
+        return {"ok": True, "visible": body.visible}
 
     @app.get("/api/admin/raffle/winners")
     async def api_admin_winners(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
@@ -930,6 +949,7 @@ def register_routes(app: FastAPI):
         pipe.delete(key_ticket_owners())
         pipe.delete(key_ticket_counter())
         pipe.set(key_raffle_status(), "closed")
+        pipe.set(key_prizes_visible(), "0")
         await pipe.execute()
 
         logger.info(

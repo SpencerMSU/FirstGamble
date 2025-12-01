@@ -37,6 +37,14 @@
       "destination": "/minigames/minigames.html"
     },
     {
+      "source": "/snake",
+      "destination": "/minigames/snake.html"
+    },
+    {
+      "source": "/runner",
+      "destination": "/minigames/runner.html"
+    },
+    {
       "source": "/shop",
       "destination": "/shop/shop.html"
     },

@@ -101,6 +101,10 @@ def key_prize_item(pid: int) -> str:
     return f"raffle:prize:{pid}"
 
 
+def key_prizes_visible() -> str:
+    return "raffle:prizes_visible"
+
+
 def key_raffle_winners() -> str:
     return "raffle:winners"
 

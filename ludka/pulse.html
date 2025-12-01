@@ -6,6 +6,7 @@
   <title>Неоновый ритм — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/webapp_guard.js"></script>
+  <script src="/ludka/pulse_logic_adapter.js"></script>
   <style>
     :root{
       --bg:#05070d; --bg2:#0b1220; --panel:#0d1117;
@@ -127,9 +128,6 @@
           <div class="legend-item"><span class="legend-swatch" style="background:#ec4899;"></span><strong>Центр</strong> · S</div>
           <div class="legend-item"><span class="legend-swatch" style="background:#22c55e;"></span><strong>Правая</strong> · D</div>
         </div>
-        <p class="note">Ядро логики вынесено в отдельные файлы на разных языках (C++, PHP, JavaScript) — можно использовать их
-          для ботов, симуляторов и быстрой проверки баланса. Всё вращается вокруг одной формулы попадания в тайминг, чтобы игра
-          оставалась честной и предсказуемой.</p>
       </section>
     </div>
   </div>
@@ -269,14 +267,14 @@
       spawnNote();
     }
 
-    notes.forEach(n=>{ n.y += n.speed * dt; });
-    const missed = notes.filter(n => n.y > targetY + hitWindow + 28);
-    if(missed.length){
-      lives -= missed.length;
+    const before = notes.length;
+    notes = PulseCpp.stepNotes(notes, dt, targetY, hitWindow);
+    const missed = before - notes.length;
+    if(missed){
+      lives -= missed;
       streak = 0;
-      notes = notes.filter(n=>n.y <= targetY + hitWindow + 28);
       setStatus('Промах! Осталось жизней: '+lives, lives>0 ? 'lose':'');
-      showToast('−'+missed.length+' жизнь');
+      showToast('−'+missed+' жизнь');
       if(lives <= 0){
         finish('loss', 'Пульс погас. Попробуй ещё раз.');
       }
@@ -292,8 +290,7 @@
       setStatus('Мимо — держи ритм!', 'lose');
       return;
     }
-    const diff = Math.abs(note.y - targetY);
-    if(diff <= hitWindow){
+    if(PulseCpp.isHit(note, targetY, hitWindow)){
       streak += 1;
       const multiplier = streak>=5 ? 2 : 1;
       score += 1 * multiplier;

@@ -50,7 +50,7 @@ def key_gamestats(user_id: int, game: str) -> str:
 USERS_ZSET = "leaderboard:points"  # zset: user_id -> points
 USERS_SET = "users:all"  # set of user_ids
 
-ALLOWED_GAMES = {"dice", "bj", "slot", "snake", "runner"}
+ALLOWED_GAMES = {"dice", "bj", "slot", "snake", "runner", "pulse"}
 
 
 async def ensure_user(user_id: int):

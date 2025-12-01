@@ -71,6 +71,10 @@ class AdminPrizeUpdateRequest(BaseModel):
     name: Optional[str] = None
 
 
+class AdminPublishPrizesRequest(BaseModel):
+    visible: bool = True
+
+
 class AdminDrawRequest(BaseModel):
     force: Optional[bool] = False
 

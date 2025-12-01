@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мистер бегун — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06); --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08); --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8;
+      --text:#0b1220; --muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
+        radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
+        linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{width:min(900px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
+      cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);
+      border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:6px;}
+    .btn{padding:10px 16px;border-radius:12px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 6px 18px rgba(37,99,235,.35);}
+    .btn.secondary{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);border-color:var(--stroke);box-shadow:none;}
+    .btn:disabled{opacity:.65;cursor:not-allowed;}
+    .status{font-size:16px;font-weight:900;margin:8px 0 4px;}
+    .status.win{color:var(--green);} .status.lose{color:var(--red);} .status.idle{color:var(--muted);}
+    .note{font-size:12px;color:var(--muted);margin:0;line-height:1.5;}
+    canvas{width:100%;max-width:640px;border-radius:16px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      box-shadow:inset 0 0 24px rgba(0,0,0,.4);}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/minigames">← Назад</a>
+      <div class="title">
+        <h1>Мистер бегун</h1>
+        <span>Держись 500м, перепрыгивая препятствия</span>
+      </div>
+      <div style="width:64px"></div>
+    </header>
+
+    <section class="section" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+      <canvas id="runnerCanvas" width="720" height="260"></canvas>
+      <div class="row" style="justify-content:space-between;width:100%;flex-wrap:wrap;">
+        <div class="row">
+          <span class="pill">📈 Текущий: <span id="score">0</span> м</span>
+          <span class="pill">🥇 Рекорд: <span id="best">0</span> м</span>
+          <span class="pill">🎯 Цель: 500 м</span>
+        </div>
+        <div class="row">
+          <button id="playBtn" class="btn">Играть</button>
+          <button id="retryBtn" class="btn secondary">Сыграть снова</button>
+        </div>
+      </div>
+      <div style="width:100%;">
+        <div id="status" class="status idle">Тап по экрану или пробел/↑ — прыжок. Удерживай темп и не врежься!</div>
+        <p class="note">Персонаж бежит сам. Прыгай через ящики, чтобы не упасть. После 500 м засчитывается победа (+1 очко). Управление на телефоне — тап или свайп вверх.</p>
+      </div>
+    </section>
+  </div>
+
+<script>
+  const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get('uid');
+
+  const canvas = document.getElementById('runnerCanvas');
+  const ctx = canvas.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const scoreEl = document.getElementById('score');
+  const bestEl = document.getElementById('best');
+  const playBtn = document.getElementById('playBtn');
+  const retryBtn = document.getElementById('retryBtn');
+
+  const groundY = 210;
+  const gravity = 0.5;
+  const jumpForce = 9.5;
+  const targetDistance = 500;
+
+  let player, obstacles, lastSpawn, speed, score, best, running, lastTs, resultSent;
+
+  best = Number(localStorage.getItem('runner_best')||0);
+  bestEl.textContent = best;
+
+  function setStatus(text, cls='idle'){
+    statusEl.className = 'status '+cls;
+    statusEl.textContent = text;
+  }
+
+  function resetGame(){
+    player = {x:80, y:groundY, w:36, h:46, vy:0, jumping:false, anim:0};
+    obstacles = [];
+    lastSpawn = 0;
+    speed = 3.6;
+    score = 0;
+    running = false;
+    lastTs = null;
+    resultSent = false;
+    scoreEl.textContent = score.toFixed(0);
+    setStatus('Нажми «Играть», чтобы стартовать.', 'idle');
+    drawScene();
+  }
+
+  function spawnObstacle(){
+    const height = 24 + Math.random()*22;
+    const width = 24 + Math.random()*16;
+    obstacles.push({x:canvas.width + 20, y:groundY - height + 4, w:width, h:height, color:'#f59e0b'});
+  }
+
+  function drawRunner(){
+    const {x,y,w,h} = player;
+    // body
+    const grad = ctx.createLinearGradient(x, y, x, y+h);
+    grad.addColorStop(0,'#60a5fa');
+    grad.addColorStop(1,'#2563eb');
+    ctx.fillStyle = grad;
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.roundRect(x, y, w, h, 10);
+    ctx.fill();
+    ctx.stroke();
+
+    // head
+    ctx.fillStyle = '#eab308';
+    ctx.beginPath();
+    ctx.roundRect(x + w/3, y - h*0.28, w/2.4, h*0.35, 8);
+    ctx.fill();
+    ctx.stroke();
+
+    // face details
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(x + w*0.55, y - h*0.12, 6, 6);
+
+    // legs animation
+    ctx.strokeStyle = '#cbd5f5';
+    ctx.lineWidth = 4;
+    ctx.lineCap = 'round';
+    const phase = Math.floor(player.anim/8)%2;
+    if(phase === 0){
+      ctx.beginPath();
+      ctx.moveTo(x + w*0.35, y + h);
+      ctx.lineTo(x + w*0.1, y + h + 12);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x + w*0.7, y + h);
+      ctx.lineTo(x + w*0.85, y + h + 10);
+      ctx.stroke();
+    }else{
+      ctx.beginPath();
+      ctx.moveTo(x + w*0.3, y + h);
+      ctx.lineTo(x + w*0.2, y + h + 16);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.moveTo(x + w*0.75, y + h);
+      ctx.lineTo(x + w*0.65, y + h + 14);
+      ctx.stroke();
+    }
+  }
+
+  function drawScene(){
+    ctx.fillStyle = '#0b111b';
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // background
+    const grad = ctx.createLinearGradient(0,0,canvas.width,0);
+    grad.addColorStop(0,'rgba(59,130,246,0.12)');
+    grad.addColorStop(1,'rgba(37,99,235,0.06)');
+    ctx.fillStyle = grad;
+    ctx.fillRect(0,0,canvas.width,canvas.height);
+
+    // ground line
+    ctx.strokeStyle = 'rgba(255,255,255,0.08)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.moveTo(0, groundY + 16);
+    ctx.lineTo(canvas.width, groundY + 16);
+    ctx.stroke();
+
+    // obstacles
+    obstacles.forEach(ob=>{
+      ctx.fillStyle = ob.color;
+      ctx.strokeStyle = 'rgba(0,0,0,0.25)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.roundRect(ob.x, ob.y, ob.w, ob.h, 6);
+      ctx.fill();
+      ctx.stroke();
+    });
+
+    drawRunner();
+  }
+
+  function update(delta){
+    speed += delta * 0.0006; // small acceleration
+    player.vy += gravity;
+    player.y += player.vy;
+    if(player.y > groundY){
+      player.y = groundY;
+      player.vy = 0;
+      player.jumping = false;
+    }
+    player.anim += 1 + speed*0.2;
+
+    obstacles.forEach(ob=> ob.x -= speed*3.5);
+    obstacles = obstacles.filter(ob => ob.x + ob.w > -10);
+
+    lastSpawn += delta;
+    if(lastSpawn > 900){
+      spawnObstacle();
+      lastSpawn = 0;
+    }
+
+    // collision
+    for(const ob of obstacles){
+      if(player.x < ob.x + ob.w - 6 && player.x + player.w - 6 > ob.x && player.y + player.h > ob.y + 6){
+        endRun('loss', 'Столкновение! Попробуй ещё.');
+        return;
+      }
+    }
+
+    score += delta * 0.09;
+    scoreEl.textContent = Math.floor(score);
+    if(score > best){
+      best = Math.floor(score);
+      localStorage.setItem('runner_best', best);
+      bestEl.textContent = best;
+    }
+
+    if(score >= targetDistance){
+      endRun('win', 'Победа! Мистер бегун покорил дистанцию.');
+      return;
+    }
+
+    drawScene();
+  }
+
+  function loop(ts){
+    if(!running) return;
+    if(!lastTs){ lastTs = ts; }
+    const delta = ts - lastTs;
+    lastTs = ts;
+    update(delta);
+    requestAnimationFrame(loop);
+  }
+
+  function jump(){
+    if(player.jumping) return;
+    player.vy = -jumpForce;
+    player.jumping = true;
+  }
+
+  async function reportResult(result){
+    if(resultSent) return;
+    resultSent = true;
+    const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+    if(!uid) return;
+    await fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'runner', result})});
+    if(result === 'win'){
+      await fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'runner', delta:1})});
+    }
+  }
+
+  function endRun(result, message){
+    running = false;
+    setStatus(message, result==='win' ? 'win' : 'lose');
+    reportResult(result);
+  }
+
+  function startGame(){
+    resetGame();
+    running = true;
+    setStatus('Бежим! Перепрыгивай всё подряд.', '');
+    lastTs = null;
+    requestAnimationFrame(loop);
+  }
+
+  playBtn.addEventListener('click', startGame);
+  retryBtn.addEventListener('click', resetGame);
+
+  document.addEventListener('keydown', (e)=>{
+    if(['Space','ArrowUp'].includes(e.code)){
+      jump();
+    }
+  });
+
+  canvas.addEventListener('touchstart', ()=>jump());
+  canvas.addEventListener('click', ()=>jump());
+
+  resetGame();
+
+  (async()=>{
+    if(!tgInstance) return;
+    await ensureNicknameOrRedirect();
+  })();
+</script>
+</body>
+</html>

@@ -1,0 +1,315 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Змейка — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);
+      --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --green:#22c55e; --red:#ef4444; --amber:#f59e0b;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);
+      --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8;
+      --text:#0b1220; --muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
+        radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
+        linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{width:min(900px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;
+      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;
+      cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);
+      border:1px solid var(--stroke);border-radius:16px;padding:14px;box-shadow:var(--shadow);margin-bottom:12px;}
+    .row{display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .pill{padding:8px 12px;border-radius:999px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      font-weight:800;font-size:13px;display:inline-flex;align-items:center;gap:6px;}
+    .btn{padding:10px 16px;border-radius:12px;border:1px solid var(--stroke2);
+      background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 6px 18px rgba(37,99,235,.35);}
+    .btn.secondary{background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);color:var(--text);border-color:var(--stroke);box-shadow:none;}
+    .btn:disabled{opacity:.65;cursor:not-allowed;}
+    .status{font-size:16px;font-weight:900;margin:8px 0 4px;}
+    .status.win{color:var(--green);} .status.lose{color:var(--red);} .status.idle{color:var(--muted);}
+    .note{font-size:12px;color:var(--muted);margin:0;line-height:1.5;}
+    canvas{width:100%;max-width:520px;aspect-ratio:1/1;border-radius:16px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      box-shadow:inset 0 0 24px rgba(0,0,0,.4);}
+    .grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;align-items:center;}
+    @media(max-width:700px){.grid{grid-template-columns:1fr;}}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/minigames">← Назад</a>
+      <div class="title">
+        <h1>Змейка</h1>
+        <span>Достигни длины 12+, чтобы получить очко</span>
+      </div>
+      <div style="width:64px"></div>
+    </header>
+
+    <section class="section" style="display:flex;flex-direction:column;gap:12px;align-items:center;">
+      <canvas id="board" width="320" height="320"></canvas>
+      <div class="grid" style="width:100%;max-width:520px;">
+        <div class="row" style="justify-content:flex-start;">
+          <span class="pill">📏 Длина: <span id="length">1</span></span>
+          <span class="pill">🎯 Цель: 12</span>
+          <span class="pill">🍏 Счёт: <span id="score">0</span></span>
+        </div>
+        <div class="row" style="justify-content:flex-end;">
+          <button id="startBtn" class="btn">Играть</button>
+          <button id="restartBtn" class="btn secondary">Сыграть снова</button>
+        </div>
+      </div>
+      <div style="width:100%;max-width:520px;">
+        <div id="status" class="status idle">Свайпни или используй стрелки для смены направления.</div>
+        <p class="note">Управление: свайпы по полю (вверх/вниз/влево/вправо) или клавиши стрелок. Не разворачивайся на 180° за ход. Столкновение со стеной или собой завершит раунд.</p>
+      </div>
+    </section>
+  </div>
+
+  <div id="toast" class="toast" style="display:none;"></div>
+
+<script>
+  const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get("uid");
+  const TARGET_LENGTH = 12;
+  const cellSize = 16;
+  const gridSize = 20;
+  const board = document.getElementById('board');
+  const ctx = board.getContext('2d');
+  const statusEl = document.getElementById('status');
+  const lengthEl = document.getElementById('length');
+  const scoreEl = document.getElementById('score');
+  const startBtn = document.getElementById('startBtn');
+  const restartBtn = document.getElementById('restartBtn');
+
+  let snake = [];
+  let dir = {x:1,y:0};
+  let nextDir = {x:1,y:0};
+  let food = {x:5,y:5};
+  let running = false;
+  let loopId = null;
+  let resultSent = false;
+
+  function api(path, method='GET', body){
+    const opts = {method, headers:{'Content-Type':'application/json'}};
+    if(body) opts.body = JSON.stringify(body);
+    return fetch(path, opts).then(r=>r.json());
+  }
+
+  async function apiPost(url, data){
+    try{
+      const res = await fetch(url,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
+      return await res.json();
+    }catch(e){return {ok:false,error:String(e)}}
+  }
+
+  function setStatus(text, cls='idle'){
+    statusEl.className = 'status '+cls;
+    statusEl.textContent = text;
+  }
+
+  function spawnFood(){
+    const occupied = new Set(snake.map(p=>`${p.x},${p.y}`));
+    let attempts = 0;
+    while(attempts < 200){
+      const fx = Math.floor(Math.random()*gridSize);
+      const fy = Math.floor(Math.random()*gridSize);
+      if(!occupied.has(`${fx},${fy}`)){
+        food = {x:fx,y:fy};
+        return;
+      }
+      attempts++;
+    }
+  }
+
+  function resetGame(){
+    snake = [{x:10,y:10}];
+    dir = {x:1,y:0};
+    nextDir = {x:1,y:0};
+    spawnFood();
+    running = false;
+    resultSent = false;
+    lengthEl.textContent = snake.length;
+    scoreEl.textContent = 0;
+    setStatus('Нажми «Играть», чтобы начать.', 'idle');
+    draw();
+  }
+
+  function draw(){
+    ctx.fillStyle = '#0b111b';
+    ctx.fillRect(0,0,board.width,board.height);
+
+    // grid lines
+    ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+    ctx.lineWidth = 1;
+    for(let i=0;i<=gridSize;i++){
+      ctx.beginPath();
+      ctx.moveTo(i*cellSize+0.5,0);
+      ctx.lineTo(i*cellSize+0.5,board.height);
+      ctx.stroke();
+      ctx.beginPath();
+      ctx.moveTo(0,i*cellSize+0.5);
+      ctx.lineTo(board.width,i*cellSize+0.5);
+      ctx.stroke();
+    }
+
+    // food
+    ctx.fillStyle = '#f59e0b';
+    ctx.shadowColor = 'rgba(245,158,11,0.6)';
+    ctx.shadowBlur = 10;
+    ctx.fillRect(food.x*cellSize+2, food.y*cellSize+2, cellSize-4, cellSize-4);
+    ctx.shadowBlur = 0;
+
+    // snake
+    snake.forEach((segment, idx)=>{
+      const x = segment.x*cellSize;
+      const y = segment.y*cellSize;
+      const isHead = idx === 0;
+      const grad = ctx.createLinearGradient(x,y,x,y+cellSize);
+      grad.addColorStop(0,isHead?'#34d399':'#3b82f6');
+      grad.addColorStop(1,isHead?'#10b981':'#1d4ed8');
+      ctx.fillStyle = grad;
+      ctx.strokeStyle = 'rgba(255,255,255,0.06)';
+      ctx.lineWidth = 1.5;
+      ctx.beginPath();
+      ctx.roundRect(x+1.5, y+1.5, cellSize-3, cellSize-3, 5);
+      ctx.fill();
+      ctx.stroke();
+    });
+  }
+
+  function samePos(a,b){ return a.x===b.x && a.y===b.y; }
+
+  function step(){
+    dir = {...nextDir};
+    const head = {x:snake[0].x + dir.x, y:snake[0].y + dir.y};
+
+    // collision with wall or self
+    if(head.x<0 || head.y<0 || head.x>=gridSize || head.y>=gridSize || snake.some(s=>samePos(s, head))){
+      endGame('loss','Столкновение. Попробуй ещё раз!');
+      return;
+    }
+
+    snake.unshift(head);
+    if(samePos(head, food)){
+      scoreEl.textContent = Number(scoreEl.textContent) + 1;
+      spawnFood();
+      if(snake.length >= TARGET_LENGTH){
+        endGame('win','Победа! +1 очко за длину змейки.');
+        return;
+      }
+    }else{
+      snake.pop();
+    }
+
+    lengthEl.textContent = snake.length;
+    draw();
+  }
+
+  function endGame(result, message){
+    if(loopId){ clearInterval(loopId); loopId=null; }
+    running = false;
+    setStatus(message, result==='win' ? 'win' : 'lose');
+    reportResult(result);
+  }
+
+  function startLoop(){
+    if(loopId) clearInterval(loopId);
+    loopId = setInterval(step, 140);
+  }
+
+  function handleDirection(nx, ny){
+    if(running){
+      if(dir.x === -nx && dir.y === -ny) return; // no 180
+      nextDir = {x:nx,y:ny};
+    }
+  }
+
+  async function reportResult(result){
+    if(resultSent) return;
+    resultSent = true;
+    const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+    if(!uid) return;
+    await apiPost('/api/report_game', {user_id:String(uid), game:'snake', result});
+    if(result === 'win'){
+      await apiPost('/api/add_point', {user_id:String(uid), game:'snake', delta:1});
+    }
+  }
+
+  startBtn.addEventListener('click', ()=>{
+    resetGame();
+    running = true;
+    setStatus('Игра началась! Собирай еду и не сталкивайся.', '');
+    startLoop();
+  });
+
+  restartBtn.addEventListener('click', ()=>{
+    resetGame();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(['ArrowUp','KeyW'].includes(e.code)) handleDirection(0,-1);
+    if(['ArrowDown','KeyS'].includes(e.code)) handleDirection(0,1);
+    if(['ArrowLeft','KeyA'].includes(e.code)) handleDirection(-1,0);
+    if(['ArrowRight','KeyD'].includes(e.code)) handleDirection(1,0);
+  });
+
+  let touchStart = null;
+  board.addEventListener('touchstart', (e)=>{
+    const t = e.touches[0];
+    touchStart = {x:t.clientX, y:t.clientY};
+  });
+  board.addEventListener('touchend', (e)=>{
+    if(!touchStart) return;
+    const t = e.changedTouches[0];
+    const dx = t.clientX - touchStart.x;
+    const dy = t.clientY - touchStart.y;
+    const absX = Math.abs(dx), absY=Math.abs(dy);
+    if(Math.max(absX, absY) < 20) return;
+    if(absX > absY){
+      handleDirection(dx>0?1:-1,0);
+    }else{
+      handleDirection(0, dy>0?1:-1);
+    }
+    touchStart=null;
+  });
+
+  resetGame();
+
+  (async()=>{
+    if(!tgInstance) return;
+    await ensureNicknameOrRedirect();
+  })();
+</script>
+</body>
+</html>

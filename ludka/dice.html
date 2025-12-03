@@ -137,7 +137,7 @@
       <div class="controls">
         <label class="input">
           🧊 Кубиков:
-          <input id="diceCount" type="number" min="1" max="2" value="1" />
+          <input id="diceCount" type="number" min="1" max="5" value="1" />
         </label>
         <button id="rollBtn" class="btn">Бросить 🎲</button>
       </div>
@@ -236,7 +236,7 @@
   function clampDice(n){
     n = Number(n);
     if(!Number.isFinite(n)) n = 1;
-    return Math.max(1, Math.min(2, Math.floor(n)));
+    return Math.max(1, Math.min(5, Math.floor(n)));
   }
   function rollOne(){ return 1 + Math.floor(Math.random()*6); }
 
@@ -324,7 +324,18 @@
     }else if(youSum < botSum){
       resultTextEl.textContent = `Ты проиграл. ${youSum} против ${botSum}`;
       resultTextEl.classList.add("lose");
-      if(userId) await reportGame(userId, "dice", "loss");
+      if(userId){
+        await reportGame(userId, "dice", "loss");
+        const res = await sendPoint(userId, "dice", 1);
+        if(res.ok){
+          awardTextEl.textContent = "✅ +1 очко утешения начислено";
+          document.getElementById("balanceValue").textContent = res.balance;
+          localStorage.setItem("balance_local", res.balance);
+          showToast("+1 очко утешения");
+        }else{
+          awardTextEl.textContent = "⚠️ Сервер не принял очко: " + (res.error||"unknown");
+        }
+      }
     }else{
       resultTextEl.textContent = `Ничья! ${youSum} = ${botSum}`;
       resultTextEl.classList.add("draw");

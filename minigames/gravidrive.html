@@ -160,6 +160,7 @@
   let cppState = GravirunCpp.makeState();
   let streak = 0;
   let running = false;
+  let gameOver = false;
   let lastTime = 0;
   let rafId = null;
   let resultSent = false;
@@ -186,6 +187,7 @@
     cppState = GravirunCpp.makeState();
     streak = 0;
     running = false;
+    gameOver = false;
     resultSent = false;
     updateUi();
     setStatus('Нажми «Играть» или стрелки, чтобы стартовать.', 'idle');
@@ -335,6 +337,9 @@
 
   function startGame(){
     if(running) return;
+    if(gameOver){
+      resetGame();
+    }
     running = true;
     lastTime = 0;
     setStatus('Держи курс и собирай кристаллы.', '');
@@ -346,6 +351,9 @@
     running = false;
     if(rafId) cancelAnimationFrame(rafId);
     setStatus(message, result==='win'?'win':'lose');
+    if(result === 'loss'){
+      gameOver = true;
+    }
     reportResult(result);
   }
 

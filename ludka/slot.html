@@ -135,7 +135,7 @@
       <a class="back" href="/ludka">← Назад</a>
       <div class="title">
         <h1>Слот‑машина</h1>
-        <span>Без ставок. 3 в ряд = +1 очко</span>
+        <span>Каждый спин +1 очко, 3 в ряд = +200</span>
       </div>
       <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
     </header>
@@ -175,15 +175,19 @@
       let url = "/api/balance";
       if(uid) url += "?user_id=" + uid;
       const d=await apiGet(url);
-      el.textContent=d.balance??0;
-      localStorage.setItem("balance_local", el.textContent);
+      setBalanceValue(d.balance??0);
     }catch(e){
       el.textContent=localStorage.getItem("balance_local")||"0";
     }
   }
-  async function sendPoint(uid, game){
+  function setBalanceValue(v){
+    document.getElementById("balanceValue").textContent = v;
+    localStorage.setItem("balance_local", v);
+  }
+
+  async function sendPoint(uid, game, delta=1){
     try{
-      return await apiPost("/api/add_point", {user_id:String(uid), game:String(game)||"slot"});
+      return await apiPost("/api/add_point", {user_id:String(uid), game:String(game)||"slot", delta});
     }catch(err){ return {ok:false, error:String(err)}; }
   }
   async function reportGame(uid, game, result){
@@ -227,7 +231,48 @@
   const statusEl = document.getElementById("status");
   const awardTextEl = document.getElementById("awardText");
 
-  let spinning=false, autoLeft=0, pointGiven=false;
+  let spinning=false, autoLeft=0, winAwardGiven=false;
+
+  function appendAward(msg){
+    const current = awardTextEl.textContent.trim();
+    awardTextEl.textContent = current ? `${current}\n${msg}` : msg;
+  }
+
+  async function awardSpinPoint(){
+    const uid=getTgUserId();
+    if(!uid){
+      appendAward("⚠️ Нет TG id — очко за спин не начислено.");
+      return;
+    }
+    const res=await sendPoint(uid, "slot", 1);
+    if(res.ok){
+      appendAward("✅ +1 очко за прокрут начислено");
+      setBalanceValue(res.balance);
+      showToast("+1 очко");
+    }else{
+      appendAward("⚠️ Сервер не принял очко: " + (res.error||"unknown"));
+    }
+  }
+
+  async function awardWinPoints(){
+    if(winAwardGiven) return;
+    winAwardGiven=true;
+    const uid=getTgUserId();
+    if(!uid){
+      appendAward("⚠️ Нет TG id — бонус за победу не начислен.");
+      winAwardGiven=false;
+      return;
+    }
+    const res=await sendPoint(uid, "slot", 200);
+    if(res.ok){
+      appendAward("🏆 +200 очков за победу начислено");
+      setBalanceValue(res.balance);
+      showToast("+200 очков!");
+    }else{
+      appendAward("⚠️ Сервер не принял очки победы: " + (res.error||"unknown"));
+      winAwardGiven=false;
+    }
+  }
 
   function setStatus(t, cls=""){
     statusEl.className="status "+cls;
@@ -249,31 +294,11 @@
   }
   strips.forEach(buildStrip);
 
-  async function givePointIfWin(){
-    if(pointGiven) return;
-    pointGiven=true;
-    const uid=getTgUserId();
-    if(!uid){
-      awardTextEl.textContent="⚠️ Нет TG id — очко не начислено.";
-      pointGiven=false;
-      return;
-    }
-      const res=await sendPoint(uid, "slot");
-    if(res.ok){
-      awardTextEl.textContent="✅ +1 очко за победу добавлено";
-      document.getElementById("balanceValue").textContent=res.balance;
-      localStorage.setItem("balance_local", res.balance);
-      showToast("+1 очко!");
-    }else{
-      awardTextEl.textContent="⚠️ Сервер не принял очко: " + (res.error||"unknown");
-      pointGiven=false;
-    }
-  }
-
   async function spinOnce(){
-    spinning=true; pointGiven=false; awardTextEl.textContent="";
+    spinning=true; winAwardGiven=false; awardTextEl.textContent="";
     setButtons({spin:false, auto:false, reset:false});
     setStatus("Крутим...", "");
+    awardSpinPoint();
 
     const final = [pickSymbol(), pickSymbol(), pickSymbol()];
     const durations = [1200, 1600, 2000];
@@ -307,7 +332,7 @@
       setStatus(`Победа! ${a} ${b} ${c}`, "win");
       const uid=getTgUserId();
       if(uid) await reportGame(uid, "slot", "win");
-      givePointIfWin();
+      await awardWinPoints();
     }else if(a===b || b===c || a===c){
       setStatus(`Почти! ${a} ${b} ${c}`, "draw");
       const uid=getTgUserId();

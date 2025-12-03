@@ -51,6 +51,7 @@ from .redis_utils import (
     key_profile,
     key_stats,
     safe_int,
+    sanitize_redis_string,
     find_user_by_game_nick,
 )
 from .services import (
@@ -402,9 +403,12 @@ def register_routes(app: FastAPI):
                 "error": "Nick_Name может содержать 3-24 латинских символа, цифры и подчёркивания",
             }
 
-        mapping = {"name": name, "username": username}
+        name_clean = sanitize_redis_string(name)
+        username_clean = sanitize_redis_string(username)
+
+        mapping = {"name": name_clean, "username": username_clean}
         if nick_name:
-            mapping["Nick_Name"] = nick_name
+            mapping["Nick_Name"] = sanitize_redis_string(nick_name)
         await r.hset(key_profile(auth.user_id), mapping=mapping)
         logger.info(
             "update_profile saved: user=%s name=%s username=%s nick_name=%s",
@@ -796,7 +800,11 @@ def register_routes(app: FastAPI):
             await r.delete(key_prize_counter())
         pid = await r.incr(key_prize_counter())
         next_order = max([p.get("order", 0) for p in prizes], default=0) + 1
-        data = {"name": body.name, "description": "", "order": next_order}
+        data = {
+            "name": sanitize_redis_string(body.name),
+            "description": "",
+            "order": next_order,
+        }
         pipe = r.pipeline()
         pipe.sadd(key_prizes_set(), pid)
         pipe.hset(key_prize_item(pid), mapping=data)
@@ -816,7 +824,7 @@ def register_routes(app: FastAPI):
             raise HTTPException(status_code=404, detail="prize not found")
         updates: Dict[str, Any] = {}
         if body.name is not None:
-            updates["name"] = body.name
+            updates["name"] = sanitize_redis_string(body.name)
         if updates:
             await r.hset(key_prize_item(prize_id), mapping=updates)
         prizes = await get_prizes(r)

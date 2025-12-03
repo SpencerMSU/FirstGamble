@@ -33,6 +33,7 @@ from .redis_utils import (
     key_gamestats,
     key_profile,
     key_stats,
+    sanitize_redis_string,
     safe_int,
 )
 
@@ -197,7 +198,10 @@ async def api_profile(request: web.Request):
             return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
-    await r.hset(key_profile(uid), mapping={"name": name, "username": username})
+    name_clean = sanitize_redis_string(name)
+    username_clean = sanitize_redis_string(username)
+
+    await r.hset(key_profile(uid), mapping={"name": name_clean, "username": username_clean})
     return web.json_response({"ok": True})
 
 

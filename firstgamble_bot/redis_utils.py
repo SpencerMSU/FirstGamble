@@ -1,3 +1,4 @@
+import re
 from typing import Optional
 
 import redis.asyncio as redis
@@ -51,6 +52,21 @@ USERS_ZSET = "leaderboard:points"  # zset: user_id -> points
 USERS_SET = "users:all"  # set of user_ids
 
 ALLOWED_GAMES = {"dice", "bj", "slot", "snake", "runner", "pulse"}
+
+_CONTROL_CHARS_RE = re.compile(r"[\r\n\x00]")
+
+
+def sanitize_redis_string(value: Optional[str]) -> str:
+    """Strip control chars that can be used for Redis injection."""
+
+    if value is None:
+        return ""
+
+    text = str(value)
+    if not text:
+        return ""
+
+    return _CONTROL_CHARS_RE.sub("", text)
 
 
 async def ensure_user(user_id: int):

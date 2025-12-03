@@ -89,8 +89,8 @@
         <span>Перестраивайся между лучами, собирай кристаллы и не задевай шипы</span>
       </div>
       <div class="gallery" aria-label="Иконки грави-драйва">
-        <img src="https://img.icons8.com/fluency/48/comet.png" alt="Комета">
-        <img src="https://img.icons8.com/fluency/48/asteroid.png" alt="Астероид">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3ClinearGradient id='g1' x1='8' x2='56' y1='40' y2='8' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%2360a5fa'/%3E%3Cstop offset='1' stop-color='%2322d3ee'/%3E%3C/linearGradient%3E%3C/defs%3E%3Cpath fill='url(%23g1)' d='M10 46c5-10 18-22 40-36l-8 18c8 2 12 9 10 16-2 8-12 12-22 9-9-3-14-10-12-17z'/%3E%3Ccircle cx='38' cy='34' r='5' fill='%23fff' fill-opacity='.8'/%3E%3C/svg%3E" alt="Комета">
+        <img src="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Cdefs%3E%3CradialGradient id='g2' cx='24' cy='24' r='28' gradientUnits='userSpaceOnUse'%3E%3Cstop stop-color='%23fbbf24'/%3E%3Cstop offset='.55' stop-color='%23f59e0b'/%3E%3Cstop offset='1' stop-color='%23b45309'/%3E%3C/radialGradient%3E%3C/defs%3E%3Ccircle cx='32' cy='32' r='22' fill='url(%23g2)'/%3E%3Ccircle cx='22' cy='26' r='4' fill='%23fff' fill-opacity='.9'/%3E%3Ccircle cx='40' cy='40' r='6' fill='%231f2937' fill-opacity='.28'/%3E%3Cpath fill='%23fef3c7' d='M46 18c1 3-1 7-4 8 2-3 1-6-1-8 2-1 4-1 5 0z'/%3E%3C/svg%3E" alt="Астероид">
         <img src="https://img.icons8.com/fluency/48/flash-on.png" alt="Буст">
       </div>
     </header>
@@ -182,7 +182,7 @@
     setTimeout(()=>toast.classList.remove('show'), 1400);
   }
 
-  function resetGame(){
+  function resetGame(autoStart=false){
     cppState = GravirunCpp.makeState();
     streak = 0;
     running = false;
@@ -190,6 +190,9 @@
     updateUi();
     setStatus('Нажми «Играть» или стрелки, чтобы стартовать.', 'idle');
     draw(0);
+    if(autoStart){
+      startGame();
+    }
   }
 
   function updateUi(){
@@ -365,7 +368,7 @@
   }
 
   startBtn.addEventListener('click', ()=>{ startGame(); });
-  restartBtn.addEventListener('click', ()=>{ resetGame(); });
+  restartBtn.addEventListener('click', ()=>{ resetGame(true); });
 
   document.addEventListener('keydown', (e)=>{
     if(e.code === 'ArrowLeft' || e.code === 'KeyA'){ moveLane(-1); if(!running) startGame(); }
@@ -383,7 +386,7 @@
     });
   });
 
-  resetGame();
+  resetGame(true);
 
   (async()=>{
     if(!tgInstance) return;

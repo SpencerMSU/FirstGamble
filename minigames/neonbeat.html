@@ -166,6 +166,7 @@
   let spawnDelay = 0.9;
   let rafId = null;
   let resultSent = false;
+  let elapsed = 0;
 
   function lerp(a,b,t){return a+(b-a)*t;}
 
@@ -187,8 +188,14 @@
     setTimeout(()=>toast.classList.remove('show'), 1400);
   }
 
+  function getDifficulty(){
+    return 1 + Math.min(elapsed / 20, 2);
+  }
+
   function spawnNote(){
-    notes.push({lane: Math.floor(Math.random()*lanes.length), y: -30, speed: 180 + Math.random()*70});
+    const difficulty = getDifficulty();
+    const baseSpeed = 180 + Math.random()*70;
+    notes.push({lane: Math.floor(Math.random()*lanes.length), y: -30, speed: baseSpeed * difficulty});
   }
 
   function resetGame(){
@@ -199,6 +206,7 @@
     streak = 0;
     spawnTimer = 0;
     spawnDelay = 0.9;
+    elapsed = 0;
     resultSent = false;
     updateUi();
     setStatus('Нажми «Играть» или A/S/D, чтобы стартовать.', 'idle');
@@ -267,6 +275,7 @@
   }
 
   function step(dt){
+    elapsed += dt;
     spawnTimer += dt;
     if(spawnTimer >= spawnDelay){
       spawnTimer = 0;
@@ -278,10 +287,11 @@
     notes = PulseCpp.stepNotes(notes, dt, targetY, hitWindow);
     const missed = before - notes.length;
     if(missed){
-      lives -= missed;
+      lives = Math.max(0, lives - missed);
       streak = 0;
       setStatus('Промах! Осталось жизней: '+lives, lives>0 ? 'lose':'');
       showToast('−'+missed+' жизнь');
+      updateUi();
       if(lives <= 0){
         finish('loss', 'Пульс погас. Попробуй ещё раз.');
       }
@@ -300,10 +310,12 @@
     if(PulseCpp.isHit(note, targetY, hitWindow)){
       streak += 1;
       const multiplier = streak>=5 ? 2 : 1;
-      score += 1 * multiplier;
+      const difficultyBonus = Math.max(0, Math.floor((getDifficulty()-1)*2));
+      const gained = (1 + difficultyBonus) * multiplier;
+      score += gained;
       notes = notes.filter(n=>n!==note);
       setStatus(`Попадание! x${multiplier}`, 'win');
-      showToast(`+${multiplier} очко`);
+      showToast(`+${gained} очк${gained === 1 ? 'о' : 'ов'}`);
       if(score >= goal){
         finish('win','Ты зарядил арену! +1 очко рейтинга.');
         return;

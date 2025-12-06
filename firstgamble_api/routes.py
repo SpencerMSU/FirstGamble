@@ -655,7 +655,7 @@ def register_routes(app: FastAPI):
         if not pair_ok:
             return {"ok": False, "error": "bad convert pair"}
 
-        rate = 5
+        rate = 3
         need = amount * rate
         if res_int.get(from_r, 0) < need:
             return {"ok": False, "error": "not enough resources"}

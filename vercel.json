@@ -91,6 +91,10 @@
     {
       "source": "/rpg",
       "destination": "/minigames/rpg.html"
+    },
+    {
+      "source": "/rpg-shop",
+      "destination": "/minigames/rpg_shop.html"
     }
   ]
 }

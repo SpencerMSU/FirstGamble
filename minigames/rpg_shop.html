@@ -151,25 +151,25 @@
     ];
 
     const TOOL_ITEMS = [
-      {id:'tool1', name:'Кирка новичка', cost:3, chance:5, cd:0, resource:'wood', desc:'Даёт шанс найти дополнительное дерево.'},
-      {id:'tool2', name:'Каменный долот', cost:6, chance:8, cd:3, resource:'stone', desc:'Дополнительный камень при удачной попытке.'},
-      {id:'tool3', name:'Железная кирка', cost:10, chance:10, cd:5, resource:'iron', desc:'Шанс выбить лишнюю железную жилу.'},
-      {id:'tool4', name:'Серебряная кирка', cost:15, chance:12, cd:7, resource:'silver', desc:'Позволяет находить редкое серебро.'},
-      {id:'tool5', name:'Золотая дрель', cost:21, chance:15, cd:9, resource:'gold', desc:'Шанс на бонусное золото при добыче.'},
-      {id:'tool6', name:'Кристальный резак', cost:28, chance:18, cd:11, resource:'crystal', desc:'Ускоряет поиск кристаллов.'},
-      {id:'tool7', name:'Мифриловый бур', cost:36, chance:22, cd:13, resource:'mythril', desc:'Шанс получить мифрил с добычи.'},
-      {id:'tool8', name:'Реликтовый экскаватор', cost:45, chance:26, cd:15, resource:'relic', desc:'Малый шанс достать реликт при добыче.'},
+      {id:'tool1', name:'Кирка новичка', cost:3, costRes:'wood', chance:5, cd:0, resource:'wood', desc:'Даёт шанс найти дополнительное дерево.'},
+      {id:'tool2', name:'Каменный долот', cost:6, costRes:'stone', chance:8, cd:3, resource:'stone', desc:'Дополнительный камень при удачной попытке.'},
+      {id:'tool3', name:'Железная кирка', cost:10, costRes:'iron', chance:10, cd:5, resource:'iron', desc:'Шанс выбить лишнюю железную жилу.'},
+      {id:'tool4', name:'Серебряная кирка', cost:15, costRes:'silver', chance:12, cd:7, resource:'silver', desc:'Позволяет находить редкое серебро.'},
+      {id:'tool5', name:'Золотая дрель', cost:21, costRes:'gold', chance:15, cd:9, resource:'gold', desc:'Шанс на бонусное золото при добыче.'},
+      {id:'tool6', name:'Кристальный резак', cost:28, costRes:'crystal', chance:18, cd:11, resource:'crystal', desc:'Ускоряет поиск кристаллов.'},
+      {id:'tool7', name:'Мифриловый бур', cost:36, costRes:'mythril', chance:22, cd:13, resource:'mythril', desc:'Шанс получить мифрил с добычи.'},
+      {id:'tool8', name:'Реликтовый экскаватор', cost:45, costRes:'relic', chance:26, cd:15, resource:'relic', desc:'Малый шанс достать реликт при добыче.'},
     ];
 
     const ACCESSORY_ITEMS = [
-      {id:'acc1', name:'Тканевая подвязка', level:1, cost:4, cd:3, convert:2},
-      {id:'acc2', name:'Жетон старателя', level:2, cost:7, cd:5, convert:4},
-      {id:'acc3', name:'Кольцо ускорения', level:3, cost:11, cd:7, convert:6},
-      {id:'acc4', name:'Амулет руды', level:4, cost:15, cd:10, convert:8},
-      {id:'acc5', name:'Браслет инженера', level:5, cost:21, cd:12, convert:10},
-      {id:'acc6', name:'Фазовый талисман', level:6, cost:28, cd:15, convert:12},
-      {id:'acc7', name:'Печать реликтов', level:7, cost:36, cd:18, convert:15},
-      {id:'acc8', name:'Корона алхимика', level:8, cost:45, cd:22, convert:18},
+      {id:'acc1', name:'Тканевая подвязка', level:1, cost:4, costRes:'wood', cd:3, convert:2},
+      {id:'acc2', name:'Жетон старателя', level:2, cost:7, costRes:'stone', cd:5, convert:4},
+      {id:'acc3', name:'Кольцо ускорения', level:3, cost:11, costRes:'iron', cd:7, convert:6},
+      {id:'acc4', name:'Амулет руды', level:4, cost:15, costRes:'silver', cd:10, convert:8},
+      {id:'acc5', name:'Браслет инженера', level:5, cost:21, costRes:'gold', cd:12, convert:10},
+      {id:'acc6', name:'Фазовый талисман', level:6, cost:28, costRes:'crystal', cd:15, convert:12},
+      {id:'acc7', name:'Печать реликтов', level:7, cost:36, costRes:'mythril', cd:18, convert:15},
+      {id:'acc8', name:'Корона алхимика', level:8, cost:45, costRes:'relic', cd:22, convert:18},
     ];
 
     let currentState = null;
@@ -243,9 +243,11 @@
         return;
       }
       const owned = new Set(currentState?.owned?.tools || []);
-      const balance = Number(currentState?.balance || 0);
+      const resources = currentState?.resources || {};
       TOOL_ITEMS.forEach(t=>{
-        const resInfo = RESOURCE_MAP[t.resource] || {};
+        const resKey = t.costRes || t.resource;
+        const resInfo = RESOURCE_MAP[resKey] || {};
+        const have = Number(resources[resKey] || 0);
         const el = document.createElement('div');
         el.className = 'card';
         el.innerHTML = `
@@ -254,18 +256,20 @@
           <div class="card-meta">
             <span class="inline-badge">Шанс +${t.chance}% на ${resInfo.icon || ''} ${resInfo.name || t.resource}</span>
             <span class="inline-badge">Сокращение КД: ${(t.cd || 0)}%</span>
+            <span class="inline-badge">Цена: ${resInfo.icon || ''} ${resInfo.name || resKey} — ${t.cost}</span>
+            <span class="inline-badge">В наличии: ${have}</span>
           </div>
         `;
         const actions = document.createElement('div');
         actions.className = 'card-actions';
         const btn = document.createElement('button');
         btn.className = 'btn';
-        const canBuy = balance >= t.cost;
+        const canBuy = have >= t.cost;
         if(owned.has(t.id)){
           btn.textContent = 'Куплено';
           btn.disabled = true;
         } else {
-          btn.textContent = canBuy ? `Купить за ${t.cost} 🪙` : 'Не хватает очков';
+          btn.textContent = canBuy ? `Купить за ${t.cost} ${resInfo.icon || ''}` : 'Не хватает ресурсов';
           btn.disabled = !canBuy;
           btn.addEventListener('click', ()=>buyItem('tools', t.id));
         }
@@ -282,8 +286,11 @@
         return;
       }
       const owned = new Set(currentState?.owned?.acc || []);
-      const balance = Number(currentState?.balance || 0);
+      const resources = currentState?.resources || {};
       ACCESSORY_ITEMS.forEach(a=>{
+        const resKey = a.costRes;
+        const resInfo = RESOURCE_MAP[resKey] || {};
+        const have = Number(resources[resKey] || 0);
         const el = document.createElement('div');
         el.className = 'card';
         el.innerHTML = `
@@ -292,18 +299,20 @@
           <div class="card-meta">
             <span class="inline-badge">−${a.cd}% к КД добычи</span>
             <span class="inline-badge">+${a.convert}% к объёму обмена</span>
+            <span class="inline-badge">Цена: ${resInfo.icon || ''} ${resInfo.name || resKey} — ${a.cost}</span>
+            <span class="inline-badge">В наличии: ${have}</span>
           </div>
         `;
         const actions = document.createElement('div');
         actions.className = 'card-actions';
         const btn = document.createElement('button');
         btn.className = 'btn';
-        const canBuy = balance >= a.cost;
+        const canBuy = have >= a.cost;
         if(owned.has(a.id)){
           btn.textContent = 'Куплено';
           btn.disabled = true;
         } else {
-          btn.textContent = canBuy ? `Купить за ${a.cost} 🪙` : 'Не хватает очков';
+          btn.textContent = canBuy ? `Купить за ${a.cost} ${resInfo.icon || ''}` : 'Не хватает ресурсов';
           btn.disabled = !canBuy;
           btn.addEventListener('click', ()=>buyItem('acc', a.id));
         }

@@ -613,9 +613,9 @@ def register_routes(app: FastAPI):
             return {"ok": True, "state": st}
 
         cost = int(item.get("cost", 0))
-        if cat == "bags":
-            cost_resource = item.get("cost_resource")
-            if not cost_resource or cost_resource not in RPG_RESOURCES:
+        cost_resource = item.get("cost_resource")
+        if cost_resource:
+            if cost_resource not in RPG_RESOURCES:
                 return {"ok": False, "error": "bad item"}
 
             res_raw = await r.hgetall(key_rpg_res(uid))

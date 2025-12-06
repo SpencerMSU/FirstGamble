@@ -88,6 +88,7 @@ from .services import (
     key_ticket_owners,
     key_user_tickets,
     key_user_raffle_wins,
+    rpg_auto_refresh_state,
     rpg_auto_requirements,
     rpg_auto_state_level,
     rpg_calc_buffs,
@@ -727,6 +728,7 @@ def register_routes(app: FastAPI):
         r = await get_redis()
         await rpg_ensure(uid)
         owned = await rpg_get_owned(uid)
+        _cd_mult, _yield_add, cap_add, _extra_drops, _convert_bonus = rpg_calc_buffs(owned)
         res_raw = await r.hgetall(key_rpg_res(uid))
         res_int = {k: safe_int(v) for k, v in res_raw.items()}
 
@@ -738,10 +740,14 @@ def register_routes(app: FastAPI):
             except Exception:
                 state = {}
 
+        now = int(time.time())
+        state, inv_cap, inv_amt = rpg_auto_refresh_state(state, now)
+
         levels = cfg.get("levels", []) or []
         max_level = len(levels)
         level = rpg_auto_state_level(state, max_level)
         missing_res, has_bag, next_cfg = rpg_auto_requirements(cfg, res_int, owned, level)
+        storage_full = inv_amt >= inv_cap > 0
 
         if action == "upgrade":
             if not next_cfg:
@@ -762,16 +768,33 @@ def register_routes(app: FastAPI):
                 return {"ok": False, "error": "upgrade_required"}
             if not has_bag:
                 return {"ok": False, "error": "bag_required", "bag_req": cfg.get("bag_req")}
+            if storage_full:
+                return {"ok": False, "error": "storage_full"}
 
             state["active"] = True
             state["level"] = level
-            state["last"] = int(time.time())
+            state["last"] = now
             await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
         elif action == "stop":
             state["active"] = False
             state["level"] = level
-            state["last"] = int(time.time())
+            state["last"] = now
             await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
+        elif action == "collect":
+            res_name = cfg.get("resource")
+            cap = RPG_MAX + int(cap_add.get(res_name, 0))
+            cur_val = res_int.get(res_name, 0)
+            free_space = max(0, cap - cur_val)
+            transfer = min(inv_amt, free_space)
+            if transfer <= 0:
+                return {"ok": False, "error": "no_space"}
+
+            pipe = r.pipeline()
+            pipe.hincrby(key_rpg_res(uid), res_name, transfer)
+            state["inv"] = max(0, inv_amt - transfer)
+            state["last"] = now
+            pipe.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
+            await pipe.execute()
         else:
             return {"ok": False, "error": "bad action"}
 

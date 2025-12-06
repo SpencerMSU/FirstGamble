@@ -142,6 +142,8 @@
       {id:'bag12', name:'Стабилизированный ранец', cost:160, costRes:'crystal', cap:5400},
       {id:'bag13', name:'Астероидный бокс', cost:200, costRes:'mythril', cap:7000},
       {id:'bag14', name:'Квантовый рюкзак', cost:250, costRes:'relic', cap:8800},
+      {id:'bag21', name:'Усиленный лабораторный ранец', cost:320, costRes:'relic', cap:10500},
+      {id:'bag22', name:'Космический отсек', cost:420, costRes:'essence', cap:13500},
       {id:'bag15', name:'Хранилище первопроходца', cost:310, costRes:'essence', cap:11000},
       {id:'bag16', name:'Экзоконтейнер', cost:380, costRes:'essence', cap:14000},
       {id:'bag17', name:'Лабораторный отсек', cost:460, costRes:'essence', cap:17000},
@@ -340,7 +342,12 @@
           : `Следующий уровень: +${m.preview_rate || m.rate} ${resInfo.name || m.resource} каждые ${m.preview_interval || m.interval || '?'} сек.`;
         const upgradeCost = formatCost(m.upgrade_cost);
         const missingUpgrade = formatCost(m.missing_upgrade || {});
-        const badgeText = m.active ? 'Работает' : (m.can_start ? 'Готов к запуску' : (m.has_bag ? 'Нужно улучшение' : 'Нужен рюкзак'));
+        const badgeText = m.active
+          ? 'Работает'
+          : (m.can_start ? 'Готов к запуску' : (m.storage_full ? 'Склад заполнен' : (m.has_bag ? 'Нужно улучшение' : 'Нужен рюкзак')));
+        const inv = m.inventory || {};
+        const invText = `${inv.amount || 0} / ${inv.cap || 0}`;
+        const storageStatus = m.storage_full ? 'Склад заполнен, нужно собрать ресурсы.' : 'Инвентарь растёт со временем.';
         el.innerHTML = `
           <p class="card-title">🤖 ${m.name}</p>
           <p class="card-desc">${productionLine}</p>
@@ -348,20 +355,29 @@
             <span class="inline-badge">${badgeText}</span>
             ${m.bag_req ? `<span class="inline-badge">Нужен: ${bagName}</span>` : ''}
             <span class="inline-badge">${levelText}</span>
+            <span class="inline-badge">Склад: ${invText}</span>
           </div>
+          <p class="card-desc muted">${storageStatus}</p>
           <p class="card-desc">${upgradeCost ? `Стоимость улучшения: ${upgradeCost}` : 'Достигнут максимальный уровень.'}</p>
           ${upgradeCost ? `<p class="card-desc muted">${(m.missing_upgrade && Object.keys(m.missing_upgrade).length) ? 'Не хватает: ' + missingUpgrade : 'Ресурсов достаточно для апгрейда.'}</p>` : ''}
         `;
         const actions = document.createElement('div');
         actions.className = 'card-actions';
+        const collectBtn = document.createElement('button');
+        collectBtn.className = 'btn ghost';
+        collectBtn.textContent = m.can_collect ? 'Собрать' : 'Пусто';
+        collectBtn.disabled = !m.can_collect;
+        collectBtn.addEventListener('click', ()=>m.can_collect && collectAuto(m.id));
+        actions.appendChild(collectBtn);
+
         const startBtn = document.createElement('button');
         startBtn.className = 'btn';
         if(m.active){
           startBtn.textContent = 'Остановить';
           startBtn.addEventListener('click', ()=>toggleAuto(m.id, 'stop'));
         } else {
-          const reason = !m.has_bag ? 'Нужен подходящий рюкзак' : (m.level <= 0 ? 'Сначала прокачайте уровень' : '');
-          startBtn.textContent = m.can_start ? 'Запустить' : (reason || 'Требуются условия');
+          const reason = !m.has_bag ? 'Нужен подходящий рюкзак' : (m.level <= 0 ? 'Сначала прокачайте уровень' : (m.storage_full ? 'Хранилище заполнено' : ''));
+          startBtn.textContent = m.can_start ? 'Запустить' : (m.storage_full ? 'Склад заполнен' : (reason || 'Требуются условия'));
           startBtn.disabled = !m.can_start;
           startBtn.title = reason;
           startBtn.addEventListener('click', ()=>m.can_start && toggleAuto(m.id, 'start'));
@@ -387,6 +403,14 @@
 
     async function upgradeAuto(miner_id){
       const res = await apiPost('/api/rpg/auto', {miner_id, action:'upgrade'});
+      if(res?.ok){
+        currentState = res.state;
+        renderAll();
+      }
+    }
+
+    async function collectAuto(miner_id){
+      const res = await apiPost('/api/rpg/auto', {miner_id, action:'collect'});
       if(res?.ok){
         currentState = res.state;
         renderAll();

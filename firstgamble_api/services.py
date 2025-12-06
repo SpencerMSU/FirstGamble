@@ -263,6 +263,18 @@ RPG_BAGS = {
         "cost_resource": "relic",
         "cap_add": 8800,
     },
+    "bag21": {
+        "name": "Усиленный лабораторный ранец",
+        "cost": 320,
+        "cost_resource": "relic",
+        "cap_add": 10500,
+    },
+    "bag22": {
+        "name": "Космический отсек",
+        "cost": 420,
+        "cost_resource": "essence",
+        "cap_add": 13500,
+    },
     "bag15": {
         "name": "Хранилище первопроходца",
         "cost": 310,
@@ -315,6 +327,11 @@ RPG_CHAIN = [
     ("mythril", "relic"),
     ("relic", "essence"),
 ]
+
+AUTO_INV_BASE = 500
+AUTO_INV_MAX = 12000
+AUTO_INV_GROW_INTERVAL = 600
+AUTO_INV_GROW_AMOUNT = 80
 
 RPG_AUTO_MINERS = [
     {
@@ -556,6 +573,24 @@ def rpg_auto_missing(costs: Dict[str, int], res: Dict[str, int]):
     return missing_res
 
 
+def rpg_auto_refresh_state(state: Dict[str, Any], now: int):
+    inv_cap = max(AUTO_INV_BASE, safe_int(state.get("inv_cap"), AUTO_INV_BASE))
+    inv_amt = max(0, safe_int(state.get("inv"), 0))
+    cap_ts = safe_int(state.get("cap_ts"), now)
+    if cap_ts <= 0:
+        cap_ts = now
+
+    growth_steps = max(0, (now - cap_ts) // AUTO_INV_GROW_INTERVAL)
+    if growth_steps > 0:
+        inv_cap = min(AUTO_INV_MAX, inv_cap + growth_steps * AUTO_INV_GROW_AMOUNT)
+        cap_ts += growth_steps * AUTO_INV_GROW_INTERVAL
+
+    state["inv_cap"] = inv_cap
+    state["inv"] = inv_amt
+    state["cap_ts"] = cap_ts
+    return state, inv_cap, inv_amt
+
+
 def rpg_auto_requirements(
     cfg: Dict[str, Any], res: Dict[str, int], owned: Dict[str, Any], state_level: int
 ):
@@ -579,7 +614,12 @@ async def rpg_apply_auto(uid: int, res: Dict[str, int], cap_add: Dict[str, int])
                 state = json.loads(raw_state)
             except Exception:
                 state = {}
+
+        state, inv_cap, inv_amt = rpg_auto_refresh_state(state, now)
+
         if not state.get("active"):
+            state["level"] = rpg_auto_state_level(state, len(cfg.get("levels", []) or []))
+            pipe.hset(key_rpg_auto(uid), cfg["id"], json.dumps(state))
             continue
 
         levels = cfg.get("levels", []) or []
@@ -593,20 +633,21 @@ async def rpg_apply_auto(uid: int, res: Dict[str, int], cap_add: Dict[str, int])
         if interval <= 0:
             continue
         ticks = max(0, (now - last) // interval)
-        if ticks <= 0:
-            continue
 
-        gain = ticks * int(level_cfg.get("rate", 1))
-        res_name = cfg.get("resource")
-        cap = RPG_MAX + int(cap_add.get(res_name, 0))
-        cur_val = res.get(res_name, 0)
-        add_val = min(gain, max(0, cap - cur_val))
-        if add_val > 0:
-            res[res_name] = cur_val + add_val
-            pipe.hset(key_rpg_res(uid), res_name, res[res_name])
+        if ticks > 0:
+            gain = ticks * int(level_cfg.get("rate", 1))
+            capacity_left = max(0, inv_cap - inv_amt)
+            add_val = min(gain, capacity_left)
+            inv_amt += add_val
+            last += ticks * interval
 
-        state["last"] = last + ticks * interval
+        if inv_amt >= inv_cap and state.get("active"):
+            state["active"] = False
+
+        state["last"] = last
         state["level"] = level
+        state["inv"] = inv_amt
+        state["inv_cap"] = inv_cap
         pipe.hset(key_rpg_auto(uid), cfg["id"], json.dumps(state))
 
     if pipe.command_stack:
@@ -657,6 +698,7 @@ async def rpg_state(uid: int):
                 state = json.loads(raw_state)
             except Exception:
                 state = {}
+        state, inv_cap, inv_amt = rpg_auto_refresh_state(state, now)
         active = bool(state.get("active"))
         levels = cfg.get("levels", []) or []
         max_level = len(levels)
@@ -668,6 +710,9 @@ async def rpg_state(uid: int):
         rate = int(level_cfg.get("rate") or (next_cfg or {}).get("rate", 0))
         next_tick = last_tick + interval if active else 0
         missing_res, has_bag, _next_cfg = rpg_auto_requirements(cfg, res, owned, level)
+        storage_full = inv_amt >= inv_cap > 0
+        can_start = level > 0 and has_bag and not storage_full
+        can_collect = inv_amt > 0
         auto_list.append(
             {
                 "id": cfg["id"],
@@ -687,12 +732,15 @@ async def rpg_state(uid: int):
                 "missing": missing_res,
                 "missing_upgrade": missing_res,
                 "has_bag": has_bag,
-                "can_start": level > 0 and has_bag,
+                "can_start": can_start,
                 "can_upgrade": bool(_next_cfg and not missing_res),
                 "preview_rate": level_cfg.get("rate") if level_cfg else (_next_cfg or {}).get("rate"),
                 "preview_interval": level_cfg.get("interval")
                 if level_cfg
                 else (_next_cfg or {}).get("interval"),
+                "inventory": {"amount": inv_amt, "cap": inv_cap},
+                "storage_full": storage_full,
+                "can_collect": can_collect,
             }
         )
 

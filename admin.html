@@ -13,8 +13,8 @@
     .grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;} @media(max-width:860px){.grid{grid-template-columns:1fr;}}
     .card{background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:12px;}
     .row{display:flex;gap:8px;align-items:center;flex-wrap:wrap;}
-    input,button,select,textarea{padding:10px;border-radius:10px;border:1px solid var(--stroke);background:#0f1520;color:var(--text);font-weight:700;}
-    button{cursor:pointer;background:linear-gradient(180deg,var(--blue),var(--blue2));border-color:rgba(59,130,246,.45);} button.danger{background:linear-gradient(180deg,#ef4444,#b91c1c);border-color:rgba(239,68,68,.45);} button.secondary{background:var(--card);color:var(--text);}
+    input,button,select,textarea{padding:10px;border-radius:10px;border:1px solid var(--stroke);background:#0f1520;color:var(--text);font-weight:700;touch-action:manipulation;}
+    button{cursor:pointer;background:linear-gradient(180deg,var(--blue),var(--blue2));border-color:rgba(59,130,246,.45);} button.danger{background:linear-gradient(180deg,#ef4444,#b91c1c);border-color:rgba(239,68,68,.45);} button.secondary{background:var(--card);color:var(--text);} button:disabled{opacity:.6;cursor:not-allowed;}
     table{width:100%;border-collapse:collapse;margin-top:10px;} th,td{border:1px solid var(--stroke);padding:8px;text-align:left;} th{background:#0f1624;}
     .hidden{display:none;}
     .tag{padding:4px 10px;border-radius:999px;background:#0f1624;border:1px solid var(--stroke);font-weight:800;}
@@ -117,6 +117,33 @@
     const econCdInput = qs('econCd');
     const economyStatus = qs('economyStatus');
 
+    function ensureEditable(id){
+      const el = qs(id);
+      if(!el) return;
+      const unlock = ()=>{ el.readOnly = false; el.disabled = false; };
+      unlock();
+      ['focus','mousedown','touchstart'].forEach(evt=>{
+        el.addEventListener(evt, unlock, {passive:true});
+      });
+    }
+
+    async function runAction(btn, action, onError){
+      if(btn && btn.dataset.busy === '1') return;
+      if(btn){ btn.dataset.busy='1'; btn.disabled=true; }
+      try{
+        await action();
+      }catch(e){
+        console.error('Admin action failed', e);
+        if(typeof onError === 'function'){
+          onError(e);
+        }else{
+          alert('Ошибка: ' + (e?.message || e));
+        }
+      }finally{
+        if(btn){ btn.dataset.busy=''; btn.disabled=false; }
+      }
+    }
+
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
       if(body) opts.body = JSON.stringify(body);
@@ -140,13 +167,7 @@
       return await res.json();
     }
 
-    ['findNickname','deltaPoints','newBalance'].forEach(id=>{
-      const el = qs(id);
-      if(el){
-        el.removeAttribute('readonly');
-        el.removeAttribute('disabled');
-      }
-    });
+    ['findNickname','deltaPoints','newBalance','resNickname','resAmount'].forEach(ensureEditable);
 
     function renderPrizes(items){
       const tbody = qs('prizeTable').querySelector('tbody');
@@ -254,75 +275,63 @@
       }
     }
 
-    qs('addPrizeBtn').addEventListener('click', async ()=>{
+    qs('addPrizeBtn').addEventListener('click', ()=>runAction(qs('addPrizeBtn'), async ()=>{
       console.log('click add prize');
       const name = prompt('Название приза');
       if(!name) return;
       await api('/api/admin/raffle/prizes','POST',{name});
       await loadPrizes();
-    });
+    }));
 
-    qs('publishPrizesBtn').addEventListener('click', async ()=>{
-      try{
-        const next = !prizesVisible;
-        await api('/api/admin/raffle/publish_prizes','POST',{visible: next});
-        prizesVisible = next;
-        updatePublishBtn();
-        alert(next ? 'Призы опубликованы на публичной странице.' : 'Призы скрыты с публичной страницы.');
-      }catch(e){
-        alert('Не удалось изменить видимость призов: ' + e.message);
-      }
-    });
+    qs('publishPrizesBtn').addEventListener('click', ()=>runAction(qs('publishPrizesBtn'), async ()=>{
+      const next = !prizesVisible;
+      await api('/api/admin/raffle/publish_prizes','POST',{visible: next});
+      prizesVisible = next;
+      updatePublishBtn();
+      alert(next ? 'Призы опубликованы на публичной странице.' : 'Призы скрыты с публичной страницы.');
+    }));
 
-    qs('drawBtn').addEventListener('click', async ()=>{
+    qs('drawBtn').addEventListener('click', ()=>runAction(qs('drawBtn'), async ()=>{
       console.log('click draw results');
       if(!confirm('Сформировать итоги?')) return;
-      try{
-        const res = await api('/api/admin/raffle/draw','POST',{force:false});
-        renderWinners(res.items||[]);
-      }catch(e){
-        const msg = e.code === 'no_prizes'
-          ? 'Нельзя сформировать итоги: сначала добавьте хотя бы один приз'
-          : e.message;
-        alert('Не удалось провести розыгрыш: '+ msg);
-      }
-    });
+      const res = await api('/api/admin/raffle/draw','POST',{force:false});
+      renderWinners(res.items||[]);
+    }, (e)=>{
+      const msg = e?.code === 'no_prizes'
+        ? 'Нельзя сформировать итоги: сначала добавьте хотя бы один приз'
+        : (e?.message || e);
+      alert('Не удалось провести розыгрыш: '+ msg);
+    }));
 
-    qs('finishPayoutBtn').addEventListener('click', async ()=>{
+    qs('finishPayoutBtn').addEventListener('click', ()=>runAction(qs('finishPayoutBtn'), async ()=>{
       console.log('click finish payout');
       if(!confirm('Завершить выдачу и скрыть итоги с публичной страницы?')) return;
-      try{
-        await api('/api/admin/raffle/finish_payout','POST');
-        alert('Выдача завершена, публичная страница снова в режиме подготовки.');
-        await loadWinners();
-      }catch(e){
-        alert('Не удалось завершить выдачу: '+ e.message);
-      }
-    });
+      await api('/api/admin/raffle/finish_payout','POST');
+      alert('Выдача завершена, публичная страница снова в режиме подготовки.');
+      await loadWinners();
+    }));
 
-      qs('findUserBtn').addEventListener('click', async ()=>{
-        console.log('click find user');
-        qs('foundInfo').textContent = '';
-        qs('balanceStatus').textContent = '';
+    qs('findUserBtn').addEventListener('click', ()=>runAction(qs('findUserBtn'), async ()=>{
+      console.log('click find user');
+      qs('foundInfo').textContent = '';
+      qs('balanceStatus').textContent = '';
       const nickname = qs('findNickname').value.trim();
       if(!nickname) return;
-      try{
-        const res = await api('/api/admin/users/by_nickname','POST',{nickname});
-        if(!res.ok){
-          throw new Error(res.error || 'User not found');
-        }
-        qs('findUserBtn').dataset.uid = res.user_id;
-        qs('foundInfo').textContent = `user_id: ${res.user_id}, баланс: ${res.balance}`;
-      }catch(e){
-        qs('findUserBtn').dataset.uid = '';
-        const errText = (e.code === 'not found' || /not found/i.test(e.message||''))
-          ? 'Пользователь с таким никнеймом не найден'
-          : 'Ошибка запроса: ' + (e.message || e);
-        qs('foundInfo').textContent = errText;
+      const res = await api('/api/admin/users/by_nickname','POST',{nickname});
+      if(!res.ok){
+        throw new Error(res.error || 'User not found');
       }
-    });
+      qs('findUserBtn').dataset.uid = res.user_id;
+      qs('foundInfo').textContent = `user_id: ${res.user_id}, баланс: ${res.balance}`;
+    }, (e)=>{
+      qs('findUserBtn').dataset.uid = '';
+      const errText = (e?.code === 'not found' || /not found/i.test(e?.message||''))
+        ? 'Пользователь с таким никнеймом не найден'
+        : 'Ошибка запроса: ' + (e?.message || e);
+      qs('foundInfo').textContent = errText;
+    }));
 
-    qs('saveBalanceBtn').addEventListener('click', async ()=>{
+    qs('saveBalanceBtn').addEventListener('click', ()=>runAction(qs('saveBalanceBtn'), async ()=>{
       console.log('click save balance');
       const uid = Number(qs('findUserBtn').dataset.uid||0);
       const nickname = qs('findNickname').value.trim();
@@ -332,13 +341,11 @@
         qs('balanceStatus').textContent = 'Сначала найдите пользователя по никнейму.';
         return;
       }
-      try{
-        const res = await api('/api/admin/users/set_points','POST',{user_id:uid||undefined,nickname,points_delta,new_balance});
-        qs('balanceStatus').textContent = `Новый баланс: ${res.balance}`;
-      }catch(e){
-        qs('balanceStatus').textContent = 'Не удалось сохранить: '+e.message;
-      }
-    });
+      const res = await api('/api/admin/users/set_points','POST',{user_id:uid||undefined,nickname,points_delta,new_balance});
+      qs('balanceStatus').textContent = `Новый баланс: ${res.balance}`;
+    }, (e)=>{
+      qs('balanceStatus').textContent = 'Не удалось сохранить: '+(e?.message||e);
+    }));
 
     const resSelect = qs('resType');
     rpgResources.forEach(r=>{
@@ -348,7 +355,7 @@
       resSelect.appendChild(opt);
     });
 
-    qs('grantResBtn').addEventListener('click', async ()=>{
+    qs('grantResBtn').addEventListener('click', ()=>runAction(qs('grantResBtn'), async ()=>{
       const nickname = qs('resNickname').value.trim();
       const resource = qs('resType').value;
       const amount = Number(qs('resAmount').value || 0);
@@ -365,14 +372,12 @@
         qs('resGrantStatus').textContent = 'Количество должно быть больше нуля.';
         return;
       }
-      try{
-        const res = await api('/api/admin/rpg/grant_resources','POST',{nickname,resource,amount});
-        const total = res?.resources?.[resource] ?? amount;
-        qs('resGrantStatus').textContent = `Выдано ${amount} ${resource}. Теперь у игрока: ${total}.`;
-      }catch(e){
-        qs('resGrantStatus').textContent = 'Ошибка выдачи: '+ (e.message||e);
-      }
-    });
+      const res = await api('/api/admin/rpg/grant_resources','POST',{nickname,resource,amount});
+      const total = res?.resources?.[resource] ?? amount;
+      qs('resGrantStatus').textContent = `Выдано ${amount} ${resource}. Теперь у игрока: ${total}.`;
+    }, (e)=>{
+      qs('resGrantStatus').textContent = 'Ошибка выдачи: '+ (e?.message||e);
+    }));
     qs('saveEconomyBtn').addEventListener('click', saveEconomy);
     qs('reloadEconomyBtn').addEventListener('click', loadEconomy);
     qs('adminUser').textContent = 'Доступ открыт из WebApp';

@@ -212,6 +212,28 @@ def register_routes(app: FastAPI):
         status = await r.get(key_raffle_status())
         return (status or "preparing").lower()
 
+    def normalize_nickname(name: str) -> str:
+        return (name or "").strip().lower()
+
+    async def find_user_by_nick(
+        r, nickname: str, skip_user_id: Optional[int] = None
+    ) -> Optional[Dict[str, Any]]:
+        target = normalize_nickname(nickname)
+        if not target:
+            return None
+        user_ids = await r.smembers(USERS_SET)
+        for uid_raw in user_ids:
+            uid = safe_int(uid_raw)
+            if uid <= 0:
+                continue
+            if skip_user_id and uid == skip_user_id:
+                continue
+            profile = await r.hgetall(key_profile(uid))
+            if normalize_nickname(profile.get("name")) == target:
+                bal = await get_balance(uid)
+                return {"user_id": uid, "profile": profile, "balance": bal}
+        return None
+
     async def resolve_winner_name(r, uid: Optional[int]) -> str:
         if not uid:
             return ""
@@ -418,6 +440,16 @@ def register_routes(app: FastAPI):
                 "ok": False,
                 "error": "Nick_Name может содержать 3-24 латинских символа, цифры и подчёркивания",
             }
+
+        existing_owner = await find_user_by_nick(r, name, skip_user_id=auth.user_id)
+        if existing_owner:
+            logger.info(
+                "update_profile rejected: nickname taken user=%s requested=%s owner=%s",
+                auth.user_id,
+                name,
+                existing_owner.get("user_id"),
+            )
+            return {"ok": False, "error": "Этот ник уже занят"}
 
         name_clean = sanitize_redis_string(name)
         username_clean = sanitize_redis_string(username)
@@ -1110,24 +1142,6 @@ def register_routes(app: FastAPI):
         )
 
         return {"ok": True, "status": "closed"}
-
-    def normalize_nickname(name: str) -> str:
-        return (name or "").strip().lower()
-
-    async def find_user_by_nick(r, nickname: str):
-        target = normalize_nickname(nickname)
-        if not target:
-            return None
-        user_ids = await r.smembers(USERS_SET)
-        for uid_raw in user_ids:
-            uid = safe_int(uid_raw)
-            if uid <= 0:
-                continue
-            profile = await r.hgetall(key_profile(uid))
-            if normalize_nickname(profile.get("name")) == target:
-                bal = await get_balance(uid)
-                return {"user_id": uid, "profile": profile, "balance": bal}
-        return None
 
     @app.post("/api/admin/users/by_nickname")
     async def api_admin_user_by_nick(

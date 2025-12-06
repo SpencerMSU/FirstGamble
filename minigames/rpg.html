@@ -146,42 +146,23 @@
   <script>
     const tgInstance = initTelegramGuard();
     const RESOURCE_TYPES = [
-      {key:'wood', name:'Дерево', icon:'🌲', color:'var(--green)'},
-      {key:'water', name:'Вода', icon:'💧', color:'var(--blue)'},
-      {key:'food', name:'Еда', icon:'🍎', color:'var(--amber)'},
-      {key:'gold', name:'Золото', icon:'🪙', color:'var(--purple)'}
+      {key:'wood', name:'Дерево', icon:'🪵', color:'var(--green)'},
+      {key:'stone', name:'Камень', icon:'🪨', color:'var(--muted)'},
+      {key:'iron', name:'Железо', icon:'⛓️', color:'var(--blue)'},
+      {key:'silver', name:'Серебро', icon:'🥈', color:'var(--teal)'},
+      {key:'gold', name:'Золото', icon:'🪙', color:'var(--amber)'},
+      {key:'crystal', name:'Кристалл', icon:'🔮', color:'var(--purple)'}
     ];
-    const MAX_RESOURCE = 100;
-    const COOLDOWN_MS = 3 * 60 * 1000;
-    const STORAGE_KEY = 'rpg_resources_v1';
-    const COOLDOWN_KEY = 'rpg_cooldown_until';
-    const RUNS_KEY = 'rpg_total_runs';
-    const LAST_GATHER_KEY = 'rpg_last_gather';
+    const BASE_CAP = 999;
 
     const resourceGrid = document.getElementById('resourceGrid');
     const inventoryList = document.getElementById('inventoryList');
     const cooldownInfo = document.getElementById('cooldownInfo');
     const gatherBtn = document.getElementById('gatherBtn');
 
-    let resources = loadResources();
-    let cooldownUntil = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
-
-    function loadResources(){
-      try{
-        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
-        const initial = {};
-        RESOURCE_TYPES.forEach(r=>{initial[r.key] = Number(saved?.[r.key]) || 0;});
-        return initial;
-      }catch(e){
-        const fallback={};
-        RESOURCE_TYPES.forEach(r=>fallback[r.key]=0);
-        return fallback;
-      }
-    }
-
-    function saveResources(){
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(resources));
-    }
+    let cooldownUntil = 0;
+    let currentState = null;
+    let gatherLoading = false;
 
     function formatCountdown(ms){
       if(ms <= 0) return 'готово';
@@ -191,20 +172,28 @@
       return `${m}:${s}`;
     }
 
+    function getCap(key){
+      const add = currentState?.caps?.[key] || 0;
+      return BASE_CAP + add;
+    }
+
     function renderResources(){
+      if(!currentState) return;
+      const res = currentState.resources || {};
       resourceGrid.innerHTML = '';
       inventoryList.innerHTML = '';
+
       RESOURCE_TYPES.forEach(r=>{
-        const value = Math.min(MAX_RESOURCE, Math.max(0, Number(resources[r.key]) || 0));
-        resources[r.key] = value;
-        const percent = Math.round((value / MAX_RESOURCE) * 100);
+        const cap = getCap(r.key);
+        const value = Math.max(0, Math.min(cap, Number(res?.[r.key] || 0)));
+        const percent = Math.round((value / cap) * 100);
 
         const card = document.createElement('div');
         card.className = 'resource-card';
         card.innerHTML = `
           <div class="resource-head">
             <p class="resource-name">${r.icon} ${r.name}</p>
-            <span class="tag">${value}/${MAX_RESOURCE}</span>
+            <span class="tag">${value}/${cap}</span>
           </div>
           <div class="progress"><div class="progress-fill" style="width:${percent}%;background:${r.color};"></div></div>
           <div class="resource-row"><span>Запас</span><span>${percent}%</span></div>
@@ -213,44 +202,84 @@
 
         const invItem = document.createElement('div');
         invItem.className = 'list-item';
-        invItem.innerHTML = `<span>${r.icon} ${r.name}</span><span>${value} / ${MAX_RESOURCE}</span>`;
+        invItem.innerHTML = `<span>${r.icon} ${r.name}</span><span>${value} / ${cap}</span>`;
         inventoryList.appendChild(invItem);
       });
-      saveResources();
-    }
-
-    function setCooldown(target){
-      cooldownUntil = target;
-      localStorage.setItem(COOLDOWN_KEY, String(cooldownUntil));
     }
 
     function updateCooldown(){
       const remaining = cooldownUntil - Date.now();
-      const ready = remaining <= 0;
+      const ready = remaining <= 0 && !gatherLoading;
       gatherBtn.disabled = !ready;
-      gatherBtn.textContent = ready ? 'Добыть' : `КД ${formatCountdown(remaining)}`;
+      if(gatherLoading){
+        gatherBtn.textContent = 'Обновление...';
+      } else {
+        gatherBtn.textContent = ready ? 'Добыть' : `КД ${formatCountdown(remaining)}`;
+      }
       cooldownInfo.textContent = `КД: ${formatCountdown(remaining)}`;
     }
 
-    function gather(){
-      const remaining = cooldownUntil - Date.now();
-      if(remaining > 0) return;
-      let gainedText = [];
-      RESOURCE_TYPES.forEach(r=>{
-        const delta = Math.floor(Math.random()*3) + 1;
-        const next = Math.min(MAX_RESOURCE, (resources[r.key] || 0) + delta);
-        const applied = next - (resources[r.key] || 0);
-        resources[r.key] = next;
-        gainedText.push(`${r.icon} +${applied}`);
-      });
+    function renderProfile(){
+      const uid = tg?.initDataUnsafe?.user?.id;
+      document.getElementById('profileId').textContent = uid ? `UID: ${uid}` : '—';
+    }
+
+    function applyState(state){
+      currentState = state;
+      cooldownUntil = (Number(state?.cooldown_until) || 0) * 1000;
       renderResources();
-      setCooldown(Date.now() + COOLDOWN_MS);
-      const totalRuns = Number(localStorage.getItem(RUNS_KEY) || 0) + 1;
-      localStorage.setItem(RUNS_KEY, String(totalRuns));
-      localStorage.setItem(LAST_GATHER_KEY, new Date().toISOString());
-      document.getElementById('totalRuns').textContent = totalRuns;
-      document.getElementById('lastGather').textContent = new Date().toLocaleString();
-      cooldownInfo.textContent = `Получено: ${gainedText.join(', ')}`;
+      updateCooldown();
+    }
+
+    async function loadState(){
+      gatherLoading = true;
+      updateCooldown();
+      try{
+        const res = await apiGet('/api/rpg/state');
+        if(res?.ok){
+          applyState(res.state);
+        } else {
+          cooldownInfo.textContent = 'Ошибка загрузки состояния';
+        }
+      }catch(e){
+        cooldownInfo.textContent = 'Сервер недоступен';
+      } finally {
+        gatherLoading = false;
+        updateCooldown();
+      }
+    }
+
+    async function gather(){
+      const remaining = cooldownUntil - Date.now();
+      if(remaining > 0 || gatherLoading) return;
+      gatherLoading = true;
+      updateCooldown();
+      try{
+        const res = await apiPost('/api/rpg/gather', {});
+        if(res?.ok){
+          applyState(res.state);
+          const gained = res.gained || {};
+          const gainedText = RESOURCE_TYPES
+            .map(r=>{const v = gained[r.key]; return v ? `${r.icon} +${v}` : null;})
+            .filter(Boolean)
+            .join(', ');
+          cooldownInfo.textContent = gainedText ? `Получено: ${gainedText}` : 'Добыча завершена';
+          document.getElementById('lastGather').textContent = new Date().toLocaleString();
+          const runsEl = document.getElementById('totalRuns');
+          runsEl.textContent = String(Number(runsEl.textContent || '0') + 1);
+        } else if(res?.error === 'cooldown'){
+          const seconds = Number(res.cooldown_remaining || 0);
+          cooldownUntil = Date.now() + seconds * 1000;
+          updateCooldown();
+        } else {
+          cooldownInfo.textContent = 'Не удалось провести добычу';
+        }
+      }catch(e){
+        cooldownInfo.textContent = 'Сервер недоступен';
+      } finally {
+        gatherLoading = false;
+        updateCooldown();
+      }
     }
 
     function switchTab(tab){
@@ -267,24 +296,14 @@
     });
 
     gatherBtn.addEventListener('click', gather);
-
-    function restoreProfile(){
-      const totalRuns = Number(localStorage.getItem(RUNS_KEY) || 0);
-      const lastGather = localStorage.getItem(LAST_GATHER_KEY);
-      document.getElementById('totalRuns').textContent = totalRuns;
-      document.getElementById('lastGather').textContent = lastGather ? new Date(lastGather).toLocaleString() : '—';
-      const uid = tg?.initDataUnsafe?.user?.id;
-      document.getElementById('profileId').textContent = uid ? `UID: ${uid}` : 'Локальный режим';
-    }
-
-    renderResources();
-    updateCooldown();
-    restoreProfile();
+    renderProfile();
     setInterval(updateCooldown, 1000);
 
     (async () => {
       if(!tgInstance) return;
-      await ensureNicknameOrRedirect();
+      const profile = await ensureNicknameOrRedirect();
+      if(!profile || !profile.ok) return;
+      await loadState();
     })();
   </script>
 </body>

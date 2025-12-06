@@ -181,11 +181,12 @@
     }
 
     // food
+    ctx.save();
     ctx.fillStyle = '#f59e0b';
     ctx.shadowColor = 'rgba(245,158,11,0.6)';
     ctx.shadowBlur = 10;
     ctx.fillRect(food.x*cellSize+2, food.y*cellSize+2, cellSize-4, cellSize-4);
-    ctx.shadowBlur = 0;
+    ctx.restore();
 
     const points = snake.map((segment, idx)=>{
       const prev = previousSnake[idx] || segment;

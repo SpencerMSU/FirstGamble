@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>RPG — скоро</title>
+  <title>RPG — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/webapp_guard.js"></script>
   <style>
@@ -11,12 +11,14 @@
       --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
       --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
       --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+      --green:#22c55e;--amber:#f59e0b;--purple:#a855f7;--teal:#14b8a6;
       --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
     }
     html[data-theme="light"]{
       --bg:#f4f7fb;--bg2:#eef2f7;--panel:#ffffff;--card:#ffffff;--card2:#f6f8fb;
       --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
       --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+      --green:#16a34a;--amber:#d97706;--purple:#9333ea;--teal:#0d9488;
       --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
     }
     html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
@@ -28,7 +30,7 @@
       linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
       min-height:100vh;display:flex;justify-content:center;padding:16px;
     }
-    .app{position:relative;width:min(780px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+    .app{position:relative;width:min(900px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
       background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
     header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
     .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
@@ -38,10 +40,33 @@
       border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
     .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
     .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
-      border-radius:16px;padding:18px;box-shadow:var(--shadow);display:flex;flex-direction:column;gap:10px;}
-    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid var(--stroke2);color:var(--text);
-      background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);font-weight:800;width:max-content;}
-    .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.4;}
+      border-radius:16px;padding:16px;box-shadow:var(--shadow);}
+    .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px;}
+    .tab{padding:10px 12px;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s ease;justify-content:center;}
+    .tab.active{border-color:var(--stroke2);box-shadow:0 6px 20px rgba(59,130,246,.22);color:var(--blue);background:linear-gradient(180deg,color-mix(in oklab,var(--card) 90%,var(--stroke2)) 0%,var(--card2) 100%);}
+    .tab:hover{border-color:var(--stroke2);}
+    .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.45;}
+    .title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}
+    .pill{display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:999px;border:1px solid var(--stroke2);
+      color:var(--text);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);font-weight:800;width:max-content;}
+    .primary-btn{padding:12px 16px;border-radius:12px;border:1px solid var(--stroke2);background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:900;cursor:pointer;transition:.15s ease;box-shadow:0 8px 22px rgba(37,99,235,.35);}
+    .primary-btn:disabled{opacity:.7;cursor:not-allowed;box-shadow:none;}
+    .resource-grid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin-top:12px;}
+    @media(max-width:720px){.resource-grid{grid-template-columns:1fr;}}
+    .resource-card{border:1px solid var(--stroke);border-radius:14px;padding:12px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      display:flex;flex-direction:column;gap:10px;box-shadow:var(--shadow);}
+    .resource-head{display:flex;align-items:center;gap:10px;justify-content:space-between;}
+    .resource-name{margin:0;font-weight:900;font-size:15px;display:flex;align-items:center;gap:6px;}
+    .progress{width:100%;height:10px;border-radius:999px;background:rgba(255,255,255,.06);position:relative;overflow:hidden;border:1px solid var(--stroke);}
+    .progress-fill{position:absolute;left:0;top:0;bottom:0;border-radius:999px;}
+    .resource-row{display:flex;align-items:center;justify-content:space-between;font-weight:800;font-size:13px;color:var(--muted);}
+    .note{font-size:12px;color:var(--muted);margin:6px 0 0;line-height:1.5;}
+    .list{display:flex;flex-direction:column;gap:10px;margin-top:10px;}
+    .list-item{border:1px dashed var(--stroke);border-radius:12px;padding:10px 12px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);display:flex;justify-content:space-between;align-items:center;}
+    .tag{padding:6px 8px;border-radius:999px;border:1px solid var(--stroke);font-size:12px;color:var(--muted);}  
+    .cooldown{font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;}
   </style>
 </head>
 <body>
@@ -50,19 +75,213 @@
       <a class="back" href="/minigames">← Миниигры</a>
       <div class="title">
         <h1>RPG</h1>
-        <span>Раздел находится в разработке</span>
+        <span>Собирай ресурсы, следи за прогрессом и профилем</span>
       </div>
       <div style="width:64px"></div>
     </header>
 
     <section class="section">
-      <div class="pill">Скоро</div>
-      <p class="muted">Мы готовим обновлённый режим RPG с прогрессией, квестами и наградами. Следи за новостями — запуск уже скоро.</p>
+      <div class="tabs">
+        <div class="tab active" data-tab="gather">⛏️ Добыча</div>
+        <div class="tab" data-tab="inventory">🎒 Инвентарь</div>
+        <div class="tab" data-tab="conversion">⚗️ Преобразование</div>
+        <div class="tab" data-tab="shop">🛒 Магазин</div>
+        <div class="tab" data-tab="profile">👤 Профиль</div>
+      </div>
+
+      <div data-view="gather">
+        <div class="title-row">
+          <div>
+            <div class="pill">Базовая добыча</div>
+            <p class="muted" style="margin-top:6px;max-width:600px;">
+              Каждая попытка приносит случайное количество ресурсов (1–3 ед.) по четырём базовым типам. Максимум по умолчанию — 100 шт. на каждый ресурс.
+            </p>
+          </div>
+          <button id="gatherBtn" class="primary-btn">Добыть</button>
+        </div>
+        <div class="cooldown" id="cooldownInfo">КД: готово</div>
+        <div class="resource-grid" id="resourceGrid"></div>
+        <p class="note">КД на добычу — 3 минуты. Таймер продолжает идти даже когда миниаппа закрыта.</p>
+      </div>
+
+      <div data-view="inventory" style="display:none;">
+        <div class="title-row">
+          <div class="pill">🎒 Рюкзак</div>
+          <span class="tag">Автосохранение локально</span>
+        </div>
+        <p class="muted">Проверяй текущий запас ресурсов. Значения синхронизированы с вкладкой добычи.</p>
+        <div class="list" id="inventoryList"></div>
+      </div>
+
+      <div data-view="conversion" style="display:none;">
+        <div class="title-row">
+          <div class="pill">⚗️ Преобразование</div>
+          <span class="tag">В разработке</span>
+        </div>
+        <p class="muted">Здесь появятся рецепты для переработки ресурсов в материалы более высокого уровня. Следи за обновлениями!</p>
+      </div>
+
+      <div data-view="shop" style="display:none;">
+        <div class="title-row">
+          <div class="pill">🛒 Лавка</div>
+          <span class="tag">Скоро</span>
+        </div>
+        <p class="muted">Магазин позволит тратить заработанные ресурсы на полезные предметы и усиления. Пока можно лишь наблюдать за запасами в инвентаре.</p>
+      </div>
+
+      <div data-view="profile" style="display:none;">
+        <div class="title-row">
+          <div class="pill">👤 Профиль</div>
+          <span class="tag" id="profileId">—</span>
+        </div>
+        <p class="muted">Отслеживай свой прогресс и историю добычи. Данные сохраняются в браузере, поэтому можно продолжить позже.</p>
+        <div class="list">
+          <div class="list-item"><span>Последняя добыча</span><span id="lastGather">—</span></div>
+          <div class="list-item"><span>Всего попыток</span><span id="totalRuns">0</span></div>
+        </div>
+      </div>
     </section>
   </div>
 
   <script>
     const tgInstance = initTelegramGuard();
+    const RESOURCE_TYPES = [
+      {key:'wood', name:'Дерево', icon:'🌲', color:'var(--green)'},
+      {key:'water', name:'Вода', icon:'💧', color:'var(--blue)'},
+      {key:'food', name:'Еда', icon:'🍎', color:'var(--amber)'},
+      {key:'gold', name:'Золото', icon:'🪙', color:'var(--purple)'}
+    ];
+    const MAX_RESOURCE = 100;
+    const COOLDOWN_MS = 3 * 60 * 1000;
+    const STORAGE_KEY = 'rpg_resources_v1';
+    const COOLDOWN_KEY = 'rpg_cooldown_until';
+    const RUNS_KEY = 'rpg_total_runs';
+    const LAST_GATHER_KEY = 'rpg_last_gather';
+
+    const resourceGrid = document.getElementById('resourceGrid');
+    const inventoryList = document.getElementById('inventoryList');
+    const cooldownInfo = document.getElementById('cooldownInfo');
+    const gatherBtn = document.getElementById('gatherBtn');
+
+    let resources = loadResources();
+    let cooldownUntil = Number(localStorage.getItem(COOLDOWN_KEY) || 0);
+
+    function loadResources(){
+      try{
+        const saved = JSON.parse(localStorage.getItem(STORAGE_KEY) || '{}');
+        const initial = {};
+        RESOURCE_TYPES.forEach(r=>{initial[r.key] = Number(saved?.[r.key]) || 0;});
+        return initial;
+      }catch(e){
+        const fallback={};
+        RESOURCE_TYPES.forEach(r=>fallback[r.key]=0);
+        return fallback;
+      }
+    }
+
+    function saveResources(){
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(resources));
+    }
+
+    function formatCountdown(ms){
+      if(ms <= 0) return 'готово';
+      const totalSec = Math.ceil(ms/1000);
+      const m = String(Math.floor(totalSec/60)).padStart(2,'0');
+      const s = String(totalSec%60).padStart(2,'0');
+      return `${m}:${s}`;
+    }
+
+    function renderResources(){
+      resourceGrid.innerHTML = '';
+      inventoryList.innerHTML = '';
+      RESOURCE_TYPES.forEach(r=>{
+        const value = Math.min(MAX_RESOURCE, Math.max(0, Number(resources[r.key]) || 0));
+        resources[r.key] = value;
+        const percent = Math.round((value / MAX_RESOURCE) * 100);
+
+        const card = document.createElement('div');
+        card.className = 'resource-card';
+        card.innerHTML = `
+          <div class="resource-head">
+            <p class="resource-name">${r.icon} ${r.name}</p>
+            <span class="tag">${value}/${MAX_RESOURCE}</span>
+          </div>
+          <div class="progress"><div class="progress-fill" style="width:${percent}%;background:${r.color};"></div></div>
+          <div class="resource-row"><span>Запас</span><span>${percent}%</span></div>
+        `;
+        resourceGrid.appendChild(card);
+
+        const invItem = document.createElement('div');
+        invItem.className = 'list-item';
+        invItem.innerHTML = `<span>${r.icon} ${r.name}</span><span>${value} / ${MAX_RESOURCE}</span>`;
+        inventoryList.appendChild(invItem);
+      });
+      saveResources();
+    }
+
+    function setCooldown(target){
+      cooldownUntil = target;
+      localStorage.setItem(COOLDOWN_KEY, String(cooldownUntil));
+    }
+
+    function updateCooldown(){
+      const remaining = cooldownUntil - Date.now();
+      const ready = remaining <= 0;
+      gatherBtn.disabled = !ready;
+      gatherBtn.textContent = ready ? 'Добыть' : `КД ${formatCountdown(remaining)}`;
+      cooldownInfo.textContent = `КД: ${formatCountdown(remaining)}`;
+    }
+
+    function gather(){
+      const remaining = cooldownUntil - Date.now();
+      if(remaining > 0) return;
+      let gainedText = [];
+      RESOURCE_TYPES.forEach(r=>{
+        const delta = Math.floor(Math.random()*3) + 1;
+        const next = Math.min(MAX_RESOURCE, (resources[r.key] || 0) + delta);
+        const applied = next - (resources[r.key] || 0);
+        resources[r.key] = next;
+        gainedText.push(`${r.icon} +${applied}`);
+      });
+      renderResources();
+      setCooldown(Date.now() + COOLDOWN_MS);
+      const totalRuns = Number(localStorage.getItem(RUNS_KEY) || 0) + 1;
+      localStorage.setItem(RUNS_KEY, String(totalRuns));
+      localStorage.setItem(LAST_GATHER_KEY, new Date().toISOString());
+      document.getElementById('totalRuns').textContent = totalRuns;
+      document.getElementById('lastGather').textContent = new Date().toLocaleString();
+      cooldownInfo.textContent = `Получено: ${gainedText.join(', ')}`;
+    }
+
+    function switchTab(tab){
+      document.querySelectorAll('[data-tab]').forEach(el=>{
+        el.classList.toggle('active', el.dataset.tab === tab);
+      });
+      document.querySelectorAll('[data-view]').forEach(view=>{
+        view.style.display = view.dataset.view === tab ? 'block' : 'none';
+      });
+    }
+
+    document.querySelectorAll('[data-tab]').forEach(tab=>{
+      tab.addEventListener('click', ()=>switchTab(tab.dataset.tab));
+    });
+
+    gatherBtn.addEventListener('click', gather);
+
+    function restoreProfile(){
+      const totalRuns = Number(localStorage.getItem(RUNS_KEY) || 0);
+      const lastGather = localStorage.getItem(LAST_GATHER_KEY);
+      document.getElementById('totalRuns').textContent = totalRuns;
+      document.getElementById('lastGather').textContent = lastGather ? new Date(lastGather).toLocaleString() : '—';
+      const uid = tg?.initDataUnsafe?.user?.id;
+      document.getElementById('profileId').textContent = uid ? `UID: ${uid}` : 'Локальный режим';
+    }
+
+    renderResources();
+    updateCooldown();
+    restoreProfile();
+    setInterval(updateCooldown, 1000);
+
     (async () => {
       if(!tgInstance) return;
       await ensureNicknameOrRedirect();

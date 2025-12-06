@@ -1,5 +1,7 @@
 import time
 
+import logging
+
 from aiohttp import web
 
 from .config import BASE_DIR, CONSERVE_AUTH_TOKEN
@@ -36,6 +38,8 @@ from .redis_utils import (
     sanitize_redis_string,
     safe_int,
 )
+
+logger = logging.getLogger(__name__)
 
 routes = web.RouteTableDef()
 
@@ -108,7 +112,7 @@ async def api_add_point(request: web.Request):
             return json_error("not confirmed", status=403)
 
     await ensure_user(user_id)
-    new_balance = await add_points(user_id, delta)
+    new_balance = await add_points(user_id, delta, game)
 
     return web.json_response({"ok": True, "balance": new_balance})
 
@@ -394,6 +398,10 @@ async def api_rpg_convert(request: web.Request):
 
         new_bal = safe_int(await r.get(key_balance(uid)))
         await r.zadd(USERS_ZSET, {uid: new_bal})
+
+        logger.info(
+            "Игрок с id %s получил %s очков в игре %s", uid, value, "rpg_convert"
+        )
 
         st = await rpg_state(uid)
         return web.json_response({"ok": True, "state": st})

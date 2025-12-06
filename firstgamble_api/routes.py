@@ -271,7 +271,7 @@ def register_routes(app: FastAPI):
             delta = SLOT_WIN_POINTS
 
         await ensure_user(auth.user_id)
-        new_balance = await add_points(auth.user_id, delta)
+        new_balance = await add_points(auth.user_id, delta, game)
 
         logger.info(
             "add_point: user=%s game=%s delta=%s new_balance=%s",
@@ -305,7 +305,7 @@ def register_routes(app: FastAPI):
             raise HTTPException(status_code=404, detail="Nick_Name is not linked")
 
         await ensure_user(uid)
-        new_balance = await add_points(uid, dice_sum)
+        new_balance = await add_points(uid, dice_sum, "dice")
 
         logger.info(
             "dice external award: nick=%s user=%s dice_sum=%s dice_count=%s balance=%s",
@@ -635,6 +635,13 @@ def register_routes(app: FastAPI):
 
             new_bal = safe_int(await r.get(key_balance(uid)))
             await r.zadd(USERS_ZSET, {uid: new_bal})
+
+            logger.info(
+                "Игрок с id %s получил %s очков в игре %s",
+                uid,
+                value,
+                "rpg_convert",
+            )
 
             st = await rpg_state(uid)
             return {"ok": True, "state": st}
@@ -1031,6 +1038,12 @@ def register_routes(app: FastAPI):
         await pipe.execute()
 
         profile = await r.hgetall(key_profile(uid))
+        logger.info(
+            "Админ изменил баланс игрока с id %s: delta=%s, новый баланс=%s",
+            uid,
+            new_balance - cur_balance,
+            new_balance,
+        )
         return {
             "ok": True,
             "user_id": uid,

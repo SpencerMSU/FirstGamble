@@ -1,0 +1,52 @@
+server:
+  http_listen_port: 9080
+  grpc_listen_port: 0
+
+positions:
+  filename: /tmp/positions.yaml
+
+clients:
+  - url: http://loki:3100/loki/api/v1/push
+
+scrape_configs:
+  - job_name: journal-firstgamble
+    journal:
+      path: /var/log/journal
+      max_age: 12h
+      labels:
+        job: firstgamble
+        env: prod
+    relabel_configs:
+      - source_labels: ['__journal__systemd_unit']
+        target_label: 'service'
+      - source_labels: ['__journal__hostname']
+        target_label: 'host'
+    pipeline_stages:
+      - match:
+          selector: '{__journal__systemd_unit="firstgamble-api.service"}'
+          stages:
+            - regex:
+                expression: '(?P<message>.*)'
+            - labels:
+                service: firstgamble-api
+            - output:
+                source: message
+      - match:
+          selector: '{__journal__systemd_unit="firstgamble-bot.service"}'
+          stages:
+            - regex:
+                expression: '(?P<message>.*)'
+            - labels:
+                service: firstgamble-bot
+            - output:
+                source: message
+
+  - job_name: nginx-logs
+    static_configs:
+      - targets:
+          - localhost
+        labels:
+          job: firstgamble
+          service: nginx
+          env: prod
+          __path__: /var/log/nginx/*.log

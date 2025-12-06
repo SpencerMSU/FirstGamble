@@ -1,18 +1,20 @@
 import asyncio
 import logging
 import os
+
 from aiogram import Bot, Dispatcher
 from aiogram.client.default import DefaultBotProperties
 from aiogram.enums import ParseMode
 from aiohttp import web
-from aiogram import Bot, Dispatcher
+
+from logging_setup import configure_logging
+
+configure_logging(service_name="firstgamble-bot", env=os.getenv("FG_ENV", "prod"))
 
 from .config import BOT_TOKEN
 from .handlers import register_handlers
 from .redis_utils import get_redis, rds
 from .routes import routes
-
-logging.basicConfig(level=logging.INFO)
 
 bot = Bot(
     token=BOT_TOKEN,

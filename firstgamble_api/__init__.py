@@ -1,5 +1,11 @@
+import os
+
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+
+from logging_setup import configure_logging
+
+configure_logging(service_name="firstgamble-api", env=os.getenv("FG_ENV", "prod"))
 
 app = FastAPI(
     title="FirstGamble API",

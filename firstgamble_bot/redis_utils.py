@@ -1,4 +1,5 @@
 import re
+import logging
 from typing import Optional
 
 import redis.asyncio as redis
@@ -6,6 +7,7 @@ import redis.asyncio as redis
 from .config import REDIS_HOST, REDIS_PORT, REDIS_DB
 
 rds: Optional[redis.Redis] = None
+logger = logging.getLogger(__name__)
 
 
 async def get_redis() -> redis.Redis:
@@ -107,7 +109,7 @@ async def get_balance(user_id: int) -> int:
     return safe_int(val)
 
 
-async def add_points(user_id: int, delta: int) -> int:
+async def add_points(user_id: int, delta: int, game_code: str = "unknown") -> int:
     r = await get_redis()
     pipe = r.pipeline()
     pipe.incrby(key_balance(user_id), delta)
@@ -115,4 +117,11 @@ async def add_points(user_id: int, delta: int) -> int:
     res = await pipe.execute()
     new_balance = safe_int(res[1])
     await r.zadd(USERS_ZSET, {user_id: new_balance})
+    if delta > 0:
+        logger.info(
+            "Игрок с id %s получил %s очков в игре %s",
+            user_id,
+            delta,
+            game_code,
+        )
     return new_balance

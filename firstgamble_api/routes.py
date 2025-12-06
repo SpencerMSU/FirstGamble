@@ -637,10 +637,8 @@ def register_routes(app: FastAPI):
             await r.zadd(USERS_ZSET, {uid: new_bal})
 
             logger.info(
-                "Игрок с id %s получил %s очков в игре %s",
-                uid,
-                value,
-                "rpg_convert",
+                f"Игрок с id {uid} получил {value} очков в игре rpg_convert "
+                f"(новый баланс: {new_bal})"
             )
 
             st = await rpg_state(uid)
@@ -1039,10 +1037,8 @@ def register_routes(app: FastAPI):
 
         profile = await r.hgetall(key_profile(uid))
         logger.info(
-            "Админ изменил баланс игрока с id %s: delta=%s, новый баланс=%s",
-            uid,
-            new_balance - cur_balance,
-            new_balance,
+            f"Админ изменил баланс игрока с id {uid}: delta={new_balance - cur_balance}, "
+            f"новый баланс: {new_balance}"
         )
         return {
             "ok": True,

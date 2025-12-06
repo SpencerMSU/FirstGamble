@@ -119,9 +119,7 @@ async def add_points(user_id: int, delta: int, game_code: str = "unknown") -> in
     await r.zadd(USERS_ZSET, {user_id: new_balance})
     if delta > 0:
         logger.info(
-            "Игрок с id %s получил %s очков в игре %s",
-            user_id,
-            delta,
-            game_code,
+            f"Игрок с id {user_id} получил {delta} очков в игре {game_code} "
+            f"(новый баланс: {new_balance})"
         )
     return new_balance

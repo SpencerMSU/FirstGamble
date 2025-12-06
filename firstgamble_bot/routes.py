@@ -400,7 +400,8 @@ async def api_rpg_convert(request: web.Request):
         await r.zadd(USERS_ZSET, {uid: new_bal})
 
         logger.info(
-            "Игрок с id %s получил %s очков в игре %s", uid, value, "rpg_convert"
+            f"Игрок с id {uid} получил {value} очков в игре rpg_convert "
+            f"(новый баланс: {new_bal})"
         )
 
         st = await rpg_state(uid)

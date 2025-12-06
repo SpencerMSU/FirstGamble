@@ -361,7 +361,7 @@ async def api_rpg_buy(request: web.Request):
         pipe.sadd(owned_key, item_id)
         await pipe.execute()
     else:
-        bal = safe_int(await r.get(key_balance(uid)))
+        bal = await get_balance(uid)
         if bal < cost:
             return json_error("not enough points")
 
@@ -417,7 +417,7 @@ async def api_rpg_convert(request: web.Request):
         pipe.incrby(key_balance(uid), value)
         await pipe.execute()
 
-        new_bal = safe_int(await r.get(key_balance(uid)))
+        new_bal = await get_balance(uid)
         await r.zadd(USERS_ZSET, {uid: new_bal})
 
         logger.info(
@@ -466,7 +466,7 @@ async def api_buy_ticket(request: web.Request):
     await ensure_user(uid)
 
     PRICE = 500
-    bal = safe_int(await r.get(key_balance(uid)))
+    bal = await get_balance(uid)
     if bal < PRICE:
         return json_error("not enough points")
 
@@ -508,7 +508,7 @@ async def api_cabinet(request: web.Request):
 
     await ensure_user(uid)
 
-    bal = safe_int(await r.get(key_balance(uid)))
+    bal = await get_balance(uid)
     tickets = await r.lrange(key_user_tickets(uid), 0, -1)
 
     return web.json_response({"ok": True, "user_id": str(uid), "balance": bal, "tickets": tickets})

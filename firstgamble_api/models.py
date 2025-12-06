@@ -81,6 +81,11 @@ class AdminPublishPrizesRequest(BaseModel):
     visible: bool = True
 
 
+class AdminEconomyUpdateRequest(BaseModel):
+    convert_rate: Optional[int] = Field(default=None, ge=1, le=1000)
+    base_cd: Optional[int] = Field(default=None, ge=30, le=86400)
+
+
 class AdminDrawRequest(BaseModel):
     force: Optional[bool] = False
 

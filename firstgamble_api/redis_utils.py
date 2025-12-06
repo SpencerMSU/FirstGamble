@@ -58,6 +58,9 @@ USERS_SET = "users:all"  # set of user_ids
 
 ALLOWED_GAMES = {"dice", "bj", "slot", "snake", "runner", "pulse"}
 
+BALANCE_LIMIT = 999_999
+BALANCE_RESET = 2_000
+
 _CONTROL_CHARS_RE = re.compile(r"[\r\n\x00]")
 
 
@@ -112,7 +115,20 @@ async def ensure_user(user_id: int):
 async def get_balance(user_id: int) -> int:
     r = await get_redis()
     val = await r.get(key_balance(user_id))
-    return safe_int(val)
+    bal = safe_int(val)
+    if bal > BALANCE_LIMIT:
+        await r.set(key_balance(user_id), BALANCE_RESET)
+        await r.zadd(USERS_ZSET, {user_id: BALANCE_RESET})
+        return BALANCE_RESET
+    return bal
+
+
+def clamp_balance(value: int) -> int:
+    if value > BALANCE_LIMIT:
+        return BALANCE_LIMIT
+    if value < -BALANCE_LIMIT:
+        return -BALANCE_LIMIT
+    return value
 
 
 async def add_points(user_id: int, delta: int, game_code: str = "unknown") -> int:
@@ -121,7 +137,8 @@ async def add_points(user_id: int, delta: int, game_code: str = "unknown") -> in
     pipe.incrby(key_balance(user_id), delta)
     pipe.get(key_balance(user_id))
     res = await pipe.execute()
-    new_balance = safe_int(res[1])
+    new_balance = clamp_balance(safe_int(res[1]))
+    await r.set(key_balance(user_id), new_balance)
     await r.zadd(USERS_ZSET, {user_id: new_balance})
     if delta > 0:
         logger.info(

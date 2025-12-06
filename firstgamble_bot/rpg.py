@@ -4,6 +4,7 @@ from typing import Dict
 
 from .redis_utils import (
     add_points,
+    get_balance,
     get_redis,
     key_balance,
     safe_int,
@@ -21,29 +22,133 @@ RPG_RESOURCES = [
     "essence",
 ]
 RPG_MAX = 999
+RPG_CONVERT_RATE_DEFAULT = 5
+RPG_BASE_CD_DEFAULT = 300
 
 RPG_ACCESSORIES = {
-    "acc1": {"name": "Талисман удачи", "cost": 3, "cd_red": 0.05, "yield_add": 0.05},
-    "acc2": {"name": "Кольцо шахтёра", "cost": 5, "cd_red": 0.08, "yield_add": 0.07},
-    "acc3": {"name": "Амулет времени", "cost": 8, "cd_red": 0.10, "yield_add": 0.06},
-    "acc4": {"name": "Браслет скорости", "cost": 12, "cd_red": 0.12, "yield_add": 0.08},
-    "acc5": {"name": "Печать старателя", "cost": 16, "cd_red": 0.15, "yield_add": 0.10},
-    "acc6": {"name": "Подвеска кристалла", "cost": 22, "cd_red": 0.18, "yield_add": 0.12},
-    "acc7": {"name": "Сердце леса", "cost": 7, "cd_red": 0.06, "yield_add": 0.09},
-    "acc8": {"name": "Око горы", "cost": 11, "cd_red": 0.09, "yield_add": 0.11},
-    "acc9": {"name": "Звезда артефактов", "cost": 18, "cd_red": 0.13, "yield_add": 0.14},
-    "acc10": {"name": "Корона старателя", "cost": 30, "cd_red": 0.20, "yield_add": 0.20},
+    "acc1": {
+        "name": "Тканевая подвязка",
+        "level": 1,
+        "cost": 4,
+        "cd_red": 0.03,
+        "convert_bonus": 0.02,
+        "yield_add": 0.02,
+    },
+    "acc2": {
+        "name": "Жетон старателя",
+        "level": 2,
+        "cost": 7,
+        "cd_red": 0.05,
+        "convert_bonus": 0.04,
+        "yield_add": 0.03,
+    },
+    "acc3": {
+        "name": "Кольцо ускорения",
+        "level": 3,
+        "cost": 11,
+        "cd_red": 0.07,
+        "convert_bonus": 0.06,
+        "yield_add": 0.05,
+    },
+    "acc4": {
+        "name": "Амулет руды",
+        "level": 4,
+        "cost": 15,
+        "cd_red": 0.10,
+        "convert_bonus": 0.08,
+        "yield_add": 0.06,
+    },
+    "acc5": {
+        "name": "Браслет инженера",
+        "level": 5,
+        "cost": 21,
+        "cd_red": 0.12,
+        "convert_bonus": 0.10,
+        "yield_add": 0.08,
+    },
+    "acc6": {
+        "name": "Фазовый талисман",
+        "level": 6,
+        "cost": 28,
+        "cd_red": 0.15,
+        "convert_bonus": 0.12,
+        "yield_add": 0.10,
+    },
+    "acc7": {
+        "name": "Печать реликтов",
+        "level": 7,
+        "cost": 36,
+        "cd_red": 0.18,
+        "convert_bonus": 0.15,
+        "yield_add": 0.12,
+    },
+    "acc8": {
+        "name": "Корона алхимика",
+        "level": 8,
+        "cost": 45,
+        "cd_red": 0.22,
+        "convert_bonus": 0.18,
+        "yield_add": 0.14,
+    },
 }
 
 RPG_TOOLS = {
-    "tool1": {"name": "Кирка новичка", "cost": 2, "cd_red": 0.00, "yield_add": 0.05},
-    "tool2": {"name": "Каменная кирка", "cost": 4, "cd_red": 0.04, "yield_add": 0.07},
-    "tool3": {"name": "Железная кирка", "cost": 7, "cd_red": 0.06, "yield_add": 0.10},
-    "tool4": {"name": "Серебряная кирка", "cost": 10, "cd_red": 0.08, "yield_add": 0.12},
-    "tool5": {"name": "Золотая кирка", "cost": 14, "cd_red": 0.10, "yield_add": 0.15},
-    "tool6": {"name": "Кристальная кирка", "cost": 20, "cd_red": 0.12, "yield_add": 0.18},
-    "tool7": {"name": "Буровой молот", "cost": 24, "cd_red": 0.15, "yield_add": 0.20},
-    "tool8": {"name": "Резак руды", "cost": 28, "cd_red": 0.18, "yield_add": 0.22},
+    "tool1": {
+        "name": "Кирка новичка",
+        "cost": 3,
+        "cd_red": 0.00,
+        "yield_add": 0.04,
+        "extra_drops": [{"resource": "wood", "chance": 0.05, "amount": 1}],
+    },
+    "tool2": {
+        "name": "Каменный долот",
+        "cost": 6,
+        "cd_red": 0.03,
+        "yield_add": 0.06,
+        "extra_drops": [{"resource": "stone", "chance": 0.08, "amount": 1}],
+    },
+    "tool3": {
+        "name": "Железная кирка",
+        "cost": 10,
+        "cd_red": 0.05,
+        "yield_add": 0.08,
+        "extra_drops": [{"resource": "iron", "chance": 0.10, "amount": 1}],
+    },
+    "tool4": {
+        "name": "Серебряная кирка",
+        "cost": 15,
+        "cd_red": 0.07,
+        "yield_add": 0.10,
+        "extra_drops": [{"resource": "silver", "chance": 0.12, "amount": 1}],
+    },
+    "tool5": {
+        "name": "Золотая дрель",
+        "cost": 21,
+        "cd_red": 0.09,
+        "yield_add": 0.12,
+        "extra_drops": [{"resource": "gold", "chance": 0.15, "amount": 1}],
+    },
+    "tool6": {
+        "name": "Кристальный резак",
+        "cost": 28,
+        "cd_red": 0.11,
+        "yield_add": 0.14,
+        "extra_drops": [{"resource": "crystal", "chance": 0.18, "amount": 1}],
+    },
+    "tool7": {
+        "name": "Мифриловый бур",
+        "cost": 36,
+        "cd_red": 0.13,
+        "yield_add": 0.16,
+        "extra_drops": [{"resource": "mythril", "chance": 0.22, "amount": 1}],
+    },
+    "tool8": {
+        "name": "Реликтовый экскаватор",
+        "cost": 45,
+        "cd_red": 0.15,
+        "yield_add": 0.18,
+        "extra_drops": [{"resource": "relic", "chance": 0.26, "amount": 1}],
+    },
 }
 
 RPG_BAGS = {
@@ -51,91 +156,121 @@ RPG_BAGS = {
         "name": "Мешок из ткани",
         "cost": 3,
         "cost_resource": "wood",
-        "cap_add": 50,
+        "cap_add": 80,
     },
     "bag2": {
         "name": "Сумка старателя",
         "cost": 6,
         "cost_resource": "wood",
-        "cap_add": 100,
+        "cap_add": 160,
     },
     "bag3": {
         "name": "Рюкзак шахтёра",
         "cost": 12,
         "cost_resource": "stone",
-        "cap_add": 200,
+        "cap_add": 320,
     },
     "bag4": {
         "name": "Укреплённый рюкзак",
         "cost": 18,
         "cost_resource": "stone",
-        "cap_add": 300,
+        "cap_add": 520,
     },
     "bag5": {
         "name": "Экспедиционный мешок",
         "cost": 25,
         "cost_resource": "iron",
-        "cap_add": 450,
+        "cap_add": 800,
     },
     "bag6": {
         "name": "Каркасная сумка",
         "cost": 33,
         "cost_resource": "iron",
-        "cap_add": 650,
+        "cap_add": 1100,
     },
     "bag7": {
         "name": "Горный баул",
         "cost": 42,
         "cost_resource": "silver",
-        "cap_add": 900,
+        "cap_add": 1500,
     },
     "bag8": {
         "name": "Сумка инженера",
         "cost": 55,
         "cost_resource": "silver",
-        "cap_add": 1200,
+        "cap_add": 1900,
     },
     "bag9": {
         "name": "Артефактный рюкзак",
         "cost": 70,
         "cost_resource": "gold",
-        "cap_add": 1600,
+        "cap_add": 2500,
     },
     "bag10": {
         "name": "Легендарный контейнер",
         "cost": 95,
         "cost_resource": "gold",
-        "cap_add": 2200,
+        "cap_add": 3200,
     },
     "bag11": {
         "name": "Полевой контейнер",
         "cost": 125,
         "cost_resource": "crystal",
-        "cap_add": 3000,
+        "cap_add": 4200,
     },
     "bag12": {
         "name": "Стабилизированный ранец",
         "cost": 160,
         "cost_resource": "crystal",
-        "cap_add": 4000,
+        "cap_add": 5400,
     },
     "bag13": {
         "name": "Астероидный бокс",
         "cost": 200,
         "cost_resource": "mythril",
-        "cap_add": 5200,
+        "cap_add": 7000,
     },
     "bag14": {
         "name": "Квантовый рюкзак",
         "cost": 250,
         "cost_resource": "relic",
-        "cap_add": 6600,
+        "cap_add": 8800,
     },
     "bag15": {
         "name": "Хранилище первопроходца",
         "cost": 310,
         "cost_resource": "essence",
-        "cap_add": 8200,
+        "cap_add": 11000,
+    },
+    "bag16": {
+        "name": "Экзоконтейнер",
+        "cost": 380,
+        "cost_resource": "essence",
+        "cap_add": 14000,
+    },
+    "bag17": {
+        "name": "Лабораторный отсек",
+        "cost": 460,
+        "cost_resource": "essence",
+        "cap_add": 17000,
+    },
+    "bag18": {
+        "name": "Стабилизированный карман",
+        "cost": 550,
+        "cost_resource": "essence",
+        "cap_add": 20000,
+    },
+    "bag19": {
+        "name": "Архив реликтов",
+        "cost": 650,
+        "cost_resource": "essence",
+        "cap_add": 24000,
+    },
+    "bag20": {
+        "name": "Континуум-хранилище",
+        "cost": 780,
+        "cost_resource": "essence",
+        "cap_add": 28000,
     },
 }
 
@@ -196,18 +331,22 @@ def rpg_calc_buffs(owned: Dict):
     cd_mult = 1.0
     yield_add = 0.0
     cap_add = {r: 0 for r in RPG_RESOURCES}
+    extra_drops = []
+    convert_bonus = 0.0
 
     for tid in owned.get("tools", []):
         it = RPG_TOOLS.get(tid)
         if it:
             cd_mult *= 1.0 - float(it.get("cd_red", 0.0))
             yield_add += float(it.get("yield_add", 0.0))
+            extra_drops.extend(it.get("extra_drops", []) or [])
 
     for aid in owned.get("acc", []):
         it = RPG_ACCESSORIES.get(aid)
         if it:
             cd_mult *= 1.0 - float(it.get("cd_red", 0.0))
             yield_add += float(it.get("yield_add", 0.0))
+            convert_bonus += float(it.get("convert_bonus", 0.0))
 
     for bid in owned.get("bags", []):
         it = RPG_BAGS.get(bid)
@@ -218,17 +357,18 @@ def rpg_calc_buffs(owned: Dict):
 
     cd_mult = max(0.2, min(cd_mult, 1.0))
     yield_add = max(0.0, min(yield_add, 1.0))
-    return cd_mult, yield_add, cap_add
+    convert_bonus = max(0.0, min(convert_bonus, 1.0))
+    return cd_mult, yield_add, cap_add, extra_drops, convert_bonus
 
 
 async def rpg_state(uid: int):
     r = await get_redis()
     await rpg_ensure(uid)
-    bal = safe_int(await r.get(key_balance(uid)))
+    bal = await get_balance(uid)
     res = await r.hgetall(key_rpg_res(uid))
     res = {k: safe_int(v) for k, v in res.items()}
     owned = await rpg_get_owned(uid)
-    cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
+    cd_mult, yield_add, cap_add, extra_drops, convert_bonus = rpg_calc_buffs(owned)
 
     next_ts = safe_int(await r.get(key_rpg_cd(uid)))
     now = int(time.time())
@@ -239,13 +379,18 @@ async def rpg_state(uid: int):
         "owned": owned,
         "cooldown_remaining": cooldown_remaining,
         "cooldown_until": next_ts,
-        "buffs": {"cd_mult": cd_mult, "yield_add": yield_add},
+        "buffs": {
+            "cd_mult": cd_mult,
+            "yield_add": yield_add,
+            "extra_drops": extra_drops,
+            "convert_bonus": convert_bonus,
+        },
         "caps": cap_add,
     }
 
 
-def rpg_roll_gather():
-    return {
+def rpg_roll_gather(extra_drops=None):
+    res = {
         "wood": random.randint(2, 5),
         "stone": random.randint(1, 4),
         "iron": random.randint(0, 3),
@@ -256,3 +401,18 @@ def rpg_roll_gather():
         "relic": 0,
         "essence": 0,
     }
+
+    for bonus in extra_drops or []:
+        try:
+            chance = float(bonus.get("chance", 0.0))
+        except Exception:
+            chance = 0.0
+        if chance <= 0:
+            continue
+        if random.random() <= chance:
+            res_name = bonus.get("resource")
+            amt = int(bonus.get("amount", 1))
+            if res_name:
+                res[res_name] = res.get(res_name, 0) + max(1, amt)
+
+    return res

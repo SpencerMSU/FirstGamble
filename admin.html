@@ -85,6 +85,24 @@
         </div>
         <div id="resGrantStatus" class="muted" style="margin-top:8px;"></div>
       </div>
+
+      <div class="card" style="margin-top:12px;">
+        <h2>Экономика RPG</h2>
+        <div class="muted">Настройте курс обмена ресурсов и базовый КД добычи.</div>
+        <div class="row" style="margin-top:10px;gap:8px;flex-wrap:wrap;align-items:flex-end;">
+          <label style="display:flex;flex-direction:column;gap:6px;min-width:180px;">
+            <span class="muted">Курс конвертации (X к 1)</span>
+            <input id="econRate" type="number" min="1" value="5" style="width:200px;">
+          </label>
+          <label style="display:flex;flex-direction:column;gap:6px;min-width:180px;">
+            <span class="muted">Базовый КД добычи (сек)</span>
+            <input id="econCd" type="number" min="30" value="300" style="width:200px;">
+          </label>
+          <button id="saveEconomyBtn">Сохранить</button>
+          <button id="reloadEconomyBtn" class="secondary">Обновить</button>
+        </div>
+        <div id="economyStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
     </div>
   </div>
 
@@ -95,6 +113,9 @@
     let prizesCache = [];
     let prizesVisible = false;
     const rpgResources = ['wood','stone','iron','silver','gold','crystal','mythril','relic','essence'];
+    const econRateInput = qs('econRate');
+    const econCdInput = qs('econCd');
+    const economyStatus = qs('economyStatus');
 
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
@@ -202,6 +223,34 @@
       renderWinners(res.items||[]);
       if(res.status === 'closed' && (!res.items || res.items.length === 0)){
         qs('winnersList').innerHTML = '<div class="muted">Выдача завершена, итоги скрыты до нового розыгрыша.</div>';
+      }
+    }
+
+    async function loadEconomy(){
+      economyStatus.textContent = '';
+      try{
+        const res = await api('/api/admin/rpg/economy');
+        const econ = res?.economy || {};
+        if(econRateInput) econRateInput.value = econ.convert_rate ?? '';
+        if(econCdInput) econCdInput.value = econ.base_cd ?? '';
+        economyStatus.textContent = `Текущий курс: ${econ.convert_rate || '?'} к 1, базовый КД: ${econ.base_cd || '?'} сек.`;
+      }catch(e){
+        economyStatus.textContent = 'Не удалось загрузить экономику: ' + (e.message || e);
+      }
+    }
+
+    async function saveEconomy(){
+      economyStatus.textContent = '';
+      const payload = {
+        convert_rate: Number(econRateInput.value || 0) || null,
+        base_cd: Number(econCdInput.value || 0) || null,
+      };
+      try{
+        const res = await api('/api/admin/rpg/economy','POST',payload);
+        const econ = res?.economy || {};
+        economyStatus.textContent = `Сохранено. Курс: ${econ.convert_rate} к 1, базовый КД: ${econ.base_cd} сек.`;
+      }catch(e){
+        economyStatus.textContent = 'Ошибка сохранения: ' + (e.message || e);
       }
     }
 
@@ -324,10 +373,13 @@
         qs('resGrantStatus').textContent = 'Ошибка выдачи: '+ (e.message||e);
       }
     });
+    qs('saveEconomyBtn').addEventListener('click', saveEconomy);
+    qs('reloadEconomyBtn').addEventListener('click', loadEconomy);
     qs('adminUser').textContent = 'Доступ открыт из WebApp';
     (async()=>{
       await loadPrizes();
       await loadWinners();
+      await loadEconomy();
     })();
   </script>
 </body>

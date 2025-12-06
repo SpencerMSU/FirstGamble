@@ -97,7 +97,7 @@
         </div>
         <div class="cooldown" id="cooldownInfo">КД: готово</div>
         <div class="resource-grid" id="resourceGrid"></div>
-        <p class="note">КД на добычу — 3 минуты. Без усилений падают только 🪵 дерево, 🪨 камень и ⛓️ железо.</p>
+        <p class="note" id="gatherNote">КД на добычу — 3 минуты. Без усилений падают только 🪵 дерево, 🪨 камень и ⛓️ железо.</p>
       </div>
 
       <div data-view="inventory" style="display:none;">
@@ -111,7 +111,8 @@
         <div class="title-row" style="margin-bottom:6px;">
           <h3 style="margin:0;font-size:16px;">Преобразование</h3>
         </div>
-        <p class="muted">3 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.</p>
+        <p class="muted" id="conversionInfo">5 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.</p>
+        <p class="muted" id="conversionBonus"></p>
         <div class="list" style="margin-top:10px;">
           <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -165,7 +166,9 @@
       {key:'essence', name:'Эссенция', icon:'🌠', color:'#f472b6'}
     ];
     const BASE_CAP = 999;
-    const CONVERT_RATE = 3;
+    let convertRate = 5;
+    let baseCooldown = 300;
+    let convertBonus = 0;
     const CONVERT_CHAIN = {
       wood:'stone',
       stone:'iron',
@@ -189,6 +192,9 @@
     const convertStatus = document.getElementById('convertStatus');
     const convertAllBtn = document.getElementById('convertAllBtn');
     const convertPartBtn = document.getElementById('convertPartBtn');
+    const gatherNoteEl = document.getElementById('gatherNote');
+    const conversionInfoEl = document.getElementById('conversionInfo');
+    const conversionBonusEl = document.getElementById('conversionBonus');
     convertPartBtn.classList.add('active');
 
     let cooldownUntil = 0;
@@ -206,6 +212,26 @@
     function getCap(key){
       const add = currentState?.caps?.[key] || 0;
       return BASE_CAP + add;
+    }
+
+    function updateGatherNote(){
+      const minutes = Math.round((baseCooldown / 60) * 10) / 10;
+      const note = `КД на добычу — ${minutes} мин. Без усилений падают только 🪵 дерево, 🪨 камень и ⛓️ железо.`;
+      if(gatherNoteEl){
+        gatherNoteEl.textContent = note;
+      }
+    }
+
+    function updateConversionCopy(){
+      if(conversionInfoEl){
+        conversionInfoEl.textContent = `${convertRate} к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.`;
+      }
+      if(conversionBonusEl){
+        conversionBonusEl.textContent = convertBonus > 0
+          ? `Бонус аксессуаров к обмену: +${Math.round(convertBonus*100)}% к выходу.`
+          : '';
+      }
+      updateConvertHint();
     }
 
     function renderResources(){
@@ -278,7 +304,7 @@
       const res = currentState?.resources || {};
       const have = Number(res[from] || 0);
       if(to === 'points') return canSellToPoints(from) ? have : 0;
-      if(CONVERT_CHAIN[from] === to) return Math.floor(have / CONVERT_RATE);
+      if(CONVERT_CHAIN[from] === to) return Math.floor(have / convertRate);
       return 0;
     }
 
@@ -291,7 +317,11 @@
           ? `Можно продать до ${max} ед. за очки.`
           : 'Продажа в очки доступна с Мифрила и выше.';
       } else {
-        convertHint.textContent = `Доступно к обмену: ${max} шт. (по ${CONVERT_RATE} : 1).`;
+        const bonusText = convertBonus > 0 ? ` (+${Math.round(convertBonus*100)}% к выходу)` : '';
+        convertHint.textContent = `Доступно к обмену: ${max} шт. (по ${convertRate} : 1${bonusText ? '' : ''}).`;
+        if(bonusText){
+          convertHint.textContent += bonusText;
+        }
       }
       convertStatus.textContent = '';
     }
@@ -364,11 +394,16 @@
 
     function applyState(state){
       currentState = state;
+      convertRate = Math.max(1, Number(state?.economy?.convert_rate || convertRate));
+      baseCooldown = Math.max(30, Number(state?.economy?.base_cd || baseCooldown));
+      convertBonus = Math.max(0, Number(state?.buffs?.convert_bonus || 0));
       cooldownUntil = (Number(state?.cooldown_until) || 0) * 1000;
       const totalRuns = Number(state?.stats?.total_runs || 0);
       document.getElementById('totalRuns').textContent = totalRuns;
       renderResources();
       updateCooldown();
+      updateGatherNote();
+      updateConversionCopy();
       refreshConvertOptions();
     }
 
@@ -441,6 +476,8 @@
     convertPartBtn.addEventListener('click', (e)=>{e.preventDefault(); fillAmountPart();});
     document.getElementById('convertSubmit').addEventListener('click', (e)=>{e.preventDefault(); sendConvert();});
     renderProfile();
+    updateGatherNote();
+    updateConversionCopy();
     setInterval(updateCooldown, 1000);
 
     (async () => {

@@ -252,6 +252,18 @@ RPG_BAGS = {
         "cost_resource": "relic",
         "cap_add": 8800,
     },
+    "bag21": {
+        "name": "Усиленный лабораторный ранец",
+        "cost": 320,
+        "cost_resource": "relic",
+        "cap_add": 10500,
+    },
+    "bag22": {
+        "name": "Космический отсек",
+        "cost": 420,
+        "cost_resource": "essence",
+        "cap_add": 13500,
+    },
     "bag15": {
         "name": "Хранилище первопроходца",
         "cost": 310,

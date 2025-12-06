@@ -536,7 +536,7 @@ async def shop_page(request: web.Request):
 
 @routes.get("/rpg")
 async def rpg_page(request: web.Request):
-    return web.FileResponse(BASE_DIR / "rpg.html")
+    return web.FileResponse(BASE_DIR / "minigames" / "rpg.html")
 
 
 @routes.get("/raffles")

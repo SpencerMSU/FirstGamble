@@ -514,6 +514,12 @@ def register_routes(app: FastAPI):
             items.append({"user_id": str(uid), "pos": pos, "score": int(score), "profile": user_data})
         return {"ok": True, "items": items}
 
+    @app.get("/api/rpg/state")
+    async def api_rpg_state(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+        uid = auth.user_id
+        st = await rpg_state(uid)
+        return {"ok": True, "state": st}
+
     @app.post("/api/rpg/gather")
     async def api_rpg_gather(
         body: RpgGatherRequest,

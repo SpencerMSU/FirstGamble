@@ -411,7 +411,7 @@ async def api_rpg_convert(request: web.Request):
     if not pair_ok:
         return json_error("bad convert pair")
 
-    rate = 5
+    rate = 3
     need = amount * rate
     if res.get(from_r, 0) < need:
         return json_error("not enough resources")
@@ -537,6 +537,11 @@ async def shop_page(request: web.Request):
 @routes.get("/rpg")
 async def rpg_page(request: web.Request):
     return web.FileResponse(BASE_DIR / "minigames" / "rpg.html")
+
+
+@routes.get("/rpg-shop")
+async def rpg_shop_page(request: web.Request):
+    return web.FileResponse(BASE_DIR / "minigames" / "rpg_shop.html")
 
 
 @routes.get("/raffles")

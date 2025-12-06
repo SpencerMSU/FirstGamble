@@ -44,6 +44,7 @@
     .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px;}
     .tab{padding:10px 12px;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
       font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s ease;justify-content:center;}
+    .tab a{color:inherit;text-decoration:none;}
     .tab.active{border-color:var(--stroke2);box-shadow:0 6px 20px rgba(59,130,246,.22);color:var(--blue);background:linear-gradient(180deg,color-mix(in oklab,var(--card) 90%,var(--stroke2)) 0%,var(--card2) 100%);}
     .tab:hover{border-color:var(--stroke2);}
     .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.45;}
@@ -85,56 +86,39 @@
         <div class="tab active" data-tab="gather">⛏️ Добыча</div>
         <div class="tab" data-tab="inventory">🎒 Инвентарь</div>
         <div class="tab" data-tab="conversion">⚗️ Преобразование</div>
-        <div class="tab" data-tab="shop">🛒 Магазин</div>
+        <div class="tab"><a href="/rpg-shop" style="display:flex;align-items:center;gap:8px;width:100%;justify-content:center;">🛒 Магазин</a></div>
         <div class="tab" data-tab="profile">👤 Профиль</div>
       </div>
 
       <div data-view="gather">
         <div class="title-row">
-          <div>
-            <div class="pill">Базовая добыча</div>
-            <p class="muted" style="margin-top:6px;max-width:600px;">
-              Каждая попытка приносит случайное количество ресурсов (1–3 ед.) по четырём базовым типам. Максимум по умолчанию — 100 шт. на каждый ресурс.
-            </p>
-          </div>
+          <h3 style="margin:0;font-size:16px;">Ручная добыча</h3>
           <button id="gatherBtn" class="primary-btn">Добыть</button>
         </div>
         <div class="cooldown" id="cooldownInfo">КД: готово</div>
         <div class="resource-grid" id="resourceGrid"></div>
-        <p class="note">КД на добычу — 3 минуты. Таймер продолжает идти даже когда миниаппа закрыта.</p>
+        <p class="note">КД на добычу — 3 минуты. Без усилений падают только 🪵 дерево, 🪨 камень и ⛓️ железо.</p>
       </div>
 
       <div data-view="inventory" style="display:none;">
-        <div class="title-row">
-          <div class="pill">🎒 Рюкзак</div>
-          <span class="tag">Автосохранение локально</span>
+        <div class="title-row" style="margin-bottom:6px;">
+          <h3 style="margin:0;font-size:16px;">Рюкзак</h3>
         </div>
-        <p class="muted">Проверяй текущий запас ресурсов. Значения синхронизированы с вкладкой добычи.</p>
         <div class="list" id="inventoryList"></div>
       </div>
 
       <div data-view="conversion" style="display:none;">
-        <div class="title-row">
-          <div class="pill">⚗️ Преобразование</div>
-          <span class="tag">В разработке</span>
+        <div class="title-row" style="margin-bottom:6px;">
+          <h3 style="margin:0;font-size:16px;">Преобразование</h3>
         </div>
-        <p class="muted">Здесь появятся рецепты для переработки ресурсов в материалы более высокого уровня. Следи за обновлениями!</p>
-      </div>
-
-      <div data-view="shop" style="display:none;">
-        <div class="title-row">
-          <div class="pill">🛒 Лавка</div>
-          <span class="tag">Скоро</span>
-        </div>
-        <p class="muted">Магазин позволит тратить заработанные ресурсы на полезные предметы и усиления. Пока можно лишь наблюдать за запасами в инвентаре.</p>
+        <p class="muted">3 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция.</p>
       </div>
 
       <div data-view="profile" style="display:none;">
         <div class="title-row">
-          <div class="pill">👤 Профиль</div>
+          <h3 style="margin:0;font-size:16px;">Профиль</h3>
           <span class="tag" id="profileId">—</span>
         </div>
-        <p class="muted">Отслеживай свой прогресс и историю добычи. Данные сохраняются в браузере, поэтому можно продолжить позже.</p>
         <div class="list">
           <div class="list-item"><span>Последняя добыча</span><span id="lastGather">—</span></div>
           <div class="list-item"><span>Всего попыток</span><span id="totalRuns">0</span></div>
@@ -151,7 +135,10 @@
       {key:'iron', name:'Железо', icon:'⛓️', color:'var(--blue)'},
       {key:'silver', name:'Серебро', icon:'🥈', color:'var(--teal)'},
       {key:'gold', name:'Золото', icon:'🪙', color:'var(--amber)'},
-      {key:'crystal', name:'Кристалл', icon:'🔮', color:'var(--purple)'}
+      {key:'crystal', name:'Кристалл', icon:'🔮', color:'var(--purple)'},
+      {key:'mythril', name:'Мифрил', icon:'🧿', color:'#22d3ee'},
+      {key:'relic', name:'Реликт', icon:'🌌', color:'#c084fc'},
+      {key:'essence', name:'Эссенция', icon:'🌠', color:'#f472b6'}
     ];
     const BASE_CAP = 999;
 
@@ -265,8 +252,6 @@
             .join(', ');
           cooldownInfo.textContent = gainedText ? `Получено: ${gainedText}` : 'Добыча завершена';
           document.getElementById('lastGather').textContent = new Date().toLocaleString();
-          const runsEl = document.getElementById('totalRuns');
-          runsEl.textContent = String(Number(runsEl.textContent || '0') + 1);
         } else if(res?.error === 'cooldown'){
           const seconds = Number(res.cooldown_remaining || 0);
           cooldownUntil = Date.now() + seconds * 1000;

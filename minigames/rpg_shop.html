@@ -1,0 +1,122 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RPG Магазин — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12;--bg2:#0e1117;--panel:#0d1117;--card:#111722;--card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);--stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6;--blue2:#1d4ed8;--text:#e6edf3;--muted:#98a2b3;
+      --green:#22c55e;--amber:#f59e0b;--purple:#a855f7;--teal:#14b8a6;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb;--bg2:#eef2f7;--panel:#ffffff;--card:#ffffff;--card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);--stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb;--blue2:#1d4ed8;--text:#0b1220;--muted:#52607a;
+      --green:#16a34a;--amber:#d97706;--purple:#9333ea;--teal:#0d9488;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;-webkit-overflow-scrolling:auto;touch-action:manipulation;}
+    *{box-sizing:border-box;}
+    body{
+      margin:0;font-family:system-ui,-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:var(--text);
+      background:radial-gradient(1000px 600px at 10% -10%,rgba(59,130,246,.28),transparent 60%),
+      radial-gradient(800px 500px at 110% 0%,rgba(29,78,216,.22),transparent 55%),
+      linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      min-height:100vh;display:flex;justify-content:center;padding:16px;
+    }
+    .app{position:relative;width:min(900px,100%);border:1px solid var(--stroke);border-radius:20px;box-shadow:var(--shadow);padding:14px;
+      background:linear-gradient(180deg,rgba(255,255,255,.03),rgba(255,255,255,0));height:100%;overflow-y:auto;overscroll-behavior:none;}
+    header{display:flex;align-items:center;justify-content:space-between;padding:10px 12px 14px;gap:10px;}
+    .title{display:flex;flex-direction:column;gap:2px;align-items:flex-start;}
+    .title h1{margin:0;font-size:20px;font-weight:800;}
+    .title span{font-size:12px;color:var(--muted);}
+    .back{display:inline-flex;align-items:center;gap:8px;padding:8px 12px;border-radius:10px;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      border:1px solid var(--stroke);color:var(--text);text-decoration:none;font-weight:700;font-size:14px;cursor:pointer;transition:.15s ease;}
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .section{background:linear-gradient(180deg,var(--panel) 0%,color-mix(in oklab,var(--panel) 92%,transparent) 100%);border:1px solid var(--stroke);
+      border-radius:16px;padding:16px;box-shadow:var(--shadow);}
+    .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:12px;}
+    .tab{padding:12px 14px;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s ease;justify-content:center;}
+    .tab.active{border-color:var(--stroke2);box-shadow:0 6px 20px rgba(59,130,246,.22);color:var(--blue);background:linear-gradient(180deg,color-mix(in oklab,var(--card) 90%,var(--stroke2)) 0%,var(--card2) 100%);}
+    .tab:hover{border-color:var(--stroke2);}
+    .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.45;text-align:center;}
+    .placeholder{border:1px dashed var(--stroke);border-radius:12px;padding:18px;text-align:center;background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
+      box-shadow:var(--shadow);}
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/rpg">← RPG</a>
+      <div class="title">
+        <h1>Магазин RPG</h1>
+        <span>Подборки усилений и улучшений</span>
+      </div>
+      <div style="width:64px"></div>
+    </header>
+
+    <section class="section">
+      <div class="tabs">
+        <div class="tab active" data-tab="auto">🤖 Авто-добытчики</div>
+        <div class="tab" data-tab="storage">📦 Хранилища</div>
+        <div class="tab" data-tab="tools">🛠️ Инструменты</div>
+        <div class="tab" data-tab="accessories">🎗️ Аксессуары</div>
+      </div>
+
+      <div data-view="auto">
+        <div class="placeholder">
+          <p class="muted">Раздел скоро заполнится автоматическими добытчиками.</p>
+        </div>
+      </div>
+
+      <div data-view="storage" style="display:none;">
+        <div class="placeholder">
+          <p class="muted">Хранилища появятся здесь.</p>
+        </div>
+      </div>
+
+      <div data-view="tools" style="display:none;">
+        <div class="placeholder">
+          <p class="muted">Инструменты готовятся к добавлению.</p>
+        </div>
+      </div>
+
+      <div data-view="accessories" style="display:none;">
+        <div class="placeholder">
+          <p class="muted">Аксессуары будут доступны позднее.</p>
+        </div>
+      </div>
+    </section>
+  </div>
+
+  <script>
+    const tgInstance = initTelegramGuard();
+
+    function switchTab(tab){
+      document.querySelectorAll('[data-tab]').forEach(el=>{
+        el.classList.toggle('active', el.dataset.tab === tab);
+      });
+      document.querySelectorAll('[data-view]').forEach(view=>{
+        view.style.display = view.dataset.view === tab ? 'block' : 'none';
+      });
+    }
+
+    document.querySelectorAll('[data-tab]').forEach(tab=>{
+      tab.addEventListener('click', ()=>switchTab(tab.dataset.tab));
+    });
+
+    (async ()=>{
+      if(!tgInstance) return;
+      const profile = await ensureNicknameOrRedirect();
+      if(!profile || !profile.ok) return;
+    })();
+  </script>
+</body>
+</html>

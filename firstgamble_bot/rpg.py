@@ -9,7 +9,17 @@ from .redis_utils import (
     safe_int,
 )
 
-RPG_RESOURCES = ["wood", "stone", "iron", "silver", "gold", "crystal"]
+RPG_RESOURCES = [
+    "wood",
+    "stone",
+    "iron",
+    "silver",
+    "gold",
+    "crystal",
+    "mythril",
+    "relic",
+    "essence",
+]
 RPG_MAX = 999
 
 RPG_ACCESSORIES = {
@@ -56,6 +66,9 @@ RPG_SELL_VALUES = {
     "silver": 8,
     "gold": 12,
     "crystal": 20,
+    "mythril": 30,
+    "relic": 45,
+    "essence": 70,
 }
 RPG_CHAIN = [
     ("wood", "stone"),
@@ -63,6 +76,9 @@ RPG_CHAIN = [
     ("iron", "silver"),
     ("silver", "gold"),
     ("gold", "crystal"),
+    ("crystal", "mythril"),
+    ("mythril", "relic"),
+    ("relic", "essence"),
 ]
 
 
@@ -152,7 +168,10 @@ def rpg_roll_gather():
         "wood": random.randint(2, 5),
         "stone": random.randint(1, 4),
         "iron": random.randint(0, 3),
-        "silver": random.randint(0, 2),
-        "gold": random.choice([0, 1]),
-        "crystal": 1 if random.random() < 0.35 else 0,
+        "silver": 0,
+        "gold": 0,
+        "crystal": 0,
+        "mythril": 0,
+        "relic": 0,
+        "essence": 0,
     }

@@ -59,23 +59,99 @@ RPG_TOOLS = {
 }
 
 RPG_BAGS = {
-    "bag1": {"name": "Мешок из ткани", "cost": 3, "cap_add": 50},
-    "bag2": {"name": "Сумка старателя", "cost": 6, "cap_add": 100},
-    "bag3": {"name": "Рюкзак шахтёра", "cost": 12, "cap_add": 200},
-    "bag4": {"name": "Укреплённый рюкзак", "cost": 18, "cap_add": 300},
-    "bag5": {"name": "Экспедиционный мешок", "cost": 25, "cap_add": 450},
-    "bag6": {"name": "Каркасная сумка", "cost": 33, "cap_add": 650},
-    "bag7": {"name": "Горный баул", "cost": 42, "cap_add": 900},
-    "bag8": {"name": "Сумка инженера", "cost": 55, "cap_add": 1200},
-    "bag9": {"name": "Артефактный рюкзак", "cost": 70, "cap_add": 1600},
-    "bag10": {"name": "Легендарный контейнер", "cost": 95, "cap_add": 2200},
-    "bag11": {"name": "Полевой контейнер", "cost": 125, "cap_add": 3000},
-    "bag12": {"name": "Стабилизированный ранец", "cost": 160, "cap_add": 4000},
-    "bag13": {"name": "Астероидный бокс", "cost": 200, "cap_add": 5200},
-    "bag14": {"name": "Квантовый рюкзак", "cost": 250, "cap_add": 6600},
-    "bag15": {"name": "Хранилище первопроходца", "cost": 310, "cap_add": 8200},
+    "bag1": {
+        "name": "Мешок из ткани",
+        "cost": 3,
+        "cost_resource": "wood",
+        "cap_add": 50,
+    },
+    "bag2": {
+        "name": "Сумка старателя",
+        "cost": 6,
+        "cost_resource": "wood",
+        "cap_add": 100,
+    },
+    "bag3": {
+        "name": "Рюкзак шахтёра",
+        "cost": 12,
+        "cost_resource": "stone",
+        "cap_add": 200,
+    },
+    "bag4": {
+        "name": "Укреплённый рюкзак",
+        "cost": 18,
+        "cost_resource": "stone",
+        "cap_add": 300,
+    },
+    "bag5": {
+        "name": "Экспедиционный мешок",
+        "cost": 25,
+        "cost_resource": "iron",
+        "cap_add": 450,
+    },
+    "bag6": {
+        "name": "Каркасная сумка",
+        "cost": 33,
+        "cost_resource": "iron",
+        "cap_add": 650,
+    },
+    "bag7": {
+        "name": "Горный баул",
+        "cost": 42,
+        "cost_resource": "silver",
+        "cap_add": 900,
+    },
+    "bag8": {
+        "name": "Сумка инженера",
+        "cost": 55,
+        "cost_resource": "silver",
+        "cap_add": 1200,
+    },
+    "bag9": {
+        "name": "Артефактный рюкзак",
+        "cost": 70,
+        "cost_resource": "gold",
+        "cap_add": 1600,
+    },
+    "bag10": {
+        "name": "Легендарный контейнер",
+        "cost": 95,
+        "cost_resource": "gold",
+        "cap_add": 2200,
+    },
+    "bag11": {
+        "name": "Полевой контейнер",
+        "cost": 125,
+        "cost_resource": "crystal",
+        "cap_add": 3000,
+    },
+    "bag12": {
+        "name": "Стабилизированный ранец",
+        "cost": 160,
+        "cost_resource": "crystal",
+        "cap_add": 4000,
+    },
+    "bag13": {
+        "name": "Астероидный бокс",
+        "cost": 200,
+        "cost_resource": "mythril",
+        "cap_add": 5200,
+    },
+    "bag14": {
+        "name": "Квантовый рюкзак",
+        "cost": 250,
+        "cost_resource": "relic",
+        "cap_add": 6600,
+    },
+    "bag15": {
+        "name": "Хранилище первопроходца",
+        "cost": 310,
+        "cost_resource": "essence",
+        "cap_add": 8200,
+    },
 }
 
+RPG_SELL_MIN_RESOURCE = "mythril"
 RPG_SELL_VALUES = {
     "wood": 1,
     "stone": 2,
@@ -161,6 +237,10 @@ def key_rpg_owned(uid: int, cat: str) -> str:
 
 def key_rpg_auto(uid: int) -> str:
     return f"user:{uid}:rpg:auto"
+
+
+def key_rpg_runs(uid: int) -> str:
+    return f"user:{uid}:rpg:runs"
 
 
 def key_ticket_counter() -> str:
@@ -296,6 +376,7 @@ async def rpg_ensure(uid: int):
     for res in RPG_RESOURCES:
         pipe.hsetnx(key_rpg_res(uid), res, 0)
     pipe.setnx(key_rpg_cd(uid), 0)
+    pipe.setnx(key_rpg_runs(uid), 0)
     await pipe.execute()
 
 
@@ -316,6 +397,8 @@ async def rpg_state(uid: int):
     owned = await rpg_get_owned(uid)
     cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
     res = await rpg_apply_auto(uid, res, cap_add)
+
+    total_runs = safe_int(await r.get(key_rpg_runs(uid)))
 
     auto_raw = await r.hgetall(key_rpg_auto(uid))
     auto_list = []
@@ -362,6 +445,7 @@ async def rpg_state(uid: int):
         "buffs": {"cd_mult": cd_mult, "yield_add": yield_add},
         "caps": cap_add,
         "auto": {"miners": auto_list, "now": now},
+        "stats": {"total_runs": total_runs},
     }
 
 

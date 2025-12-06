@@ -94,3 +94,10 @@ class AdminSetPointsRequest(BaseModel):
     nickname: Optional[str] = None
     points_delta: Optional[int] = None
     new_balance: Optional[int] = None
+
+
+class AdminGrantResourcesRequest(BaseModel):
+    user_id: Optional[int] = None
+    nickname: Optional[str] = None
+    resource: str
+    amount: int

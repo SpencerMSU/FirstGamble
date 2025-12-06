@@ -61,6 +61,7 @@ from .redis_utils import (
 from .services import (
     RPG_ACCESSORIES,
     RPG_BASE_CD_DEFAULT,
+    RPG_CONVERT_RATE_DEFAULT,
     RPG_AUTO_MINERS,
     RPG_BAGS,
     RPG_MAX,
@@ -88,6 +89,7 @@ from .services import (
     key_user_tickets,
     key_user_raffle_wins,
     rpg_auto_requirements,
+    rpg_auto_state_level,
     rpg_calc_buffs,
     rpg_ensure,
     rpg_get_owned,

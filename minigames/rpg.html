@@ -43,9 +43,10 @@
       border-radius:16px;padding:16px;box-shadow:var(--shadow);}
     .tabs{display:grid;grid-template-columns:repeat(auto-fit,minmax(120px,1fr));gap:10px;margin-bottom:12px;}
     .tab{padding:10px 12px;border-radius:12px;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);
-      font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s ease;justify-content:center;}
+      font-weight:800;font-size:13px;display:flex;align-items:center;gap:8px;cursor:pointer;transition:.15s ease;justify-content:center;color:var(--text);}
     .tab a{color:inherit;text-decoration:none;}
     .tab.active{border-color:var(--stroke2);box-shadow:0 6px 20px rgba(59,130,246,.22);color:var(--blue);background:linear-gradient(180deg,color-mix(in oklab,var(--card) 90%,var(--stroke2)) 0%,var(--card2) 100%);}
+    .tab:disabled{color:var(--text);opacity:.7;cursor:not-allowed;}
     .tab:hover{border-color:var(--stroke2);}
     .muted{color:var(--muted);font-size:13px;margin:0;line-height:1.45;}
     .title-row{display:flex;align-items:center;justify-content:space-between;gap:10px;flex-wrap:wrap;margin-bottom:10px;}

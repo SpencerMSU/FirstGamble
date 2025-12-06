@@ -57,6 +57,7 @@ from .redis_utils import (
 from .services import (
     RPG_ACCESSORIES,
     RPG_BAGS,
+    RPG_MAX,
     RPG_CHAIN,
     RPG_RESOURCES,
     RPG_SELL_VALUES,

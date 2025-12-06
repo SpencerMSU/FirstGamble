@@ -41,6 +41,7 @@ RPG_ACCESSORIES = {
         "name": "Тканевая подвязка",
         "level": 1,
         "cost": 4,
+        "cost_resource": "wood",
         "cd_red": 0.03,
         "convert_bonus": 0.02,
         "yield_add": 0.02,
@@ -49,6 +50,7 @@ RPG_ACCESSORIES = {
         "name": "Жетон старателя",
         "level": 2,
         "cost": 7,
+        "cost_resource": "stone",
         "cd_red": 0.05,
         "convert_bonus": 0.04,
         "yield_add": 0.03,
@@ -57,6 +59,7 @@ RPG_ACCESSORIES = {
         "name": "Кольцо ускорения",
         "level": 3,
         "cost": 11,
+        "cost_resource": "iron",
         "cd_red": 0.07,
         "convert_bonus": 0.06,
         "yield_add": 0.05,
@@ -65,6 +68,7 @@ RPG_ACCESSORIES = {
         "name": "Амулет руды",
         "level": 4,
         "cost": 15,
+        "cost_resource": "silver",
         "cd_red": 0.10,
         "convert_bonus": 0.08,
         "yield_add": 0.06,
@@ -73,6 +77,7 @@ RPG_ACCESSORIES = {
         "name": "Браслет инженера",
         "level": 5,
         "cost": 21,
+        "cost_resource": "gold",
         "cd_red": 0.12,
         "convert_bonus": 0.10,
         "yield_add": 0.08,
@@ -81,6 +86,7 @@ RPG_ACCESSORIES = {
         "name": "Фазовый талисман",
         "level": 6,
         "cost": 28,
+        "cost_resource": "crystal",
         "cd_red": 0.15,
         "convert_bonus": 0.12,
         "yield_add": 0.10,
@@ -89,6 +95,7 @@ RPG_ACCESSORIES = {
         "name": "Печать реликтов",
         "level": 7,
         "cost": 36,
+        "cost_resource": "mythril",
         "cd_red": 0.18,
         "convert_bonus": 0.15,
         "yield_add": 0.12,
@@ -97,6 +104,7 @@ RPG_ACCESSORIES = {
         "name": "Корона алхимика",
         "level": 8,
         "cost": 45,
+        "cost_resource": "relic",
         "cd_red": 0.22,
         "convert_bonus": 0.18,
         "yield_add": 0.14,
@@ -107,6 +115,7 @@ RPG_TOOLS = {
     "tool1": {
         "name": "Кирка новичка",
         "cost": 3,
+        "cost_resource": "wood",
         "cd_red": 0.00,
         "yield_add": 0.04,
         "extra_drops": [{"resource": "wood", "chance": 0.05, "amount": 1}],
@@ -114,6 +123,7 @@ RPG_TOOLS = {
     "tool2": {
         "name": "Каменный долот",
         "cost": 6,
+        "cost_resource": "stone",
         "cd_red": 0.03,
         "yield_add": 0.06,
         "extra_drops": [{"resource": "stone", "chance": 0.08, "amount": 1}],
@@ -121,6 +131,7 @@ RPG_TOOLS = {
     "tool3": {
         "name": "Железная кирка",
         "cost": 10,
+        "cost_resource": "iron",
         "cd_red": 0.05,
         "yield_add": 0.08,
         "extra_drops": [{"resource": "iron", "chance": 0.10, "amount": 1}],
@@ -128,6 +139,7 @@ RPG_TOOLS = {
     "tool4": {
         "name": "Серебряная кирка",
         "cost": 15,
+        "cost_resource": "silver",
         "cd_red": 0.07,
         "yield_add": 0.10,
         "extra_drops": [{"resource": "silver", "chance": 0.12, "amount": 1}],
@@ -135,6 +147,7 @@ RPG_TOOLS = {
     "tool5": {
         "name": "Золотая дрель",
         "cost": 21,
+        "cost_resource": "gold",
         "cd_red": 0.09,
         "yield_add": 0.12,
         "extra_drops": [{"resource": "gold", "chance": 0.15, "amount": 1}],
@@ -142,6 +155,7 @@ RPG_TOOLS = {
     "tool6": {
         "name": "Кристальный резак",
         "cost": 28,
+        "cost_resource": "crystal",
         "cd_red": 0.11,
         "yield_add": 0.14,
         "extra_drops": [{"resource": "crystal", "chance": 0.18, "amount": 1}],
@@ -149,6 +163,7 @@ RPG_TOOLS = {
     "tool7": {
         "name": "Мифриловый бур",
         "cost": 36,
+        "cost_resource": "mythril",
         "cd_red": 0.13,
         "yield_add": 0.16,
         "extra_drops": [{"resource": "mythril", "chance": 0.22, "amount": 1}],
@@ -156,6 +171,7 @@ RPG_TOOLS = {
     "tool8": {
         "name": "Реликтовый экскаватор",
         "cost": 45,
+        "cost_resource": "relic",
         "cd_red": 0.15,
         "yield_add": 0.18,
         "extra_drops": [{"resource": "relic", "chance": 0.26, "amount": 1}],
@@ -285,17 +301,9 @@ RPG_BAGS = {
     },
 }
 
-RPG_SELL_MIN_RESOURCE = "mythril"
+RPG_SELL_MIN_RESOURCE = "essence"
 RPG_SELL_VALUES = {
-    "wood": 1,
-    "stone": 2,
-    "iron": 5,
-    "silver": 8,
-    "gold": 12,
-    "crystal": 20,
-    "mythril": 30,
-    "relic": 45,
-    "essence": 70,
+    "essence": 5,
 }
 RPG_CHAIN = [
     ("wood", "stone"),

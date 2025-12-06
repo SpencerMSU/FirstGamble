@@ -112,7 +112,7 @@
         <div class="title-row" style="margin-bottom:6px;">
           <h3 style="margin:0;font-size:16px;">Преобразование</h3>
         </div>
-        <p class="muted" id="conversionInfo">5 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.</p>
+        <p class="muted" id="conversionInfo">5 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только из 🌠 Эссенции по курсу 1 → 5 монет.</p>
         <p class="muted" id="conversionBonus"></p>
         <div class="list" style="margin-top:10px;">
           <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
@@ -180,7 +180,7 @@
       mythril:'relic',
       relic:'essence'
     };
-    const MIN_POINTS_RESOURCE = 'mythril';
+    const MIN_POINTS_RESOURCE = 'essence';
 
     const resourceGrid = document.getElementById('resourceGrid');
     const inventoryList = document.getElementById('inventoryList');
@@ -224,9 +224,9 @@
     }
 
     function updateConversionCopy(){
-      if(conversionInfoEl){
-        conversionInfoEl.textContent = `${convertRate} к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.`;
-      }
+        if(conversionInfoEl){
+          conversionInfoEl.textContent = `${convertRate} к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только из 🌠 Эссенции по курсу 1 → 5 монет.`;
+        }
       if(conversionBonusEl){
         conversionBonusEl.textContent = convertBonus > 0
           ? `Бонус аксессуаров к обмену: +${Math.round(convertBonus*100)}% к выходу.`
@@ -315,8 +315,8 @@
       const max = calcMaxConvertible(fromVal, toVal);
       if(toVal === 'points'){
         convertHint.textContent = canSellToPoints(fromVal)
-          ? `Можно продать до ${max} ед. за очки.`
-          : 'Продажа в очки доступна с Мифрила и выше.';
+          ? `Можно продать до ${max} 🌠 Эссенции за монеты (1 → 5).`
+          : 'Продажа в очки доступна только из 🌠 Эссенции (1 → 5 монет).';
       } else {
         const bonusText = convertBonus > 0 ? ` (+${Math.round(convertBonus*100)}% к выходу)` : '';
         convertHint.textContent = `Доступно к обмену: ${max} шт. (по ${convertRate} : 1${bonusText ? '' : ''}).`;
@@ -360,7 +360,7 @@
         } else if(res?.error === 'bad convert pair'){
           convertStatus.textContent = 'Нельзя конвертировать выбранную пару.';
         } else if(res?.error === 'sell restricted'){
-          convertStatus.textContent = 'Продажа в очки доступна с Мифрила и выше.';
+          convertStatus.textContent = 'Продажа в очки доступна только из 🌠 Эссенции (1 → 5 монет).';
         } else {
           convertStatus.textContent = 'Ошибка при обмене.';
         }

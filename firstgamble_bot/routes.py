@@ -346,9 +346,9 @@ async def api_rpg_buy(request: web.Request):
         return web.json_response({"ok": True, "state": st})
 
     cost = int(item.get("cost", 0))
-    if cat == "bags":
-        cost_resource = item.get("cost_resource")
-        if not cost_resource or cost_resource not in RPG_RESOURCES:
+    cost_resource = item.get("cost_resource")
+    if cost_resource:
+        if cost_resource not in RPG_RESOURCES:
             return json_error("bad item")
 
         res_raw = await r.hgetall(key_rpg_res(uid))

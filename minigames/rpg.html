@@ -112,6 +112,30 @@
           <h3 style="margin:0;font-size:16px;">Преобразование</h3>
         </div>
         <p class="muted">3 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция.</p>
+        <div class="list" style="margin-top:10px;">
+          <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
+            <div style="display:flex;gap:10px;flex-wrap:wrap;">
+              <label style="flex:1;min-width:160px;">
+                <span class="muted" style="display:block;margin-bottom:4px;">Из ресурса</span>
+                <select id="convertFrom" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);color:var(--text);">
+                </select>
+              </label>
+              <label style="flex:1;min-width:160px;">
+                <span class="muted" style="display:block;margin-bottom:4px;">В ресурс</span>
+                <select id="convertTo" style="width:100%;padding:10px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);color:var(--text);">
+                </select>
+              </label>
+            </div>
+            <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap;">
+              <button class="tab" id="convertAllBtn" style="margin:0;">Всё доступное</button>
+              <button class="tab" id="convertPartBtn" style="margin:0;">Часть</button>
+              <input id="convertAmount" type="number" min="1" value="1" style="flex:1;min-width:120px;padding:10px;border-radius:10px;border:1px solid var(--stroke);background:var(--card);color:var(--text);" />
+              <button class="primary-btn" id="convertSubmit">Преобразовать</button>
+            </div>
+            <p class="note" id="convertHint">Выберите ресурсы и объём.</p>
+            <p class="note" id="convertStatus" style="color:var(--text);"></p>
+          </div>
+        </div>
       </div>
 
       <div data-view="profile" style="display:none;">
@@ -141,11 +165,30 @@
       {key:'essence', name:'Эссенция', icon:'🌠', color:'#f472b6'}
     ];
     const BASE_CAP = 999;
+    const CONVERT_RATE = 3;
+    const CONVERT_CHAIN = {
+      wood:'stone',
+      stone:'iron',
+      iron:'silver',
+      silver:'gold',
+      gold:'crystal',
+      crystal:'mythril',
+      mythril:'relic',
+      relic:'essence'
+    };
 
     const resourceGrid = document.getElementById('resourceGrid');
     const inventoryList = document.getElementById('inventoryList');
     const cooldownInfo = document.getElementById('cooldownInfo');
     const gatherBtn = document.getElementById('gatherBtn');
+    const convertFrom = document.getElementById('convertFrom');
+    const convertTo = document.getElementById('convertTo');
+    const convertAmount = document.getElementById('convertAmount');
+    const convertHint = document.getElementById('convertHint');
+    const convertStatus = document.getElementById('convertStatus');
+    const convertAllBtn = document.getElementById('convertAllBtn');
+    const convertPartBtn = document.getElementById('convertPartBtn');
+    convertPartBtn.classList.add('active');
 
     let cooldownUntil = 0;
     let currentState = null;
@@ -194,6 +237,100 @@
       });
     }
 
+    function refreshConvertOptions(){
+      convertFrom.innerHTML = '';
+      RESOURCE_TYPES.forEach(r=>{
+        const opt = document.createElement('option');
+        opt.value = r.key;
+        opt.textContent = `${r.icon} ${r.name}`;
+        convertFrom.appendChild(opt);
+      });
+      if(!convertFrom.value && RESOURCE_TYPES.length){
+        convertFrom.value = RESOURCE_TYPES[0].key;
+      }
+      updateToOptions();
+      updateConvertHint();
+    }
+
+    function updateToOptions(){
+      const fromVal = convertFrom.value;
+      convertTo.innerHTML = '';
+      const nextRes = CONVERT_CHAIN[fromVal];
+      if(nextRes){
+        const resInfo = RESOURCE_TYPES.find(r=>r.key===nextRes);
+        const optRes = document.createElement('option');
+        optRes.value = nextRes;
+        optRes.textContent = resInfo ? `${resInfo.icon} ${resInfo.name}` : nextRes;
+        convertTo.appendChild(optRes);
+      }
+      const optPoints = document.createElement('option');
+      optPoints.value = 'points';
+      optPoints.textContent = 'Очки';
+      convertTo.appendChild(optPoints);
+      convertTo.value = convertTo.options[0]?.value || 'points';
+      updateConvertHint();
+    }
+
+    function calcMaxConvertible(from, to){
+      const res = currentState?.resources || {};
+      const have = Number(res[from] || 0);
+      if(to === 'points') return have;
+      if(CONVERT_CHAIN[from] === to) return Math.floor(have / CONVERT_RATE);
+      return 0;
+    }
+
+    function updateConvertHint(){
+      const fromVal = convertFrom.value;
+      const toVal = convertTo.value;
+      const max = calcMaxConvertible(fromVal, toVal);
+      if(toVal === 'points'){
+        convertHint.textContent = `Можно продать до ${max} ед. за очки.`;
+      } else {
+        convertHint.textContent = `Доступно к обмену: ${max} шт. (по ${CONVERT_RATE} : 1).`;
+      }
+      convertStatus.textContent = '';
+    }
+
+    function fillAmountAll(){
+      const max = calcMaxConvertible(convertFrom.value, convertTo.value);
+      convertAmount.value = Math.max(0, max);
+      convertAllBtn.classList.add('active');
+      convertPartBtn.classList.remove('active');
+    }
+
+    function fillAmountPart(){
+      if(!convertAmount.value || Number(convertAmount.value) <= 0){
+        convertAmount.value = 1;
+      }
+      convertAllBtn.classList.remove('active');
+      convertPartBtn.classList.add('active');
+    }
+
+    async function sendConvert(){
+      const fromVal = convertFrom.value;
+      const toVal = convertTo.value;
+      const amount = Math.max(1, Number(convertAmount.value || 1));
+      convertStatus.textContent = 'Обработка...';
+      try{
+        const res = await apiPost('/api/rpg/convert', {from: fromVal, to: toVal, amount});
+        if(res?.ok){
+          applyState(res.state);
+          convertStatus.textContent = 'Готово!';
+          convertAmount.value = 1;
+          convertPartBtn.classList.add('active');
+          convertAllBtn.classList.remove('active');
+        } else if(res?.error === 'not enough resources'){
+          convertStatus.textContent = 'Недостаточно ресурсов для обмена.';
+        } else if(res?.error === 'bad convert pair'){
+          convertStatus.textContent = 'Нельзя конвертировать выбранную пару.';
+        } else {
+          convertStatus.textContent = 'Ошибка при обмене.';
+        }
+      }catch(e){
+        convertStatus.textContent = 'Сервер недоступен';
+      }
+    }
+
     function updateCooldown(){
       const remaining = cooldownUntil - Date.now();
       const ready = remaining <= 0 && !gatherLoading;
@@ -216,6 +353,7 @@
       cooldownUntil = (Number(state?.cooldown_until) || 0) * 1000;
       renderResources();
       updateCooldown();
+      refreshConvertOptions();
     }
 
     async function loadState(){
@@ -281,6 +419,11 @@
     });
 
     gatherBtn.addEventListener('click', gather);
+    convertFrom.addEventListener('change', ()=>{updateToOptions(); fillAmountPart();});
+    convertTo.addEventListener('change', ()=>{updateConvertHint(); fillAmountPart();});
+    convertAllBtn.addEventListener('click', (e)=>{e.preventDefault(); fillAmountAll();});
+    convertPartBtn.addEventListener('click', (e)=>{e.preventDefault(); fillAmountPart();});
+    document.getElementById('convertSubmit').addEventListener('click', (e)=>{e.preventDefault(); sendConvert();});
     renderProfile();
     setInterval(updateCooldown, 1000);
 

@@ -54,6 +54,12 @@ class RpgConvertRequest(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class RpgAutoRequest(BaseModel):
+    user_id: Optional[str] = None
+    action: str
+    miner_id: str
+
+
 class BuyRaffleTicketRequest(BaseModel):
     count: int = Field(1, ge=1, le=100)
 

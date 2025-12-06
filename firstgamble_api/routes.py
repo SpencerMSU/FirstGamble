@@ -24,6 +24,7 @@ from .models import (
     DiceExternalAwardRequest,
     ReportGameRequest,
     RpgBuyRequest,
+    RpgAutoRequest,
     RpgConvertRequest,
     RpgGatherRequest,
     UpdateProfileRequest,
@@ -56,6 +57,7 @@ from .redis_utils import (
 )
 from .services import (
     RPG_ACCESSORIES,
+    RPG_AUTO_MINERS,
     RPG_BAGS,
     RPG_MAX,
     RPG_CHAIN,
@@ -63,6 +65,7 @@ from .services import (
     RPG_SELL_VALUES,
     RPG_TOOLS,
     build_auth_context_from_headers,
+    key_rpg_auto,
     key_rpg_cd,
     key_rpg_owned,
     key_rpg_res,
@@ -77,6 +80,7 @@ from .services import (
     key_ticket_owners,
     key_user_tickets,
     key_user_raffle_wins,
+    rpg_auto_requirements,
     rpg_calc_buffs,
     rpg_ensure,
     rpg_get_owned,
@@ -664,6 +668,44 @@ def register_routes(app: FastAPI):
         pipe.hincrby(key_rpg_res(uid), from_r, -need)
         pipe.hincrby(key_rpg_res(uid), to_r, amount)
         await pipe.execute()
+
+        st = await rpg_state(uid)
+        return {"ok": True, "state": st}
+
+    @app.post("/api/rpg/auto")
+    async def api_rpg_auto(
+        body: RpgAutoRequest,
+        auth: AuthContext = Depends(get_current_auth),
+    ) -> Dict[str, Any]:
+        uid = auth.user_id
+        action = (body.action or "").lower()
+        miner_id = (body.miner_id or "").lower()
+
+        cfg = next((m for m in RPG_AUTO_MINERS if m.get("id") == miner_id), None)
+        if not action or not cfg:
+            return {"ok": False, "error": "bad data"}
+
+        r = await get_redis()
+        await rpg_ensure(uid)
+        owned = await rpg_get_owned(uid)
+        res_raw = await r.hgetall(key_rpg_res(uid))
+        res_int = {k: safe_int(v) for k, v in res_raw.items()}
+
+        missing_res, has_bag = rpg_auto_requirements(cfg, res_int, owned)
+
+        if action == "start":
+            if missing_res:
+                return {"ok": False, "error": "requirements", "missing": missing_res}
+            if not has_bag:
+                return {"ok": False, "error": "bag_required", "bag_req": cfg.get("bag_req")}
+
+            state = {"active": True, "last": int(time.time())}
+            await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
+        elif action == "stop":
+            state = {"active": False, "last": int(time.time())}
+            await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
+        else:
+            return {"ok": False, "error": "bad action"}
 
         st = await rpg_state(uid)
         return {"ok": True, "state": st}

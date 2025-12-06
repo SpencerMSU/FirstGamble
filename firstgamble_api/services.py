@@ -69,6 +69,11 @@ RPG_BAGS = {
     "bag8": {"name": "Сумка инженера", "cost": 55, "cap_add": 1200},
     "bag9": {"name": "Артефактный рюкзак", "cost": 70, "cap_add": 1600},
     "bag10": {"name": "Легендарный контейнер", "cost": 95, "cap_add": 2200},
+    "bag11": {"name": "Полевой контейнер", "cost": 125, "cap_add": 3000},
+    "bag12": {"name": "Стабилизированный ранец", "cost": 160, "cap_add": 4000},
+    "bag13": {"name": "Астероидный бокс", "cost": 200, "cap_add": 5200},
+    "bag14": {"name": "Квантовый рюкзак", "cost": 250, "cap_add": 6600},
+    "bag15": {"name": "Хранилище первопроходца", "cost": 310, "cap_add": 8200},
 }
 
 RPG_SELL_VALUES = {
@@ -93,6 +98,54 @@ RPG_CHAIN = [
     ("relic", "essence"),
 ]
 
+RPG_AUTO_MINERS = [
+    {
+        "id": "auto_wood",
+        "name": "Дроворуб",
+        "resource": "wood",
+        "rate": 6,
+        "interval": 60,
+        "requires": {"wood": 1200},
+        "bag_req": "bag3",
+    },
+    {
+        "id": "auto_stone",
+        "name": "Каменный экскаватор",
+        "resource": "stone",
+        "rate": 4,
+        "interval": 90,
+        "requires": {"wood": 1500, "stone": 900},
+        "bag_req": "bag5",
+    },
+    {
+        "id": "auto_iron",
+        "name": "Железный бур",
+        "resource": "iron",
+        "rate": 3,
+        "interval": 120,
+        "requires": {"stone": 1400, "iron": 600},
+        "bag_req": "bag7",
+    },
+    {
+        "id": "auto_silver",
+        "name": "Серебряный конвейер",
+        "resource": "silver",
+        "rate": 2,
+        "interval": 180,
+        "requires": {"iron": 950, "silver": 400},
+        "bag_req": "bag9",
+    },
+    {
+        "id": "auto_gold",
+        "name": "Золотой комбайн",
+        "resource": "gold",
+        "rate": 1,
+        "interval": 240,
+        "requires": {"silver": 850, "gold": 250},
+        "bag_req": "bag11",
+    },
+]
+
 
 def key_rpg_res(uid: int) -> str:
     return f"user:{uid}:rpg:res"
@@ -104,6 +157,10 @@ def key_rpg_cd(uid: int) -> str:
 
 def key_rpg_owned(uid: int, cat: str) -> str:
     return f"user:{uid}:rpg:owned:{cat}"
+
+
+def key_rpg_auto(uid: int) -> str:
+    return f"user:{uid}:rpg:auto"
 
 
 def key_ticket_counter() -> str:
@@ -179,6 +236,60 @@ def rpg_calc_buffs(owned: Dict[str, Any]):
     return cd_mult, yield_add, cap_add
 
 
+def rpg_auto_requirements(cfg: Dict[str, Any], res: Dict[str, int], owned: Dict[str, Any]):
+    reqs = cfg.get("requires", {}) or {}
+    missing_res = {}
+    for k, need in reqs.items():
+        have = res.get(k, 0)
+        if have < int(need):
+            missing_res[k] = int(need)
+
+    bag_req = cfg.get("bag_req")
+    has_bag = (not bag_req) or (bag_req in owned.get("bags", []))
+    return missing_res, has_bag
+
+
+async def rpg_apply_auto(uid: int, res: Dict[str, int], cap_add: Dict[str, int]):
+    r = await get_redis()
+    auto_raw = await r.hgetall(key_rpg_auto(uid))
+    now = int(time.time())
+    pipe = r.pipeline()
+    for cfg in RPG_AUTO_MINERS:
+        raw_state = auto_raw.get(cfg["id"])
+        state: Dict[str, Any] = {}
+        if raw_state:
+            try:
+                state = json.loads(raw_state)
+            except Exception:
+                state = {}
+        if not state.get("active"):
+            continue
+
+        last = safe_int(state.get("last"), now)
+        interval = int(cfg.get("interval", 60))
+        if interval <= 0:
+            continue
+        ticks = max(0, (now - last) // interval)
+        if ticks <= 0:
+            continue
+
+        gain = ticks * int(cfg.get("rate", 1))
+        res_name = cfg.get("resource")
+        cap = RPG_MAX + int(cap_add.get(res_name, 0))
+        cur_val = res.get(res_name, 0)
+        add_val = min(gain, max(0, cap - cur_val))
+        if add_val > 0:
+            res[res_name] = cur_val + add_val
+            pipe.hset(key_rpg_res(uid), res_name, res[res_name])
+
+        state["last"] = last + ticks * interval
+        pipe.hset(key_rpg_auto(uid), cfg["id"], json.dumps(state))
+
+    if pipe.command_stack:
+        await pipe.execute()
+    return res
+
+
 async def rpg_ensure(uid: int):
     r = await get_redis()
     pipe = r.pipeline()
@@ -204,6 +315,41 @@ async def rpg_state(uid: int):
     res = {k: safe_int(v) for k, v in res.items()}
     owned = await rpg_get_owned(uid)
     cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
+    res = await rpg_apply_auto(uid, res, cap_add)
+
+    auto_raw = await r.hgetall(key_rpg_auto(uid))
+    auto_list = []
+    now = int(time.time())
+    for cfg in RPG_AUTO_MINERS:
+        raw_state = auto_raw.get(cfg["id"])
+        state: Dict[str, Any] = {}
+        if raw_state:
+            try:
+                state = json.loads(raw_state)
+            except Exception:
+                state = {}
+        active = bool(state.get("active"))
+        last_tick = safe_int(state.get("last"), 0)
+        next_tick = last_tick + int(cfg.get("interval", 0)) if active else 0
+        missing_res, has_bag = rpg_auto_requirements(cfg, res, owned)
+        auto_list.append(
+            {
+                "id": cfg["id"],
+                "name": cfg.get("name", ""),
+                "resource": cfg.get("resource"),
+                "rate": int(cfg.get("rate", 1)),
+                "interval": int(cfg.get("interval", 60)),
+                "requires": cfg.get("requires", {}),
+                "bag_req": cfg.get("bag_req"),
+                "active": active,
+                "last_tick": last_tick,
+                "next_tick": next_tick,
+                "unlocked": not missing_res and has_bag,
+                "missing": missing_res,
+                "has_bag": has_bag,
+            }
+        )
+
     next_ts = safe_int(await r.get(key_rpg_cd(uid)))
     now = int(time.time())
     cooldown_remaining = max(0, next_ts - now)
@@ -215,6 +361,7 @@ async def rpg_state(uid: int):
         "cooldown_until": next_ts,
         "buffs": {"cd_mult": cd_mult, "yield_add": yield_add},
         "caps": cap_add,
+        "auto": {"miners": auto_list, "now": now},
     }
 
 

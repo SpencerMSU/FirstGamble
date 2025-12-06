@@ -18,25 +18,21 @@ services:
     command: ["-config.file=/etc/promtail/config.yaml"]
     volumes:
       - ./promtail-config.yaml:/etc/promtail/config.yaml:ro
-      - /var/log:/var/log:ro
-      - /var/lib/systemd:/var/lib/systemd:ro
-      - /run/log/journal:/run/log/journal:ro
-      - /var/log/journal:/var/log/journal:ro
-      - /etc/machine-id:/etc/machine-id:ro
+      - /var/log:/var/log
+      - /var/log/journal:/var/log/journal
+      - /run/log/journal:/run/log/journal
+      - /etc/machine-id:/etc/machine-id
     restart: unless-stopped
-    depends_on:
-      - loki
 
   grafana:
     image: grafana/grafana:10.4.2
     container_name: grafana
     environment:
-      - GF_SECURITY_ADMIN_USER=${GRAFANA_ADMIN_USER:-admin}
-      - GF_SECURITY_ADMIN_PASSWORD=${GRAFANA_ADMIN_PASSWORD:-change-me}
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SECURITY_ADMIN_PASSWORD=SuperStrongPass123     # поменяй при желании
       - GF_SERVER_ROOT_URL=https://logs.firstgamble.ru
     volumes:
       - grafana-storage:/var/lib/grafana
-      - ./grafana/provisioning:/etc/grafana/provisioning
     ports:
       - "3000:3000"
     restart: unless-stopped

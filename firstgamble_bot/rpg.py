@@ -47,23 +47,99 @@ RPG_TOOLS = {
 }
 
 RPG_BAGS = {
-    "bag1": {"name": "Мешок из ткани", "cost": 3, "cap_add": 50},
-    "bag2": {"name": "Сумка старателя", "cost": 6, "cap_add": 100},
-    "bag3": {"name": "Рюкзак шахтёра", "cost": 12, "cap_add": 200},
-    "bag4": {"name": "Укреплённый рюкзак", "cost": 18, "cap_add": 300},
-    "bag5": {"name": "Экспедиционный мешок", "cost": 25, "cap_add": 450},
-    "bag6": {"name": "Каркасная сумка", "cost": 33, "cap_add": 650},
-    "bag7": {"name": "Горный баул", "cost": 42, "cap_add": 900},
-    "bag8": {"name": "Сумка инженера", "cost": 55, "cap_add": 1200},
-    "bag9": {"name": "Артефактный рюкзак", "cost": 70, "cap_add": 1600},
-    "bag10": {"name": "Легендарный контейнер", "cost": 95, "cap_add": 2200},
-    "bag11": {"name": "Полевой контейнер", "cost": 125, "cap_add": 3000},
-    "bag12": {"name": "Стабилизированный ранец", "cost": 160, "cap_add": 4000},
-    "bag13": {"name": "Астероидный бокс", "cost": 200, "cap_add": 5200},
-    "bag14": {"name": "Квантовый рюкзак", "cost": 250, "cap_add": 6600},
-    "bag15": {"name": "Хранилище первопроходца", "cost": 310, "cap_add": 8200},
+    "bag1": {
+        "name": "Мешок из ткани",
+        "cost": 3,
+        "cost_resource": "wood",
+        "cap_add": 50,
+    },
+    "bag2": {
+        "name": "Сумка старателя",
+        "cost": 6,
+        "cost_resource": "wood",
+        "cap_add": 100,
+    },
+    "bag3": {
+        "name": "Рюкзак шахтёра",
+        "cost": 12,
+        "cost_resource": "stone",
+        "cap_add": 200,
+    },
+    "bag4": {
+        "name": "Укреплённый рюкзак",
+        "cost": 18,
+        "cost_resource": "stone",
+        "cap_add": 300,
+    },
+    "bag5": {
+        "name": "Экспедиционный мешок",
+        "cost": 25,
+        "cost_resource": "iron",
+        "cap_add": 450,
+    },
+    "bag6": {
+        "name": "Каркасная сумка",
+        "cost": 33,
+        "cost_resource": "iron",
+        "cap_add": 650,
+    },
+    "bag7": {
+        "name": "Горный баул",
+        "cost": 42,
+        "cost_resource": "silver",
+        "cap_add": 900,
+    },
+    "bag8": {
+        "name": "Сумка инженера",
+        "cost": 55,
+        "cost_resource": "silver",
+        "cap_add": 1200,
+    },
+    "bag9": {
+        "name": "Артефактный рюкзак",
+        "cost": 70,
+        "cost_resource": "gold",
+        "cap_add": 1600,
+    },
+    "bag10": {
+        "name": "Легендарный контейнер",
+        "cost": 95,
+        "cost_resource": "gold",
+        "cap_add": 2200,
+    },
+    "bag11": {
+        "name": "Полевой контейнер",
+        "cost": 125,
+        "cost_resource": "crystal",
+        "cap_add": 3000,
+    },
+    "bag12": {
+        "name": "Стабилизированный ранец",
+        "cost": 160,
+        "cost_resource": "crystal",
+        "cap_add": 4000,
+    },
+    "bag13": {
+        "name": "Астероидный бокс",
+        "cost": 200,
+        "cost_resource": "mythril",
+        "cap_add": 5200,
+    },
+    "bag14": {
+        "name": "Квантовый рюкзак",
+        "cost": 250,
+        "cost_resource": "relic",
+        "cap_add": 6600,
+    },
+    "bag15": {
+        "name": "Хранилище первопроходца",
+        "cost": 310,
+        "cost_resource": "essence",
+        "cap_add": 8200,
+    },
 }
 
+RPG_SELL_MIN_RESOURCE = "mythril"
 RPG_SELL_VALUES = {
     "wood": 1,
     "stone": 2,

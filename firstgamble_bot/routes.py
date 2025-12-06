@@ -10,6 +10,7 @@ from .rpg import (
     RPG_BAGS,
     RPG_CHAIN,
     RPG_MAX,
+    RPG_SELL_MIN_RESOURCE,
     RPG_RESOURCES,
     RPG_SELL_VALUES,
     RPG_TOOLS,
@@ -202,6 +203,7 @@ async def api_profile(request: web.Request):
             return json_error("not confirmed", status=403)
 
     await ensure_user(uid)
+    await rpg_ensure(uid)
     name_clean = sanitize_redis_string(name)
     username_clean = sanitize_redis_string(username)
 
@@ -344,15 +346,30 @@ async def api_rpg_buy(request: web.Request):
         return web.json_response({"ok": True, "state": st})
 
     cost = int(item.get("cost", 0))
-    bal = safe_int(await r.get(key_balance(uid)))
-    if bal < cost:
-        return json_error("not enough points")
+    if cat == "bags":
+        cost_resource = item.get("cost_resource")
+        if not cost_resource or cost_resource not in RPG_RESOURCES:
+            return json_error("bad item")
 
-    pipe = r.pipeline()
-    pipe.incrby(key_balance(uid), -cost)
-    pipe.zadd(USERS_ZSET, {uid: bal - cost})
-    pipe.sadd(owned_key, item_id)
-    await pipe.execute()
+        res_raw = await r.hgetall(key_rpg_res(uid))
+        res_int = {k: safe_int(v) for k, v in res_raw.items()}
+        if res_int.get(cost_resource, 0) < cost:
+            return json_error("not enough resources")
+
+        pipe = r.pipeline()
+        pipe.hincrby(key_rpg_res(uid), cost_resource, -cost)
+        pipe.sadd(owned_key, item_id)
+        await pipe.execute()
+    else:
+        bal = safe_int(await r.get(key_balance(uid)))
+        if bal < cost:
+            return json_error("not enough points")
+
+        pipe = r.pipeline()
+        pipe.incrby(key_balance(uid), -cost)
+        pipe.zadd(USERS_ZSET, {uid: bal - cost})
+        pipe.sadd(owned_key, item_id)
+        await pipe.execute()
 
     st = await rpg_state(uid)
     return web.json_response({"ok": True, "state": st})
@@ -386,6 +403,10 @@ async def api_rpg_convert(request: web.Request):
     if to_r == "points":
         if from_r not in RPG_RESOURCES:
             return json_error("bad from")
+        min_sell_idx = RPG_RESOURCES.index(RPG_SELL_MIN_RESOURCE)
+        from_idx = RPG_RESOURCES.index(from_r)
+        if from_idx < min_sell_idx:
+            return json_error("sell restricted")
         need = amount
         if res.get(from_r, 0) < need:
             return json_error("not enough resources")

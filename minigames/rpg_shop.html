@@ -107,22 +107,35 @@
     const autoList = document.getElementById('autoList');
     const balancePill = document.getElementById('balancePill');
 
+    const RESOURCE_TYPES = [
+      {key:'wood', name:'Дерево', icon:'🪵'},
+      {key:'stone', name:'Камень', icon:'🪨'},
+      {key:'iron', name:'Железо', icon:'⛓️'},
+      {key:'silver', name:'Серебро', icon:'🥈'},
+      {key:'gold', name:'Золото', icon:'🪙'},
+      {key:'crystal', name:'Кристалл', icon:'🔮'},
+      {key:'mythril', name:'Мифрил', icon:'🧿'},
+      {key:'relic', name:'Реликт', icon:'🌌'},
+      {key:'essence', name:'Эссенция', icon:'🌠'},
+    ];
+    const RESOURCE_MAP = Object.fromEntries(RESOURCE_TYPES.map(r=>[r.key,r]));
+
     const BAG_ITEMS = [
-      {id:'bag1', name:'Мешок из ткани', cost:3, cap:50},
-      {id:'bag2', name:'Сумка старателя', cost:6, cap:100},
-      {id:'bag3', name:'Рюкзак шахтёра', cost:12, cap:200},
-      {id:'bag4', name:'Укреплённый рюкзак', cost:18, cap:300},
-      {id:'bag5', name:'Экспедиционный мешок', cost:25, cap:450},
-      {id:'bag6', name:'Каркасная сумка', cost:33, cap:650},
-      {id:'bag7', name:'Горный баул', cost:42, cap:900},
-      {id:'bag8', name:'Сумка инженера', cost:55, cap:1200},
-      {id:'bag9', name:'Артефактный рюкзак', cost:70, cap:1600},
-      {id:'bag10', name:'Легендарный контейнер', cost:95, cap:2200},
-      {id:'bag11', name:'Полевой контейнер', cost:125, cap:3000},
-      {id:'bag12', name:'Стабилизированный ранец', cost:160, cap:4000},
-      {id:'bag13', name:'Астероидный бокс', cost:200, cap:5200},
-      {id:'bag14', name:'Квантовый рюкзак', cost:250, cap:6600},
-      {id:'bag15', name:'Хранилище первопроходца', cost:310, cap:8200},
+      {id:'bag1', name:'Мешок из ткани', cost:3, costRes:'wood', cap:50},
+      {id:'bag2', name:'Сумка старателя', cost:6, costRes:'wood', cap:100},
+      {id:'bag3', name:'Рюкзак шахтёра', cost:12, costRes:'stone', cap:200},
+      {id:'bag4', name:'Укреплённый рюкзак', cost:18, costRes:'stone', cap:300},
+      {id:'bag5', name:'Экспедиционный мешок', cost:25, costRes:'iron', cap:450},
+      {id:'bag6', name:'Каркасная сумка', cost:33, costRes:'iron', cap:650},
+      {id:'bag7', name:'Горный баул', cost:42, costRes:'silver', cap:900},
+      {id:'bag8', name:'Сумка инженера', cost:55, costRes:'silver', cap:1200},
+      {id:'bag9', name:'Артефактный рюкзак', cost:70, costRes:'gold', cap:1600},
+      {id:'bag10', name:'Легендарный контейнер', cost:95, costRes:'gold', cap:2200},
+      {id:'bag11', name:'Полевой контейнер', cost:125, costRes:'crystal', cap:3000},
+      {id:'bag12', name:'Стабилизированный ранец', cost:160, costRes:'crystal', cap:4000},
+      {id:'bag13', name:'Астероидный бокс', cost:200, costRes:'mythril', cap:5200},
+      {id:'bag14', name:'Квантовый рюкзак', cost:250, costRes:'relic', cap:6600},
+      {id:'bag15', name:'Хранилище первопроходца', cost:310, costRes:'essence', cap:8200},
     ];
 
     let currentState = null;
@@ -155,14 +168,19 @@
         return;
       }
       const owned = new Set(currentState?.owned?.bags || []);
+      const resources = currentState?.resources || {};
       BAG_ITEMS.forEach(b=>{
         const el = document.createElement('div');
         el.className = 'card';
+        const resInfo = RESOURCE_MAP[b.costRes] || {};
+        const have = Number(resources[b.costRes] || 0);
+        const canBuy = have >= b.cost;
         el.innerHTML = `
           <p class="card-title">🎒 ${b.name}</p>
           <p class="card-desc">+${b.cap} к лимиту каждого ресурса.</p>
           <div class="card-meta">
-            <span class="inline-badge">Цена: 🪙 ${b.cost}</span>
+            <span class="inline-badge">Цена: ${resInfo.icon || ''} ${resInfo.name || b.costRes} — ${b.cost}</span>
+            <span class="inline-badge">В наличии: ${have}</span>
             <span class="inline-badge">Вместимость: ${b.cap}</span>
           </div>
         `;
@@ -174,9 +192,8 @@
           btn.disabled = true;
           btn.textContent = 'Куплено';
         } else {
-          const canBuy = (currentState?.balance || 0) >= b.cost;
           btn.disabled = !canBuy;
-          btn.textContent = canBuy ? 'Купить' : 'Не хватает очков';
+          btn.textContent = canBuy ? 'Купить' : 'Не хватает ресурсов';
           btn.addEventListener('click', ()=>buyItem('bags', b.id));
         }
         actions.appendChild(btn);

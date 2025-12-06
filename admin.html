@@ -74,6 +74,17 @@
         </div>
         <div id="balanceStatus" class="muted" style="margin-top:8px;"></div>
       </div>
+
+      <div class="card" style="margin-top:12px;">
+        <h2>Ресурсы RPG</h2>
+        <div class="row" style="margin-top:8px;gap:8px;">
+          <input id="resNickname" placeholder="Никнейм" style="min-width:200px;">
+          <select id="resType" style="min-width:140px;"></select>
+          <input id="resAmount" type="number" min="1" placeholder="Количество" style="width:160px;">
+          <button id="grantResBtn">Выдать</button>
+        </div>
+        <div id="resGrantStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
     </div>
   </div>
 
@@ -83,6 +94,7 @@
     const medalForPlace = (place) => ({1:'🥇',2:'🥈',3:'🥉'}[place]||'');
     let prizesCache = [];
     let prizesVisible = false;
+    const rpgResources = ['wood','stone','iron','silver','gold','crystal','mythril','relic','essence'];
 
     async function api(path, method='GET', body=null){
       const opts = {method, headers:{'Content-Type':'application/json'}, credentials:'include'};
@@ -276,6 +288,40 @@
         qs('balanceStatus').textContent = `Новый баланс: ${res.balance}`;
       }catch(e){
         qs('balanceStatus').textContent = 'Не удалось сохранить: '+e.message;
+      }
+    });
+
+    const resSelect = qs('resType');
+    rpgResources.forEach(r=>{
+      const opt = document.createElement('option');
+      opt.value = r;
+      opt.textContent = r;
+      resSelect.appendChild(opt);
+    });
+
+    qs('grantResBtn').addEventListener('click', async ()=>{
+      const nickname = qs('resNickname').value.trim();
+      const resource = qs('resType').value;
+      const amount = Number(qs('resAmount').value || 0);
+      qs('resGrantStatus').textContent = '';
+      if(!nickname){
+        qs('resGrantStatus').textContent = 'Введите никнейм игрока.';
+        return;
+      }
+      if(!resource){
+        qs('resGrantStatus').textContent = 'Выберите ресурс.';
+        return;
+      }
+      if(!amount || amount <= 0){
+        qs('resGrantStatus').textContent = 'Количество должно быть больше нуля.';
+        return;
+      }
+      try{
+        const res = await api('/api/admin/rpg/grant_resources','POST',{nickname,resource,amount});
+        const total = res?.resources?.[resource] ?? amount;
+        qs('resGrantStatus').textContent = `Выдано ${amount} ${resource}. Теперь у игрока: ${total}.`;
+      }catch(e){
+        qs('resGrantStatus').textContent = 'Ошибка выдачи: '+ (e.message||e);
       }
     });
     qs('adminUser').textContent = 'Доступ открыт из WebApp';

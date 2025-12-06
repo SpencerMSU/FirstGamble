@@ -111,7 +111,7 @@
         <div class="title-row" style="margin-bottom:6px;">
           <h3 style="margin:0;font-size:16px;">Преобразование</h3>
         </div>
-        <p class="muted">3 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция.</p>
+        <p class="muted">3 к 1 по цепочке: дерево → камень → железо → серебро → золото → кристалл → мифрил → реликт → эссенция. Продажа в очки доступна только с ресурсов 🧿 мифрил и выше.</p>
         <div class="list" style="margin-top:10px;">
           <div class="list-item" style="flex-direction:column;align-items:stretch;gap:10px;">
             <div style="display:flex;gap:10px;flex-wrap:wrap;">
@@ -176,6 +176,7 @@
       mythril:'relic',
       relic:'essence'
     };
+    const MIN_POINTS_RESOURCE = 'mythril';
 
     const resourceGrid = document.getElementById('resourceGrid');
     const inventoryList = document.getElementById('inventoryList');
@@ -263,10 +264,12 @@
         optRes.textContent = resInfo ? `${resInfo.icon} ${resInfo.name}` : nextRes;
         convertTo.appendChild(optRes);
       }
-      const optPoints = document.createElement('option');
-      optPoints.value = 'points';
-      optPoints.textContent = 'Очки';
-      convertTo.appendChild(optPoints);
+      if(canSellToPoints(fromVal)){
+        const optPoints = document.createElement('option');
+        optPoints.value = 'points';
+        optPoints.textContent = 'Очки';
+        convertTo.appendChild(optPoints);
+      }
       convertTo.value = convertTo.options[0]?.value || 'points';
       updateConvertHint();
     }
@@ -274,7 +277,7 @@
     function calcMaxConvertible(from, to){
       const res = currentState?.resources || {};
       const have = Number(res[from] || 0);
-      if(to === 'points') return have;
+      if(to === 'points') return canSellToPoints(from) ? have : 0;
       if(CONVERT_CHAIN[from] === to) return Math.floor(have / CONVERT_RATE);
       return 0;
     }
@@ -284,7 +287,9 @@
       const toVal = convertTo.value;
       const max = calcMaxConvertible(fromVal, toVal);
       if(toVal === 'points'){
-        convertHint.textContent = `Можно продать до ${max} ед. за очки.`;
+        convertHint.textContent = canSellToPoints(fromVal)
+          ? `Можно продать до ${max} ед. за очки.`
+          : 'Продажа в очки доступна с Мифрила и выше.';
       } else {
         convertHint.textContent = `Доступно к обмену: ${max} шт. (по ${CONVERT_RATE} : 1).`;
       }
@@ -323,12 +328,21 @@
           convertStatus.textContent = 'Недостаточно ресурсов для обмена.';
         } else if(res?.error === 'bad convert pair'){
           convertStatus.textContent = 'Нельзя конвертировать выбранную пару.';
+        } else if(res?.error === 'sell restricted'){
+          convertStatus.textContent = 'Продажа в очки доступна с Мифрила и выше.';
         } else {
           convertStatus.textContent = 'Ошибка при обмене.';
         }
       }catch(e){
         convertStatus.textContent = 'Сервер недоступен';
       }
+    }
+
+    function canSellToPoints(resource){
+      const minIdx = RESOURCE_TYPES.findIndex(r=>r.key === MIN_POINTS_RESOURCE);
+      const fromIdx = RESOURCE_TYPES.findIndex(r=>r.key === resource);
+      if(minIdx < 0 || fromIdx < 0) return false;
+      return fromIdx >= minIdx;
     }
 
     function updateCooldown(){
@@ -351,6 +365,8 @@
     function applyState(state){
       currentState = state;
       cooldownUntil = (Number(state?.cooldown_until) || 0) * 1000;
+      const totalRuns = Number(state?.stats?.total_runs || 0);
+      document.getElementById('totalRuns').textContent = totalRuns;
       renderResources();
       updateCooldown();
       refreshConvertOptions();

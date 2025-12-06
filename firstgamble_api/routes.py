@@ -19,6 +19,7 @@ from .models import (
     AdminPrizeUpdateRequest,
     AdminPublishPrizesRequest,
     AdminSetPointsRequest,
+    AdminGrantResourcesRequest,
     AuthContext,
     BuyRaffleTicketRequest,
     DiceExternalAwardRequest,
@@ -61,6 +62,7 @@ from .services import (
     RPG_BAGS,
     RPG_MAX,
     RPG_CHAIN,
+    RPG_SELL_MIN_RESOURCE,
     RPG_RESOURCES,
     RPG_SELL_VALUES,
     RPG_TOOLS,
@@ -69,6 +71,7 @@ from .services import (
     key_rpg_cd,
     key_rpg_owned,
     key_rpg_res,
+    key_rpg_runs,
     key_prize_counter,
     key_prize_item,
     key_prizes_visible,
@@ -561,6 +564,7 @@ def register_routes(app: FastAPI):
 
         base_cd = 300
         pipe.set(key_rpg_cd(uid), now + int(base_cd * cd_mult))
+        pipe.incr(key_rpg_runs(uid), 1)
         await pipe.execute()
 
         st = await rpg_state(uid)
@@ -580,6 +584,7 @@ def register_routes(app: FastAPI):
 
         r = await get_redis()
         await ensure_user(uid)
+        await rpg_ensure(uid)
 
         if cat == "tools":
             store = RPG_TOOLS
@@ -600,15 +605,30 @@ def register_routes(app: FastAPI):
             return {"ok": True, "state": st}
 
         cost = int(item.get("cost", 0))
-        bal = safe_int(await r.get(key_balance(uid)))
-        if bal < cost:
-            return {"ok": False, "error": "not enough points"}
+        if cat == "bags":
+            cost_resource = item.get("cost_resource")
+            if not cost_resource or cost_resource not in RPG_RESOURCES:
+                return {"ok": False, "error": "bad item"}
 
-        pipe = r.pipeline()
-        pipe.incrby(key_balance(uid), -cost)
-        pipe.zadd(USERS_ZSET, {uid: bal - cost})
-        pipe.sadd(owned_key, item_id)
-        await pipe.execute()
+            res_raw = await r.hgetall(key_rpg_res(uid))
+            res_int = {k: safe_int(v) for k, v in res_raw.items()}
+            if res_int.get(cost_resource, 0) < cost:
+                return {"ok": False, "error": "not enough resources"}
+
+            pipe = r.pipeline()
+            pipe.hincrby(key_rpg_res(uid), cost_resource, -cost)
+            pipe.sadd(owned_key, item_id)
+            await pipe.execute()
+        else:
+            bal = safe_int(await r.get(key_balance(uid)))
+            if bal < cost:
+                return {"ok": False, "error": "not enough points"}
+
+            pipe = r.pipeline()
+            pipe.incrby(key_balance(uid), -cost)
+            pipe.zadd(USERS_ZSET, {uid: bal - cost})
+            pipe.sadd(owned_key, item_id)
+            await pipe.execute()
 
         st = await rpg_state(uid)
         return {"ok": True, "state": st}
@@ -634,6 +654,10 @@ def register_routes(app: FastAPI):
         if to_r == "points":
             if from_r not in RPG_RESOURCES:
                 return {"ok": False, "error": "bad from"}
+            min_sell_idx = RPG_RESOURCES.index(RPG_SELL_MIN_RESOURCE)
+            from_idx = RPG_RESOURCES.index(from_r)
+            if from_idx < min_sell_idx:
+                return {"ok": False, "error": "sell restricted"}
             need = amount
             if res_int.get(from_r, 0) < need:
                 return {"ok": False, "error": "not enough resources"}
@@ -1095,6 +1119,44 @@ def register_routes(app: FastAPI):
             "balance": new_balance,
             "profile": profile,
         }
+
+    @app.post("/api/admin/rpg/grant_resources")
+    async def api_admin_grant_resources(
+        body: AdminGrantResourcesRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        r = await get_redis()
+        uid = body.user_id
+        if (not uid or uid <= 0) and body.nickname:
+            user = await find_user_by_nick(r, body.nickname)
+            if user:
+                uid = user.get("user_id")
+
+        if not uid or uid <= 0:
+            raise HTTPException(status_code=400, detail="user_id required")
+
+        res_name = (body.resource or "").lower()
+        if res_name not in RPG_RESOURCES:
+            raise HTTPException(status_code=400, detail="bad resource")
+
+        amount = safe_int(body.amount)
+        if amount <= 0:
+            raise HTTPException(status_code=400, detail="amount must be positive")
+
+        await ensure_user(uid)
+        await rpg_ensure(uid)
+
+        pipe = r.pipeline()
+        pipe.hincrby(key_rpg_res(uid), res_name, amount)
+        await pipe.execute()
+
+        res_raw = await r.hgetall(key_rpg_res(uid))
+        res_int = {k: safe_int(v) for k, v in res_raw.items()}
+
+        logger.info(
+            "admin grant resource: user_id=%s resource=%s amount=%s", uid, res_name, amount
+        )
+
+        return {"ok": True, "user_id": uid, "resource": res_name, "amount": amount, "resources": res_int}
 
     exposed_paths = {"/api/dice/award"}
     for route in app.routes:

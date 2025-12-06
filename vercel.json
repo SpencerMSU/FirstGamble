@@ -41,14 +41,6 @@
       "destination": "/minigames/neonbeat.html"
     },
     {
-      "source": "/gravidrive",
-      "destination": "/minigames/gravidrive.html"
-    },
-    {
-      "source": "/gravirun",
-      "destination": "/minigames/gravidrive.html"
-    },
-    {
       "source": "/snake",
       "destination": "/minigames/snake.html"
     },

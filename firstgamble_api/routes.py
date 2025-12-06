@@ -13,6 +13,7 @@ from fastapi.routing import APIRoute
 from .models import (
     AddPointRequest,
     AdminDrawRequest,
+    AdminEconomyUpdateRequest,
     AdminFindUserRequest,
     AdminLoginRequest,
     AdminPrizeRequest,
@@ -43,6 +44,7 @@ from .redis_utils import (
     USERS_SET,
     USERS_ZSET,
     add_points,
+    clamp_balance,
     ensure_user,
     get_balance,
     get_redis,
@@ -58,6 +60,7 @@ from .redis_utils import (
 )
 from .services import (
     RPG_ACCESSORIES,
+    RPG_BASE_CD_DEFAULT,
     RPG_AUTO_MINERS,
     RPG_BAGS,
     RPG_MAX,
@@ -66,6 +69,7 @@ from .services import (
     RPG_RESOURCES,
     RPG_SELL_VALUES,
     RPG_TOOLS,
+    get_rpg_economy,
     build_auth_context_from_headers,
     key_rpg_auto,
     key_rpg_cd,
@@ -89,6 +93,7 @@ from .services import (
     rpg_get_owned,
     rpg_roll_gather,
     rpg_state,
+    save_rpg_economy,
     _ensure_profile_identity_fields,
     is_conserve_token,
 )
@@ -547,9 +552,9 @@ def register_routes(app: FastAPI):
             }
 
         owned = await rpg_get_owned(uid)
-        cd_mult, yield_add, cap_add = rpg_calc_buffs(owned)
+        cd_mult, yield_add, cap_add, extra_drops, _convert_bonus = rpg_calc_buffs(owned)
 
-        gained = rpg_roll_gather()
+        gained = rpg_roll_gather(extra_drops)
         for k in gained:
             gained[k] = int(round(gained[k] * (1.0 + yield_add)))
 
@@ -562,7 +567,8 @@ def register_routes(app: FastAPI):
             new_val = min(max_cap, cur_int.get(res_name, 0) + gained.get(res_name, 0))
             pipe.hset(key_rpg_res(uid), res_name, new_val)
 
-        base_cd = 300
+        economy = await get_rpg_economy(r)
+        base_cd = economy.get("base_cd", RPG_BASE_CD_DEFAULT)
         pipe.set(key_rpg_cd(uid), now + int(base_cd * cd_mult))
         pipe.incr(key_rpg_runs(uid), 1)
         await pipe.execute()
@@ -620,13 +626,13 @@ def register_routes(app: FastAPI):
             pipe.sadd(owned_key, item_id)
             await pipe.execute()
         else:
-            bal = safe_int(await r.get(key_balance(uid)))
+            bal = await get_balance(uid)
             if bal < cost:
                 return {"ok": False, "error": "not enough points"}
 
             pipe = r.pipeline()
             pipe.incrby(key_balance(uid), -cost)
-            pipe.zadd(USERS_ZSET, {uid: bal - cost})
+            pipe.zadd(USERS_ZSET, {uid: clamp_balance(bal - cost)})
             pipe.sadd(owned_key, item_id)
             await pipe.execute()
 
@@ -650,6 +656,9 @@ def register_routes(app: FastAPI):
         await rpg_ensure(uid)
         res = await r.hgetall(key_rpg_res(uid))
         res_int = {k: safe_int(v) for k, v in res.items()}
+        owned = await rpg_get_owned(uid)
+        _cd_mult, _yield_add, _cap_add, _extra_drops, convert_bonus = rpg_calc_buffs(owned)
+        economy = await get_rpg_economy(r)
 
         if to_r == "points":
             if from_r not in RPG_RESOURCES:
@@ -663,17 +672,18 @@ def register_routes(app: FastAPI):
                 return {"ok": False, "error": "not enough resources"}
             value = RPG_SELL_VALUES.get(from_r, 1) * amount
 
+            balance_now = await get_balance(uid)
+            new_balance = clamp_balance(balance_now + value)
+
             pipe = r.pipeline()
             pipe.hincrby(key_rpg_res(uid), from_r, -need)
-            pipe.incrby(key_balance(uid), value)
+            pipe.set(key_balance(uid), new_balance)
+            pipe.zadd(USERS_ZSET, {uid: new_balance})
             await pipe.execute()
-
-            new_bal = safe_int(await r.get(key_balance(uid)))
-            await r.zadd(USERS_ZSET, {uid: new_bal})
 
             logger.info(
                 f"Игрок с id {uid} получил {value} очков в игре rpg_convert "
-                f"(новый баланс: {new_bal})"
+                f"(новый баланс: {new_balance})"
             )
 
             st = await rpg_state(uid)
@@ -683,14 +693,17 @@ def register_routes(app: FastAPI):
         if not pair_ok:
             return {"ok": False, "error": "bad convert pair"}
 
-        rate = 3
+        rate = economy.get("convert_rate", RPG_CONVERT_RATE_DEFAULT)
         need = amount * rate
         if res_int.get(from_r, 0) < need:
             return {"ok": False, "error": "not enough resources"}
 
+        bonus_gain = max(0, int(amount * convert_bonus))
+        final_gain = amount + bonus_gain
+
         pipe = r.pipeline()
         pipe.hincrby(key_rpg_res(uid), from_r, -need)
-        pipe.hincrby(key_rpg_res(uid), to_r, amount)
+        pipe.hincrby(key_rpg_res(uid), to_r, final_gain)
         await pipe.execute()
 
         st = await rpg_state(uid)
@@ -715,18 +728,47 @@ def register_routes(app: FastAPI):
         res_raw = await r.hgetall(key_rpg_res(uid))
         res_int = {k: safe_int(v) for k, v in res_raw.items()}
 
-        missing_res, has_bag = rpg_auto_requirements(cfg, res_int, owned)
+        raw_state = await r.hget(key_rpg_auto(uid), miner_id)
+        state: Dict[str, Any] = {}
+        if raw_state:
+            try:
+                state = json.loads(raw_state)
+            except Exception:
+                state = {}
 
-        if action == "start":
+        levels = cfg.get("levels", []) or []
+        max_level = len(levels)
+        level = rpg_auto_state_level(state, max_level)
+        missing_res, has_bag, next_cfg = rpg_auto_requirements(cfg, res_int, owned, level)
+
+        if action == "upgrade":
+            if not next_cfg:
+                return {"ok": False, "error": "max_level"}
             if missing_res:
                 return {"ok": False, "error": "requirements", "missing": missing_res}
+
+            pipe = r.pipeline()
+            for res_name, need in (next_cfg.get("cost") or {}).items():
+                pipe.hincrby(key_rpg_res(uid), res_name, -int(need))
+            state["level"] = level + 1
+            state["active"] = bool(state.get("active"))
+            state["last"] = int(time.time())
+            pipe.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
+            await pipe.execute()
+        elif action == "start":
+            if level <= 0:
+                return {"ok": False, "error": "upgrade_required"}
             if not has_bag:
                 return {"ok": False, "error": "bag_required", "bag_req": cfg.get("bag_req")}
 
-            state = {"active": True, "last": int(time.time())}
+            state["active"] = True
+            state["level"] = level
+            state["last"] = int(time.time())
             await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
         elif action == "stop":
-            state = {"active": False, "last": int(time.time())}
+            state["active"] = False
+            state["level"] = level
+            state["last"] = int(time.time())
             await r.hset(key_rpg_auto(uid), miner_id, json.dumps(state))
         else:
             return {"ok": False, "error": "bad action"}
@@ -747,8 +789,7 @@ def register_routes(app: FastAPI):
 
             count = max(1, min(body.count or 1, 100))
 
-            balance_raw = await r.get(key_balance(uid))
-            balance = safe_int(balance_raw)
+            balance = await get_balance(uid)
             total_cost = RAFFLE_TICKET_PRICE * count
 
             if balance < total_cost:
@@ -758,7 +799,7 @@ def register_routes(app: FastAPI):
             first_ticket = last_ticket - count + 1
             bought_numbers = list(range(first_ticket, last_ticket + 1))
 
-            new_balance = balance - total_cost
+            new_balance = clamp_balance(balance - total_cost)
             tickets_key = key_user_tickets(uid)
             owners_map = {str(num): str(uid) for num in bought_numbers}
 
@@ -790,7 +831,7 @@ def register_routes(app: FastAPI):
         r = await get_redis()
         await ensure_user(uid)
 
-        bal = safe_int(await r.get(key_balance(uid)))
+        bal = await get_balance(uid)
         tickets = await r.lrange(key_user_tickets(uid), 0, -1)
 
         return {
@@ -1059,7 +1100,7 @@ def register_routes(app: FastAPI):
                 continue
             profile = await r.hgetall(key_profile(uid))
             if normalize_nickname(profile.get("name")) == target:
-                bal = safe_int(await r.get(key_balance(uid)))
+                bal = await get_balance(uid)
                 return {"user_id": uid, "profile": profile, "balance": bal}
         return None
 
@@ -1094,12 +1135,12 @@ def register_routes(app: FastAPI):
             raise HTTPException(status_code=400, detail="user_id required")
 
         await ensure_user(uid)
-        cur_balance = safe_int(await r.get(key_balance(uid)))
+        cur_balance = await get_balance(uid)
 
         if body.new_balance is not None:
-            new_balance = int(body.new_balance)
+            new_balance = clamp_balance(int(body.new_balance))
         elif body.points_delta is not None:
-            new_balance = cur_balance + int(body.points_delta)
+            new_balance = clamp_balance(cur_balance + int(body.points_delta))
         else:
             raise HTTPException(status_code=400, detail="no changes provided")
 
@@ -1157,6 +1198,29 @@ def register_routes(app: FastAPI):
         )
 
         return {"ok": True, "user_id": uid, "resource": res_name, "amount": amount, "resources": res_int}
+
+    @app.get("/api/admin/rpg/economy")
+    async def api_admin_get_economy(
+        admin_token: str = Depends(require_admin),
+    ) -> Dict[str, Any]:
+        economy = await get_rpg_economy()
+        return {"ok": True, "economy": economy}
+
+    @app.post("/api/admin/rpg/economy")
+    async def api_admin_update_economy(
+        body: AdminEconomyUpdateRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        payload: Dict[str, Any] = {}
+        if body.convert_rate is not None:
+            payload["convert_rate"] = body.convert_rate
+        if body.base_cd is not None:
+            payload["base_cd"] = body.base_cd
+        if not payload:
+            raise HTTPException(status_code=400, detail="no changes provided")
+
+        economy = await save_rpg_economy(payload)
+        logger.info("admin update rpg economy: %s", payload)
+        return {"ok": True, "economy": economy}
 
     exposed_paths = {"/api/dice/award"}
     for route in app.routes:

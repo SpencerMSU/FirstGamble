@@ -58,6 +58,7 @@
     .inline-badge{padding:6px 8px;border-radius:999px;border:1px solid var(--stroke);font-size:12px;color:var(--muted);}
     .btn{padding:10px 12px;border-radius:10px;border:1px solid var(--stroke2);background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);color:white;font-weight:800;cursor:pointer;}
     .btn:disabled{opacity:.6;cursor:not-allowed;}
+    .list{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:10px;}
   </style>
 </head>
 <body>
@@ -88,15 +89,11 @@
       </div>
 
       <div data-view="tools" style="display:none;">
-        <div class="placeholder">
-          <p class="muted">Инструменты готовятся к добавлению.</p>
-        </div>
+        <div id="toolsList" class="list"></div>
       </div>
 
       <div data-view="accessories" style="display:none;">
-        <div class="placeholder">
-          <p class="muted">Аксессуары будут доступны позднее.</p>
-        </div>
+        <div id="accList" class="list"></div>
       </div>
     </section>
   </div>
@@ -105,6 +102,8 @@
     const tgInstance = initTelegramGuard();
     const storageList = document.getElementById('storageList');
     const autoList = document.getElementById('autoList');
+    const toolsList = document.getElementById('toolsList');
+    const accList = document.getElementById('accList');
     const balancePill = document.getElementById('balancePill');
 
     const RESOURCE_TYPES = [
@@ -120,22 +119,57 @@
     ];
     const RESOURCE_MAP = Object.fromEntries(RESOURCE_TYPES.map(r=>[r.key,r]));
 
+    function formatCost(cost){
+      if(!cost || !Object.keys(cost).length) return '';
+      return Object.entries(cost).map(([k,v])=>{
+        const resInfo = RESOURCE_MAP[k] || {};
+        return `${resInfo.icon || ''} ${resInfo.name || k} — ${v}`;
+      }).join(', ');
+    }
+
     const BAG_ITEMS = [
-      {id:'bag1', name:'Мешок из ткани', cost:3, costRes:'wood', cap:50},
-      {id:'bag2', name:'Сумка старателя', cost:6, costRes:'wood', cap:100},
-      {id:'bag3', name:'Рюкзак шахтёра', cost:12, costRes:'stone', cap:200},
-      {id:'bag4', name:'Укреплённый рюкзак', cost:18, costRes:'stone', cap:300},
-      {id:'bag5', name:'Экспедиционный мешок', cost:25, costRes:'iron', cap:450},
-      {id:'bag6', name:'Каркасная сумка', cost:33, costRes:'iron', cap:650},
-      {id:'bag7', name:'Горный баул', cost:42, costRes:'silver', cap:900},
-      {id:'bag8', name:'Сумка инженера', cost:55, costRes:'silver', cap:1200},
-      {id:'bag9', name:'Артефактный рюкзак', cost:70, costRes:'gold', cap:1600},
-      {id:'bag10', name:'Легендарный контейнер', cost:95, costRes:'gold', cap:2200},
-      {id:'bag11', name:'Полевой контейнер', cost:125, costRes:'crystal', cap:3000},
-      {id:'bag12', name:'Стабилизированный ранец', cost:160, costRes:'crystal', cap:4000},
-      {id:'bag13', name:'Астероидный бокс', cost:200, costRes:'mythril', cap:5200},
-      {id:'bag14', name:'Квантовый рюкзак', cost:250, costRes:'relic', cap:6600},
-      {id:'bag15', name:'Хранилище первопроходца', cost:310, costRes:'essence', cap:8200},
+      {id:'bag1', name:'Мешок из ткани', cost:3, costRes:'wood', cap:80},
+      {id:'bag2', name:'Сумка старателя', cost:6, costRes:'wood', cap:160},
+      {id:'bag3', name:'Рюкзак шахтёра', cost:12, costRes:'stone', cap:320},
+      {id:'bag4', name:'Укреплённый рюкзак', cost:18, costRes:'stone', cap:520},
+      {id:'bag5', name:'Экспедиционный мешок', cost:25, costRes:'iron', cap:800},
+      {id:'bag6', name:'Каркасная сумка', cost:33, costRes:'iron', cap:1100},
+      {id:'bag7', name:'Горный баул', cost:42, costRes:'silver', cap:1500},
+      {id:'bag8', name:'Сумка инженера', cost:55, costRes:'silver', cap:1900},
+      {id:'bag9', name:'Артефактный рюкзак', cost:70, costRes:'gold', cap:2500},
+      {id:'bag10', name:'Легендарный контейнер', cost:95, costRes:'gold', cap:3200},
+      {id:'bag11', name:'Полевой контейнер', cost:125, costRes:'crystal', cap:4200},
+      {id:'bag12', name:'Стабилизированный ранец', cost:160, costRes:'crystal', cap:5400},
+      {id:'bag13', name:'Астероидный бокс', cost:200, costRes:'mythril', cap:7000},
+      {id:'bag14', name:'Квантовый рюкзак', cost:250, costRes:'relic', cap:8800},
+      {id:'bag15', name:'Хранилище первопроходца', cost:310, costRes:'essence', cap:11000},
+      {id:'bag16', name:'Экзоконтейнер', cost:380, costRes:'essence', cap:14000},
+      {id:'bag17', name:'Лабораторный отсек', cost:460, costRes:'essence', cap:17000},
+      {id:'bag18', name:'Стабилизированный карман', cost:550, costRes:'essence', cap:20000},
+      {id:'bag19', name:'Архив реликтов', cost:650, costRes:'essence', cap:24000},
+      {id:'bag20', name:'Континуум-хранилище', cost:780, costRes:'essence', cap:28000},
+    ];
+
+    const TOOL_ITEMS = [
+      {id:'tool1', name:'Кирка новичка', cost:3, chance:5, cd:0, resource:'wood', desc:'Даёт шанс найти дополнительное дерево.'},
+      {id:'tool2', name:'Каменный долот', cost:6, chance:8, cd:3, resource:'stone', desc:'Дополнительный камень при удачной попытке.'},
+      {id:'tool3', name:'Железная кирка', cost:10, chance:10, cd:5, resource:'iron', desc:'Шанс выбить лишнюю железную жилу.'},
+      {id:'tool4', name:'Серебряная кирка', cost:15, chance:12, cd:7, resource:'silver', desc:'Позволяет находить редкое серебро.'},
+      {id:'tool5', name:'Золотая дрель', cost:21, chance:15, cd:9, resource:'gold', desc:'Шанс на бонусное золото при добыче.'},
+      {id:'tool6', name:'Кристальный резак', cost:28, chance:18, cd:11, resource:'crystal', desc:'Ускоряет поиск кристаллов.'},
+      {id:'tool7', name:'Мифриловый бур', cost:36, chance:22, cd:13, resource:'mythril', desc:'Шанс получить мифрил с добычи.'},
+      {id:'tool8', name:'Реликтовый экскаватор', cost:45, chance:26, cd:15, resource:'relic', desc:'Малый шанс достать реликт при добыче.'},
+    ];
+
+    const ACCESSORY_ITEMS = [
+      {id:'acc1', name:'Тканевая подвязка', level:1, cost:4, cd:3, convert:2},
+      {id:'acc2', name:'Жетон старателя', level:2, cost:7, cd:5, convert:4},
+      {id:'acc3', name:'Кольцо ускорения', level:3, cost:11, cd:7, convert:6},
+      {id:'acc4', name:'Амулет руды', level:4, cost:15, cd:10, convert:8},
+      {id:'acc5', name:'Браслет инженера', level:5, cost:21, cd:12, convert:10},
+      {id:'acc6', name:'Фазовый талисман', level:6, cost:28, cd:15, convert:12},
+      {id:'acc7', name:'Печать реликтов', level:7, cost:36, cd:18, convert:15},
+      {id:'acc8', name:'Корона алхимика', level:8, cost:45, cd:22, convert:18},
     ];
 
     let currentState = null;
@@ -169,7 +203,12 @@
       }
       const owned = new Set(currentState?.owned?.bags || []);
       const resources = currentState?.resources || {};
-      BAG_ITEMS.forEach(b=>{
+      const available = BAG_ITEMS.filter(b=>!owned.has(b.id));
+      if(!available.length){
+        storageList.innerHTML = '<div class="placeholder"><p class="muted">Все рюкзаки уже куплены.</p></div>';
+        return;
+      }
+      available.forEach(b=>{
         const el = document.createElement('div');
         el.className = 'card';
         const resInfo = RESOURCE_MAP[b.costRes] || {};
@@ -188,17 +227,89 @@
         actions.className = 'card-actions';
         const btn = document.createElement('button');
         btn.className = 'btn';
-        if(owned.has(b.id)){
-          btn.disabled = true;
-          btn.textContent = 'Куплено';
-        } else {
-          btn.disabled = !canBuy;
-          btn.textContent = canBuy ? 'Купить' : 'Не хватает ресурсов';
-          btn.addEventListener('click', ()=>buyItem('bags', b.id));
-        }
+        btn.disabled = !canBuy;
+        btn.textContent = canBuy ? 'Купить' : 'Не хватает ресурсов';
+        btn.addEventListener('click', ()=>buyItem('bags', b.id));
         actions.appendChild(btn);
         el.appendChild(actions);
         storageList.appendChild(el);
+      });
+    }
+
+    function renderTools(){
+      toolsList.innerHTML = '';
+      if(!currentState){
+        toolsList.innerHTML = '<div class="placeholder"><p class="muted">Загрузка...</p></div>';
+        return;
+      }
+      const owned = new Set(currentState?.owned?.tools || []);
+      const balance = Number(currentState?.balance || 0);
+      TOOL_ITEMS.forEach(t=>{
+        const resInfo = RESOURCE_MAP[t.resource] || {};
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <p class="card-title">🛠️ ${t.name}</p>
+          <p class="card-desc">${t.desc}</p>
+          <div class="card-meta">
+            <span class="inline-badge">Шанс +${t.chance}% на ${resInfo.icon || ''} ${resInfo.name || t.resource}</span>
+            <span class="inline-badge">Сокращение КД: ${(t.cd || 0)}%</span>
+          </div>
+        `;
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        const canBuy = balance >= t.cost;
+        if(owned.has(t.id)){
+          btn.textContent = 'Куплено';
+          btn.disabled = true;
+        } else {
+          btn.textContent = canBuy ? `Купить за ${t.cost} 🪙` : 'Не хватает очков';
+          btn.disabled = !canBuy;
+          btn.addEventListener('click', ()=>buyItem('tools', t.id));
+        }
+        actions.appendChild(btn);
+        el.appendChild(actions);
+        toolsList.appendChild(el);
+      });
+    }
+
+    function renderAccessories(){
+      accList.innerHTML = '';
+      if(!currentState){
+        accList.innerHTML = '<div class="placeholder"><p class="muted">Загрузка...</p></div>';
+        return;
+      }
+      const owned = new Set(currentState?.owned?.acc || []);
+      const balance = Number(currentState?.balance || 0);
+      ACCESSORY_ITEMS.forEach(a=>{
+        const el = document.createElement('div');
+        el.className = 'card';
+        el.innerHTML = `
+          <p class="card-title">🎗️ Уровень ${a.level}: ${a.name}</p>
+          <p class="card-desc">Снижает КД и усиливает конвертацию ресурсов.</p>
+          <div class="card-meta">
+            <span class="inline-badge">−${a.cd}% к КД добычи</span>
+            <span class="inline-badge">+${a.convert}% к объёму обмена</span>
+          </div>
+        `;
+        const actions = document.createElement('div');
+        actions.className = 'card-actions';
+        const btn = document.createElement('button');
+        btn.className = 'btn';
+        const canBuy = balance >= a.cost;
+        if(owned.has(a.id)){
+          btn.textContent = 'Куплено';
+          btn.disabled = true;
+        } else {
+          btn.textContent = canBuy ? `Купить за ${a.cost} 🪙` : 'Не хватает очков';
+          btn.disabled = !canBuy;
+          btn.addEventListener('click', ()=>buyItem('acc', a.id));
+        }
+        actions.appendChild(btn);
+        el.appendChild(actions);
+        accList.appendChild(el);
       });
     }
 
@@ -212,34 +323,65 @@
       miners.forEach(m=>{
         const el = document.createElement('div');
         el.className = 'card';
-        const reqText = Object.entries(m.missing || {}).map(([k,v])=>`${k}: ${v}`).join(', ');
-        const badgeText = m.active ? 'Работает' : (m.unlocked ? 'Готов к запуску' : 'Требует ресурсов');
+        const resInfo = RESOURCE_MAP[m.resource] || {};
         const bagName = BAG_ITEMS.find(b=>b.id === m.bag_req)?.name || m.bag_req;
+        const levelText = m.level > 0 ? `Уровень ${m.level}/${m.max_level}` : `Неактивен (0/${m.max_level})`;
+        const productionLine = m.level > 0
+          ? `+${m.rate} ${resInfo.name || m.resource} каждые ${m.interval} сек.`
+          : `Следующий уровень: +${m.preview_rate || m.rate} ${resInfo.name || m.resource} каждые ${m.preview_interval || m.interval || '?'} сек.`;
+        const upgradeCost = formatCost(m.upgrade_cost);
+        const missingUpgrade = formatCost(m.missing_upgrade || {});
+        const badgeText = m.active ? 'Работает' : (m.can_start ? 'Готов к запуску' : (m.has_bag ? 'Нужно улучшение' : 'Нужен рюкзак'));
         el.innerHTML = `
           <p class="card-title">🤖 ${m.name}</p>
-          <p class="card-desc">+${m.rate} ${m.resource} каждые ${m.interval} сек.</p>
+          <p class="card-desc">${productionLine}</p>
           <div class="card-meta">
             <span class="inline-badge">${badgeText}</span>
             ${m.bag_req ? `<span class="inline-badge">Нужен: ${bagName}</span>` : ''}
+            <span class="inline-badge">${levelText}</span>
           </div>
-          <p class="card-desc">${reqText ? 'Нужно ресурсов: ' + reqText : 'Требования выполнены.'}</p>
+          <p class="card-desc">${upgradeCost ? `Стоимость улучшения: ${upgradeCost}` : 'Достигнут максимальный уровень.'}</p>
+          ${upgradeCost ? `<p class="card-desc muted">${(m.missing_upgrade && Object.keys(m.missing_upgrade).length) ? 'Не хватает: ' + missingUpgrade : 'Ресурсов достаточно для апгрейда.'}</p>` : ''}
         `;
         const actions = document.createElement('div');
         actions.className = 'card-actions';
-        const btn = document.createElement('button');
-        btn.className = 'btn';
+        const startBtn = document.createElement('button');
+        startBtn.className = 'btn';
         if(m.active){
-          btn.textContent = 'Остановить';
-          btn.addEventListener('click', ()=>toggleAuto(m.id, 'stop'));
+          startBtn.textContent = 'Остановить';
+          startBtn.addEventListener('click', ()=>toggleAuto(m.id, 'stop'));
         } else {
-          btn.textContent = 'Запустить';
-          btn.disabled = !m.unlocked;
-          btn.addEventListener('click', ()=>toggleAuto(m.id, 'start'));
+          const reason = !m.has_bag ? 'Нужен подходящий рюкзак' : (m.level <= 0 ? 'Сначала прокачайте уровень' : '');
+          startBtn.textContent = m.can_start ? 'Запустить' : (reason || 'Требуются условия');
+          startBtn.disabled = !m.can_start;
+          startBtn.title = reason;
+          startBtn.addEventListener('click', ()=>m.can_start && toggleAuto(m.id, 'start'));
         }
-        actions.appendChild(btn);
+        actions.appendChild(startBtn);
+
+        const upgradeBtn = document.createElement('button');
+        upgradeBtn.className = 'btn ghost';
+        if(!m.upgrade_cost){
+          upgradeBtn.textContent = 'Макс. уровень';
+          upgradeBtn.disabled = true;
+        } else {
+          const targetLevel = m.next_level || (m.level + 1);
+          upgradeBtn.textContent = m.can_upgrade ? `Улучшить до ${targetLevel} ур.` : 'Не хватает ресурсов';
+          upgradeBtn.disabled = !m.can_upgrade;
+          upgradeBtn.addEventListener('click', ()=>upgradeAuto(m.id));
+        }
+        actions.appendChild(upgradeBtn);
         el.appendChild(actions);
         autoList.appendChild(el);
       });
+    }
+
+    async function upgradeAuto(miner_id){
+      const res = await apiPost('/api/rpg/auto', {miner_id, action:'upgrade'});
+      if(res?.ok){
+        currentState = res.state;
+        renderAll();
+      }
     }
 
     async function toggleAuto(miner_id, action){
@@ -254,6 +396,8 @@
       renderBalance();
       renderBags();
       renderAuto();
+      renderTools();
+      renderAccessories();
     }
 
     async function loadState(){

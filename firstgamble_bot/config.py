@@ -1,8 +1,7 @@
 import logging
+import logging
 from pathlib import Path
 from typing import Dict
-
-logging.basicConfig(level=logging.INFO)
 
 BASE_DIR = Path(__file__).resolve().parent.parent
 TOKENS_FILE = BASE_DIR / "tokens.txt"

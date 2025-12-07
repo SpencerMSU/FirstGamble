@@ -47,10 +47,27 @@ routes = web.RouteTableDef()
 
 # ====== helpers ======
 def json_error(message: str, status: int = 400):
+    """Creates a JSON error response.
+
+    Args:
+        message: The error message.
+        status: The HTTP status code.
+
+    Returns:
+        A JSON response containing the error message.
+    """
     return web.json_response({"ok": False, "error": message}, status=status)
 
 
 def is_conserve_request(request: web.Request) -> bool:
+    """Checks if a request is a valid ConServe request.
+
+    Args:
+        request: The incoming request.
+
+    Returns:
+        True if the request is a valid ConServe request, False otherwise.
+    """
     if not CONSERVE_AUTH_TOKEN:
         return False
     token = request.headers.get("X-ConServe-Auth") or request.headers.get("X-Conserve-Auth")
@@ -59,20 +76,31 @@ def is_conserve_request(request: web.Request) -> bool:
 
 # ================= RAFFLE TICKETS =================
 def key_ticket_counter() -> str:
+    """Gets the Redis key for the raffle ticket counter."""
     return "raffle:ticket:counter"  # global counter
 
 
 def key_user_tickets(uid: int) -> str:
+    """Gets the Redis key for a user's raffle tickets.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's raffle tickets.
+    """
     return f"user:{uid}:raffle:tickets"  # list of ticket numbers
 
 
 @routes.get("/api/ping")
 async def api_ping(request: web.Request):
+    """A simple ping endpoint to check if the API is running."""
     return web.json_response({"ok": True, "message": "pong"})
 
 
 @routes.get("/api/balance")
 async def api_balance(request: web.Request):
+    """Gets a user's balance."""
     user_id = request.query.get("user_id")
     if not user_id:
         return json_error("user_id required")
@@ -92,6 +120,7 @@ async def api_balance(request: web.Request):
 
 @routes.post("/api/add_point")
 async def api_add_point(request: web.Request):
+    """Adds a point to a user's balance."""
     try:
         data = await request.json()
     except Exception:
@@ -120,6 +149,7 @@ async def api_add_point(request: web.Request):
 
 @routes.post("/api/report_game")
 async def api_report_game(request: web.Request):
+    """Reports the result of a game."""
     try:
         data = await request.json()
     except Exception:
@@ -158,6 +188,7 @@ async def api_report_game(request: web.Request):
 
 @routes.get("/api/stats")
 async def api_stats(request: web.Request):
+    """Gets a user's stats."""
     user_id = request.query.get("user_id")
     if not user_id:
         return json_error("user_id required")
@@ -184,6 +215,7 @@ async def api_stats(request: web.Request):
 
 @routes.post("/api/profile")
 async def api_profile(request: web.Request):
+    """Updates a user's profile."""
     try:
         data = await request.json()
     except Exception:
@@ -213,6 +245,7 @@ async def api_profile(request: web.Request):
 
 @routes.get("/api/leaderboard")
 async def api_leaderboard(request: web.Request):
+    """Gets the leaderboard."""
     r = await get_redis()
 
     top = await r.zrevrange(USERS_ZSET, 0, 99, withscores=True)
@@ -233,6 +266,7 @@ async def api_leaderboard(request: web.Request):
 
 @routes.get("/api/leaderboard/positions")
 async def api_leaderboard_positions(request: web.Request):
+    """Gets the positions of all users on the leaderboard."""
     r = await get_redis()
 
     raw = await r.zrevrange(USERS_ZSET, 0, -1, withscores=True)
@@ -242,6 +276,7 @@ async def api_leaderboard_positions(request: web.Request):
 
 @routes.get("/api/leaderboard/extended")
 async def api_leaderboard_extended(request: web.Request):
+    """Gets an extended leaderboard with user profiles."""
     r = await get_redis()
 
     raw = await r.zrevrange(USERS_ZSET, 0, -1, withscores=True)
@@ -254,6 +289,7 @@ async def api_leaderboard_extended(request: web.Request):
 
 @routes.post("/api/rpg/gather")
 async def api_rpg_gather(request: web.Request):
+    """Gathers resources in the RPG."""
     try:
         data = await request.json()
     except Exception:
@@ -307,6 +343,7 @@ async def api_rpg_gather(request: web.Request):
 
 @routes.post("/api/rpg/buy")
 async def api_rpg_buy(request: web.Request):
+    """Buys an item in the RPG."""
     try:
         data = await request.json()
     except Exception:
@@ -377,6 +414,7 @@ async def api_rpg_buy(request: web.Request):
 
 @routes.post("/api/rpg/convert")
 async def api_rpg_convert(request: web.Request):
+    """Converts resources in the RPG."""
     try:
         data = await request.json()
     except Exception:
@@ -448,6 +486,7 @@ async def api_rpg_convert(request: web.Request):
 
 @routes.post("/api/raffle/buy_ticket")
 async def api_buy_ticket(request: web.Request):
+    """Buys a raffle ticket."""
     try:
         data = await request.json()
     except Exception:
@@ -493,6 +532,7 @@ async def api_buy_ticket(request: web.Request):
 
 @routes.get("/api/cabinet")
 async def api_cabinet(request: web.Request):
+    """Gets a user's cabinet data."""
     user_id = request.query.get("user_id")
     if not user_id:
         return json_error("user_id required")
@@ -517,54 +557,65 @@ async def api_cabinet(request: web.Request):
 # ====== HTML pages ======
 @routes.get("/")
 async def index_page(request: web.Request):
+    """Serves the main page."""
     return web.FileResponse(BASE_DIR / "index.html")
 
 
 @routes.get("/ludka")
 async def ludka_page(request: web.Request):
+    """Serves the Ludka game page."""
     return web.FileResponse(BASE_DIR / "ludka.html")
 
 
 @routes.get("/dice")
 async def dice_page(request: web.Request):
+    """Serves the dice game page."""
     return web.FileResponse(BASE_DIR / "dice.html")
 
 
 @routes.get("/bj")
 async def bj_page(request: web.Request):
+    """Serves the blackjack game page."""
     return web.FileResponse(BASE_DIR / "bj.html")
 
 
 @routes.get("/slot")
 async def slot_page(request: web.Request):
+    """Serves the slot machine game page."""
     return web.FileResponse(BASE_DIR / "slot.html")
 
 
 @routes.get("/rating")
 async def rating_page(request: web.Request):
+    """Serves the rating page."""
     return web.FileResponse(BASE_DIR / "rating.html")
 
 
 @routes.get("/prices")
 async def prices_page(request: web.Request):
+    """Serves the prices page."""
     return web.FileResponse(BASE_DIR / "prices.html")
 
 
 @routes.get("/shop")
 async def shop_page(request: web.Request):
+    """Serves the shop page."""
     return web.FileResponse(BASE_DIR / "shop.html")
 
 
 @routes.get("/rpg")
 async def rpg_page(request: web.Request):
+    """Serves the RPG page."""
     return web.FileResponse(BASE_DIR / "minigames" / "rpg.html")
 
 
 @routes.get("/rpg-shop")
 async def rpg_shop_page(request: web.Request):
+    """Serves the RPG shop page."""
     return web.FileResponse(BASE_DIR / "minigames" / "rpg_shop.html")
 
 
 @routes.get("/raffles")
 async def raffles_page(request: web.Request):
+    """Serves the raffles page."""
     return web.FileResponse(BASE_DIR / "raffles.html")

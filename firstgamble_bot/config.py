@@ -11,6 +11,15 @@ if not TOKENS_FILE.exists():
 
 
 def load_config() -> Dict[str, str]:
+    """Loads configuration from tokens.txt.
+
+    Reads the tokens.txt file in the base directory and parses it into a
+    dictionary. Lines that are empty, start with '#', or do not contain '='
+    are ignored.
+
+    Returns:
+        A dictionary containing the configuration keys and values.
+    """
     config: Dict[str, str] = {}
     with TOKENS_FILE.open("r", encoding="utf-8") as f:
         for line in f:

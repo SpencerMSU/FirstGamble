@@ -7,6 +7,15 @@ from .redis_utils import ensure_user, get_redis, key_confirmed
 
 
 async def cmd_start(message: Message):
+    """Handles the /start command.
+
+    This function is called when a user sends the /start command to the bot.
+    It sends a welcome message and asks the user to confirm that they agree
+    to the terms of service.
+
+    Args:
+        message: The incoming message.
+    """
     user = message.from_user
     user_id = user.id
 
@@ -48,6 +57,15 @@ async def cmd_start(message: Message):
 
 
 async def on_confirm(cb: CallbackQuery):
+    """Handles the confirm callback query.
+
+    This function is called when a user clicks the "confirm" button. It sets
+    the user's confirmed status to "1" in Redis and sends a message with a
+    button to open the web app.
+
+    Args:
+        cb: The incoming callback query.
+    """
     user_id = cb.from_user.id
     r = await get_redis()
 
@@ -73,11 +91,24 @@ async def on_confirm(cb: CallbackQuery):
 
 
 async def on_decline(cb: CallbackQuery):
+    """Handles the decline callback query.
+
+    This function is called when a user clicks the "decline" button. It edits
+    the message to indicate that the user has declined to use the web app.
+
+    Args:
+        cb: The incoming callback query.
+    """
     await cb.message.edit_text("❌ Вы отклонили запуск мини-приложения.")
     await cb.answer()
 
 
 def register_handlers(dp: Dispatcher):
+    """Registers the bot's handlers.
+
+    Args:
+        dp: The bot's dispatcher.
+    """
     dp.message.register(cmd_start, CommandStart())
     dp.callback_query.register(on_confirm, F.data == "confirm")
     dp.callback_query.register(on_decline, F.data == "decline")

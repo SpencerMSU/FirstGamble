@@ -214,14 +214,18 @@
     {ch:"👽", w:113},
     {ch:"🍀", w:56}
   ];
-  function pickSymbol(){
+  function pickSymbol(exclude=null){
     const total = SYMBOLS.reduce((a,s)=>a+s.w,0);
-    let r = Math.random()*total;
-    for(const s of SYMBOLS){
-      r-=s.w;
-      if(r<=0) return s.ch;
+    while(true){
+      let r = Math.random()*total;
+      let res = SYMBOLS[0].ch;
+      let temp = r;
+      for(const s of SYMBOLS){
+        temp-=s.w;
+        if(temp<=0){ res=s.ch; break; }
+      }
+      if(res!==exclude) return res;
     }
-    return SYMBOLS[0].ch;
   }
 
   const strips = [document.getElementById("strip0"), document.getElementById("strip1"), document.getElementById("strip2")];
@@ -285,10 +289,13 @@
   function buildStrip(strip){
     strip.innerHTML="";
     // make long strip for animation
+    let last = null;
     for(let i=0;i<18;i++){
       const div=document.createElement("div");
       div.className="symbol";
-      div.textContent=pickSymbol();
+      const s = pickSymbol(last);
+      div.textContent=s;
+      last=s;
       strip.appendChild(div);
     }
   }
@@ -308,9 +315,9 @@
       buildStrip(strip);
       // set last 3 to end with final symbol in center
       const kids = [...strip.children];
-      kids[kids.length-3].textContent = pickSymbol();
+      kids[kids.length-3].textContent = pickSymbol(final[idx]);
       kids[kids.length-2].textContent = final[idx];
-      kids[kids.length-1].textContent = pickSymbol();
+      kids[kids.length-1].textContent = pickSymbol(final[idx]);
 
       strip.style.transition="none";
       strip.style.transform="translateY(0)";

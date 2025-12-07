@@ -1,0 +1,151 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Комьюнити — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06);
+      --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+      --radius:18px;
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --panel:#ffffff;
+      --card:#ffffff; --card2:#f6f8fb;
+      --stroke:rgba(10,20,40,.08);
+      --stroke2:rgba(59,130,246,.35);
+      --blue:#2563eb; --blue2:#1d4ed8;
+      --text:#0b1220; --muted:#52607a;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    html, body {
+      height: 100%;
+      overflow: hidden;
+      overscroll-behavior: none;
+      -webkit-overflow-scrolling: auto;
+      touch-action: manipulation;
+    }
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      font-family:system-ui,-apple-system,Segoe UI,Roboto,sans-serif;
+      color:var(--text);
+      background:
+        radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+        radial-gradient(800px 500px at 110% 0%, rgba(29,78,216,.22), transparent 55%),
+        linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+      min-height:100vh; padding:14px; display:flex; justify-content:center;
+    }
+    .app{
+      width:min(900px,100%);
+      border-radius:20px;
+      padding:14px;
+      border:1px solid var(--stroke);
+      background:linear-gradient(180deg, rgba(255,255,255,.03), rgba(255,255,255,0));
+      box-shadow:var(--shadow);
+      height:100%; overflow-y:auto; overscroll-behavior:none;
+    }
+    .container, .content { height:100%; overflow-y:auto; overscroll-behavior:none; }
+    header{
+      display:flex;align-items:center;justify-content:space-between;
+      padding:4px 0 14px 0; gap:10px;
+    }
+    .back{
+      color:var(--text);text-decoration:none;font-weight:700;
+      background:linear-gradient(180deg,var(--card),var(--card2));
+      padding:8px 12px;border-radius:10px;border:1px solid var(--stroke);
+      display:inline-flex;align-items:center;gap:6px;
+      transition:.15s; cursor:pointer;
+    }
+    .back:hover{border-color:var(--stroke2);transform:translateY(-1px);}
+    .title{
+      font-weight:800;font-size:20px; flex:1; text-align:center;
+    }
+    .grid{
+      display:grid;
+      grid-template-columns:1fr;
+      gap:12px;
+    }
+    .cardbtn{
+      background:linear-gradient(180deg,var(--card),var(--card2));
+      border:1px solid var(--stroke);
+      border-radius:16px; padding:16px;
+      display:flex; align-items:center; justify-content:space-between;
+      text-decoration:none; color:var(--text);
+      transition:.15s;
+      min-height:74px;
+    }
+    .cardbtn:hover{border-color:var(--stroke2);transform:translateY(-2px);}
+    .cardbtn h3{margin:0;font-size:18px;}
+    .cardbtn p{margin:4px 0 0;font-size:13px;color:var(--muted);}
+    .badge{font-size:12px;color:var(--muted);font-weight:700;}
+    .cardbtn.soon{opacity:.75;cursor:not-allowed;position:relative;}
+    .cardbtn.soon::after{
+      content:"";
+      position:absolute;inset:0;
+      background:linear-gradient(120deg, transparent 30%, rgba(59,130,246,.08) 45%, transparent 60%);
+      pointer-events:none;
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <header>
+      <a class="back" href="/">← Назад</a>
+      <div class="title">Комьюнити</div>
+      <div style="width:88px"></div>
+    </header>
+
+    <section class="grid">
+      <a class="cardbtn" href="#">
+        <div>
+          <h3>🐛 Баг репорты</h3>
+          <p>Нашли ошибку?</p>
+        </div>
+        <div class="badge">→</div>
+      </a>
+
+      <a class="cardbtn" href="#">
+        <div>
+          <h3>🎉 Конкурсы</h3>
+          <p>Выигрывай призы!</p>
+        </div>
+        <div class="badge">→</div>
+      </a>
+
+      <a class="cardbtn soon" href="#">
+        <div>
+          <h3>🧩 Прочее</h3>
+          <p>В разработке</p>
+        </div>
+        <div class="badge">🔒</div>
+      </a>
+    </section>
+  </div>
+
+  <script>
+    const tgInstance = initTelegramGuard();
+    const searchUid = new URLSearchParams(window.location.search).get("uid");
+
+    function getTgUserId(){
+      try{ return tg?.initDataUnsafe?.user?.id || null; }catch(e){ return null; }
+    }
+
+    const uid = getTgUserId() || searchUid;
+
+    (async () => {
+      if(!tgInstance) return;
+      await ensureNicknameOrRedirect(uid);
+    })();
+  </script>
+</body>
+</html>

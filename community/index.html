@@ -1,0 +1,59 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Комьюнити — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --text:#e6edf3; --muted:#98a2b3;
+      --stroke:rgba(255,255,255,.06); --stroke2:rgba(100,160,255,.25);
+      --card:#111722; --card2:#0f1520; --blue:#3b82f6; --blue2:#1d4ed8;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html[data-theme="light"]{
+      --bg:#f4f7fb; --bg2:#eef2f7; --text:#0b1220; --muted:#52607a;
+      --stroke:rgba(10,20,40,.08); --stroke2:rgba(59,130,246,.35);
+      --card:#fff; --card2:#f6f8fb; --blue:#2563eb; --blue2:#1d4ed8;
+      --shadow:0 0 0 1px var(--stroke),0 10px 26px rgba(10,20,40,.08);
+    }
+    body {
+      margin:0; font-family:system-ui,-apple-system,sans-serif;
+      background:radial-gradient(1000px 600px at 10% -10%, rgba(59,130,246,.28), transparent 60%),
+                 linear-gradient(180deg, var(--bg2) 0%, var(--bg) 100%);
+      color:var(--text); height:100vh; display:flex; flex-direction:column; align-items:center;
+      justify-content:center; text-align:center; padding:20px;
+    }
+    .card {
+      background:linear-gradient(180deg, var(--card) 0%, var(--card2) 100%);
+      border:1px solid var(--stroke); border-radius:24px; padding:32px;
+      box-shadow:var(--shadow); max-width:400px; width:100%;
+    }
+    h1 { margin:0 0 12px; font-size:24px; background:linear-gradient(135deg, #fff 0%, #aaa 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    html[data-theme="light"] h1 { background:linear-gradient(135deg, #000 0%, #555 100%); -webkit-background-clip:text; -webkit-text-fill-color:transparent; }
+    p { margin:0 0 24px; color:var(--muted); line-height:1.5; }
+    .btn {
+      display:inline-block; padding:12px 24px; border-radius:12px;
+      background:linear-gradient(180deg, var(--blue) 0%, var(--blue2) 100%);
+      color:white; font-weight:700; text-decoration:none;
+      box-shadow:0 4px 12px rgba(59,130,246,.4);
+      transition:.2s; border:1px solid rgba(255,255,255,.1);
+    }
+    .btn:hover { transform:translateY(-2px); box-shadow:0 6px 16px rgba(59,130,246,.5); }
+    .icon { font-size:48px; margin-bottom:16px; display:block; }
+  </style>
+</head>
+<body>
+  <div class="card">
+    <span class="icon">🚧</span>
+    <h1>В разработке</h1>
+    <p>Центр комьюнити скоро откроется. <br>Следите за обновлениями!</p>
+    <a href="/" class="btn">На главную</a>
+  </div>
+  <script>
+    initTelegramGuard();
+  </script>
+</body>
+</html>

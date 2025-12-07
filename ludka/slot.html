@@ -150,7 +150,6 @@
       <div class="controls">
         <button id="btnSpin" class="btn">Крутить 🎰</button>
         <button id="btnAuto" class="btn secondary">Авто ×10</button>
-        <button id="btnReset" class="btn secondary">Сброс</button>
       </div>
       <p id="status" class="status">Нажми «Крутить».</p>
       <div id="awardText" class="note"></div>
@@ -214,7 +213,9 @@
     {ch:"👽", w:113},
     {ch:"🍀", w:56}
   ];
-  function pickSymbol(exclude=null){
+
+  function pickSymbol(exclude=[]){
+    const excludes = Array.isArray(exclude) ? exclude : [exclude];
     const total = SYMBOLS.reduce((a,s)=>a+s.w,0);
     while(true){
       let r = Math.random()*total;
@@ -224,14 +225,13 @@
         temp-=s.w;
         if(temp<=0){ res=s.ch; break; }
       }
-      if(res!==exclude) return res;
+      if(!excludes.includes(res)) return res;
     }
   }
 
   const strips = [document.getElementById("strip0"), document.getElementById("strip1"), document.getElementById("strip2")];
   const btnSpin = document.getElementById("btnSpin");
   const btnAuto = document.getElementById("btnAuto");
-  const btnReset = document.getElementById("btnReset");
   const statusEl = document.getElementById("status");
   const awardTextEl = document.getElementById("awardText");
 
@@ -282,8 +282,8 @@
     statusEl.className="status "+cls;
     statusEl.textContent=t;
   }
-  function setButtons({spin=true, auto=true, reset=true}){
-    btnSpin.disabled=!spin; btnAuto.disabled=!auto; btnReset.disabled=!reset;
+  function setButtons({spin=true, auto=true}){
+    btnSpin.disabled=!spin; btnAuto.disabled=!auto;
   }
 
   function buildStrip(strip){
@@ -293,7 +293,8 @@
     for(let i=0;i<18;i++){
       const div=document.createElement("div");
       div.className="symbol";
-      const s = pickSymbol(last);
+      // Ensure we don't pick the same symbol as the previous one
+      const s = pickSymbol(last ? [last] : []);
       div.textContent=s;
       last=s;
       strip.appendChild(div);
@@ -303,7 +304,7 @@
 
   async function spinOnce(){
     spinning=true; winAwardGiven=false; awardTextEl.textContent="";
-    setButtons({spin:false, auto:false, reset:false});
+    setButtons({spin:false, auto:false});
     setStatus("Крутим...", "");
     awardSpinPoint();
 
@@ -314,10 +315,18 @@
     await Promise.all(strips.map((strip, idx)=>new Promise(resolve=>{
       buildStrip(strip);
       // set last 3 to end with final symbol in center
+      // Visible window shows kids[15], kids[16] (center), kids[17]
       const kids = [...strip.children];
-      kids[kids.length-3].textContent = pickSymbol(final[idx]);
+
+      // kids[16] is the center result
       kids[kids.length-2].textContent = final[idx];
-      kids[kids.length-1].textContent = pickSymbol(final[idx]);
+
+      // kids[15] (top) should not be the center, and ideally not kids[14]
+      const val14 = kids[kids.length-4].textContent;
+      kids[kids.length-3].textContent = pickSymbol([final[idx], val14]);
+
+      // kids[17] (bottom) should not be the center
+      kids[kids.length-1].textContent = pickSymbol([final[idx]]);
 
       strip.style.transition="none";
       strip.style.transform="translateY(0)";
@@ -332,7 +341,7 @@
     })));
 
     spinning=false;
-    setButtons({spin:true, auto:true, reset:true});
+    setButtons({spin:true, auto:true});
 
     const [a,b,c]=final;
     if(a===b && b===c){
@@ -367,15 +376,6 @@
     autoLeft = 10;
     btnAuto.textContent = `Авто ×${autoLeft}`;
     spinOnce();
-  });
-
-  btnReset.addEventListener("click", ()=>{
-    if(spinning) return;
-    strips.forEach(buildStrip);
-    setStatus("Нажми «Крутить».", "");
-    awardTextEl.textContent="";
-    autoLeft=0;
-    btnAuto.textContent="Авто ×10";
   });
 
   (async () => {

@@ -61,6 +61,10 @@
       "destination": "/raffles/raffles.html"
     },
     {
+      "source": "/community",
+      "destination": "/community/index.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     },

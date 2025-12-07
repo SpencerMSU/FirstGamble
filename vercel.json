@@ -62,7 +62,7 @@
     },
     {
       "source": "/community",
-      "destination": "/community/index.html"
+      "destination": "/community/community.html"
     },
     {
       "source": "/admin",

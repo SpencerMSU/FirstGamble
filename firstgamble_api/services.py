@@ -428,74 +428,156 @@ RPG_AUTO_MINERS = [
 
 
 def key_rpg_res(uid: int) -> str:
+    """Gets the Redis key for a user's RPG resources.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG resources.
+    """
     return f"user:{uid}:rpg:res"
 
 
 def key_rpg_cd(uid: int) -> str:
+    """Gets the Redis key for a user's RPG cooldown.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG cooldown.
+    """
     return f"user:{uid}:rpg:cd"
 
 
 def key_rpg_owned(uid: int, cat: str) -> str:
+    """Gets the Redis key for a user's owned RPG items in a category.
+
+    Args:
+        uid: The user's unique identifier.
+        cat: The item category.
+
+    Returns:
+        The Redis key for the user's owned RPG items.
+    """
     return f"user:{uid}:rpg:owned:{cat}"
 
 
 def key_rpg_auto(uid: int) -> str:
+    """Gets the Redis key for a user's RPG auto-miner state.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG auto-miner state.
+    """
     return f"user:{uid}:rpg:auto"
 
 
 def key_rpg_runs(uid: int) -> str:
+    """Gets the Redis key for a user's RPG run count.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG run count.
+    """
     return f"user:{uid}:rpg:runs"
 
 
 def key_rpg_economy() -> str:
+    """Gets the Redis key for the RPG economy settings."""
     return "rpg:economy"
 
 
 def key_ticket_counter() -> str:
+    """Gets the Redis key for the raffle ticket counter."""
     return "raffle:ticket:counter"
 
 
 def key_user_tickets(uid: int) -> str:
+    """Gets the Redis key for a user's raffle tickets.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's raffle tickets.
+    """
     return f"user:{uid}:raffle:tickets"
 
 
 def key_ticket_owners() -> str:
+    """Gets the Redis key for the raffle ticket owners."""
     return "raffle:ticket:owners"  # hash: ticket -> user_id
 
 
 def key_prize_counter() -> str:
+    """Gets the Redis key for the raffle prize counter."""
     return "raffle:prize:counter"
 
 
 def key_prizes_set() -> str:
+    """Gets the Redis key for the set of raffle prizes."""
     return "raffle:prizes"
 
 
 def key_prize_item(pid: int) -> str:
+    """Gets the Redis key for a specific raffle prize.
+
+    Args:
+        pid: The prize ID.
+
+    Returns:
+        The Redis key for the prize.
+    """
     return f"raffle:prize:{pid}"
 
 
 def key_prizes_visible() -> str:
+    """Gets the Redis key for the raffle prizes visibility flag."""
     return "raffle:prizes_visible"
 
 
 def key_raffle_winners() -> str:
+    """Gets the Redis key for the list of raffle winners."""
     return "raffle:winners"
 
 
 def key_last_raffle_winners() -> str:
+    """Gets the Redis key for the list of the last raffle's winners."""
     return "raffle:last_winners"
 
 
 def key_raffle_status() -> str:
+    """Gets the Redis key for the raffle status."""
     return "raffle:status"
 
 
 def key_user_raffle_wins(uid: int) -> str:
+    """Gets the Redis key for a user's raffle wins.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's raffle wins.
+    """
     return f"user:{uid}:raffle:wins"
 
 
 async def get_rpg_economy(r=None) -> Dict[str, int]:
+    """Gets the RPG economy settings.
+
+    Args:
+        r: An optional Redis connection object.
+
+    Returns:
+        A dictionary containing the RPG economy settings.
+    """
     if r is None:
         r = await get_redis()
     raw = await r.hgetall(key_rpg_economy())
@@ -507,6 +589,14 @@ async def get_rpg_economy(r=None) -> Dict[str, int]:
 
 
 async def save_rpg_economy(data: Dict[str, Any]) -> Dict[str, int]:
+    """Saves the RPG economy settings.
+
+    Args:
+        data: A dictionary containing the new economy settings.
+
+    Returns:
+        The updated RPG economy settings.
+    """
     r = await get_redis()
     mapping: Dict[str, int] = {}
     if "convert_rate" in data and data.get("convert_rate") is not None:
@@ -519,6 +609,14 @@ async def save_rpg_economy(data: Dict[str, Any]) -> Dict[str, int]:
 
 
 def rpg_calc_buffs(owned: Dict[str, Any]):
+    """Calculates a user's RPG buffs based on their owned items.
+
+    Args:
+        owned: A dictionary of the user's owned items.
+
+    Returns:
+        A tuple containing the user's calculated buffs.
+    """
     cd_mult = 1.0
     yield_add = 0.0
     cap_add = {r: 0 for r in RPG_RESOURCES}
@@ -553,11 +651,30 @@ def rpg_calc_buffs(owned: Dict[str, Any]):
 
 
 def rpg_auto_state_level(state: Dict[str, Any], max_level: int) -> int:
+    """Gets the current level of an auto-miner.
+
+    Args:
+        state: The auto-miner's state.
+        max_level: The maximum possible level for the auto-miner.
+
+    Returns:
+        The auto-miner's current level.
+    """
     base_level = safe_int(state.get("level"), 1 if state else 0)
     return max(0, min(base_level, max_level))
 
 
 def rpg_auto_level_cfg(cfg: Dict[str, Any], level: int) -> Optional[Dict[str, Any]]:
+    """Gets the configuration for a specific auto-miner level.
+
+    Args:
+        cfg: The auto-miner's base configuration.
+        level: The level to get the configuration for.
+
+    Returns:
+        The configuration for the specified level, or None if the level is
+        invalid.
+    """
     levels = cfg.get("levels", []) or []
     if level <= 0 or level > len(levels):
         return None
@@ -565,6 +682,15 @@ def rpg_auto_level_cfg(cfg: Dict[str, Any], level: int) -> Optional[Dict[str, An
 
 
 def rpg_auto_missing(costs: Dict[str, int], res: Dict[str, int]):
+    """Calculates the resources missing for an auto-miner upgrade.
+
+    Args:
+        costs: The costs of the upgrade.
+        res: The user's current resources.
+
+    Returns:
+        A dictionary of the missing resources and their amounts.
+    """
     missing_res = {}
     for k, need in (costs or {}).items():
         have = res.get(k, 0)
@@ -574,6 +700,19 @@ def rpg_auto_missing(costs: Dict[str, int], res: Dict[str, int]):
 
 
 def rpg_auto_refresh_state(state: Dict[str, Any], now: int):
+    """Refreshes the state of an auto-miner.
+
+    This function updates the miner's inventory capacity and amount based on
+    the time elapsed since the last refresh.
+
+    Args:
+        state: The auto-miner's current state.
+        now: The current timestamp.
+
+    Returns:
+        A tuple containing the updated state, inventory capacity, and
+        inventory amount.
+    """
     inv_cap = max(AUTO_INV_BASE, safe_int(state.get("inv_cap"), AUTO_INV_BASE))
     inv_amt = max(0, safe_int(state.get("inv"), 0))
     cap_ts = safe_int(state.get("cap_ts"), now)
@@ -594,6 +733,18 @@ def rpg_auto_refresh_state(state: Dict[str, Any], now: int):
 def rpg_auto_requirements(
     cfg: Dict[str, Any], res: Dict[str, int], owned: Dict[str, Any], state_level: int
 ):
+    """Checks the requirements for upgrading an auto-miner.
+
+    Args:
+        cfg: The auto-miner's configuration.
+        res: The user's current resources.
+        owned: The user's owned items.
+        state_level: The auto-miner's current level.
+
+    Returns:
+        A tuple containing the missing resources for the upgrade, whether the
+        user has the required bag, and the configuration for the next level.
+    """
     bag_req = cfg.get("bag_req")
     has_bag = (not bag_req) or (bag_req in owned.get("bags", []))
     next_cfg = rpg_auto_level_cfg(cfg, state_level + 1)
@@ -602,6 +753,19 @@ def rpg_auto_requirements(
 
 
 async def rpg_apply_auto(uid: int, res: Dict[str, int], cap_add: Dict[str, int]):
+    """Applies the effects of auto-miners.
+
+    This function calculates the resources generated by a user's auto-miners
+    since the last update and adds them to the user's inventory.
+
+    Args:
+        uid: The user's unique identifier.
+        res: The user's current resources.
+        cap_add: The user's additional resource capacity from items.
+
+    Returns:
+        The user's updated resources.
+    """
     r = await get_redis()
     auto_raw = await r.hgetall(key_rpg_auto(uid))
     now = int(time.time())
@@ -656,6 +820,11 @@ async def rpg_apply_auto(uid: int, res: Dict[str, int], cap_add: Dict[str, int])
 
 
 async def rpg_ensure(uid: int):
+    """Ensures that a user has the necessary data structures for the RPG.
+
+    Args:
+        uid: The user's unique identifier.
+    """
     r = await get_redis()
     pipe = r.pipeline()
     for res in RPG_RESOURCES:
@@ -666,6 +835,14 @@ async def rpg_ensure(uid: int):
 
 
 async def rpg_get_owned(uid: int):
+    """Gets a user's owned RPG items.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        A dictionary of the user's owned items, categorized by type.
+    """
     r = await get_redis()
     tools = await r.smembers(key_rpg_owned(uid, "tools"))
     acc = await r.smembers(key_rpg_owned(uid, "acc"))
@@ -674,6 +851,14 @@ async def rpg_get_owned(uid: int):
 
 
 async def rpg_state(uid: int):
+    """Gets the complete RPG state for a user.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        A dictionary representing the user's RPG state.
+    """
     r = await get_redis()
     await rpg_ensure(uid)
     bal = await get_balance(uid)
@@ -767,6 +952,14 @@ async def rpg_state(uid: int):
 
 
 def rpg_roll_gather(extra_drops=None):
+    """Rolls for resource gathering in the RPG.
+
+    Args:
+        extra_drops: A list of potential extra drops.
+
+    Returns:
+        A dictionary of the gathered resources and their amounts.
+    """
     import random
 
     res = {
@@ -798,6 +991,14 @@ def rpg_roll_gather(extra_drops=None):
 
 
 def _build_tg_secret(bot_token: str) -> bytes:
+    """Builds the secret key for Telegram data validation.
+
+    Args:
+        bot_token: The bot's Telegram token.
+
+    Returns:
+        The secret key.
+    """
     return hmac.new(b"WebAppData", bot_token.encode("utf-8"), hashlib.sha256).digest()
 
 
@@ -805,6 +1006,17 @@ TG_SECRET_KEY = _build_tg_secret(BOT_TOKEN)
 
 
 def parse_init_data(init_data: str) -> Dict[str, Any]:
+    """Parses and validates Telegram's initData string.
+
+    Args:
+        init_data: The initData string from Telegram.
+
+    Returns:
+        A dictionary containing the parsed and validated data.
+
+    Raises:
+        ValueError: If the initData is invalid or the hash does not match.
+    """
     from urllib.parse import parse_qsl
 
     if not init_data:
@@ -836,6 +1048,14 @@ def parse_init_data(init_data: str) -> Dict[str, Any]:
 
 
 def _normalize_username(username: Optional[str]) -> str:
+    """Normalizes a Telegram username.
+
+    Args:
+        username: The username to normalize.
+
+    Returns:
+        The normalized username.
+    """
     if not username:
         return ""
     username = str(username).strip()
@@ -845,6 +1065,16 @@ def _normalize_username(username: Optional[str]) -> str:
 
 
 def _ensure_profile_identity_fields(profile: Dict[str, Any], username: Optional[str], tg_id: Optional[int]) -> Dict[str, str]:
+    """Ensures that a user's profile has the necessary identity fields.
+
+    Args:
+        profile: The user's profile.
+        username: The user's Telegram username.
+        tg_id: The user's Telegram ID.
+
+    Returns:
+        A dictionary of the fields that were added to the profile.
+    """
     mapping: Dict[str, str] = {}
     uname = _normalize_username(username)
     if uname and not profile.get("username"):
@@ -855,6 +1085,14 @@ def _ensure_profile_identity_fields(profile: Dict[str, Any], username: Optional[
 
 
 def is_conserve_token(token: Optional[str]) -> bool:
+    """Checks if a token is a valid ConServe token.
+
+    Args:
+        token: The token to check.
+
+    Returns:
+        True if the token is valid, False otherwise.
+    """
     return bool(CONSERVE_AUTH_TOKEN and token and token == CONSERVE_AUTH_TOKEN)
 
 
@@ -865,6 +1103,21 @@ def build_auth_context_from_headers(
     telegram_init_data: Optional[str],
     conserve_header: Optional[str],
 ) -> AuthContext:
+    """Builds an authentication context from request headers.
+
+    Args:
+        method: The HTTP method of the request.
+        request_body: The request body.
+        query_params: The request query parameters.
+        telegram_init_data: The Telegram initData string.
+        conserve_header: The ConServe authentication header.
+
+    Returns:
+        The authentication context.
+
+    Raises:
+        ValueError: If the request is unauthorized.
+    """
     if telegram_init_data:
         data = parse_init_data(telegram_init_data)
         user = data.get("user") or {}

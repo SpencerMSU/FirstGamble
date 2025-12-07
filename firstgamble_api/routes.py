@@ -113,6 +113,22 @@ async def get_current_auth(
     x_telegram_init_data: Optional[str] = Header(default=None, alias="X-Telegram-InitData"),
     x_conserve_auth: Optional[str] = Header(default=None, alias="X-ConServe-Auth"),
 ) -> AuthContext:
+    """Gets the current authentication context.
+
+    This function is used as a dependency in API endpoints to get the
+    authentication context of the current user.
+
+    Args:
+        request: The incoming request.
+        x_telegram_init_data: The Telegram initData string.
+        x_conserve_auth: The ConServe authentication header.
+
+    Returns:
+        The authentication context.
+
+    Raises:
+        HTTPException: If the user is not authenticated or not confirmed.
+    """
     try:
         body_data = None
         if request.method.upper() != "GET":
@@ -142,6 +158,20 @@ async def get_current_auth(
 
 
 async def require_admin(request: Request) -> str:
+    """Requires the user to be an admin.
+
+    This function is used as a dependency in API endpoints to ensure that the
+    user is an admin.
+
+    Args:
+        request: The incoming request.
+
+    Returns:
+        The admin's session token.
+
+    Raises:
+        HTTPException: If the user is not an admin.
+    """
     token = request.cookies.get(ADMIN_COOKIE_NAME)
     if not token:
         auth_header = request.headers.get("Authorization") or ""
@@ -163,6 +193,21 @@ async def require_conserve_auth(
     x_conserve_auth: Optional[str] = Header(default=None, alias="X-ConServe-Auth"),
     x_conserve_auth_alt: Optional[str] = Header(default=None, alias="X-Conserve-Auth"),
 ):
+    """Requires a valid ConServe authentication token.
+
+    This function is used as a dependency in API endpoints to ensure that the
+    request is coming from a trusted source.
+
+    Args:
+        x_conserve_auth: The ConServe authentication token.
+        x_conserve_auth_alt: An alternative ConServe authentication token.
+
+    Returns:
+        The ConServe authentication token.
+
+    Raises:
+        HTTPException: If the token is invalid.
+    """
     token = x_conserve_auth or x_conserve_auth_alt
     if not is_conserve_token(token):
         raise HTTPException(status_code=401, detail="invalid conserve token")
@@ -170,7 +215,20 @@ async def require_conserve_auth(
 
 
 def register_routes(app: FastAPI):
+    """Registers the API routes.
+
+    Args:
+        app: The FastAPI application.
+    """
     async def rebuild_ticket_owners(r) -> Dict[str, int]:
+        """Rebuilds the ticket owners mapping.
+
+        Args:
+            r: The Redis connection.
+
+        Returns:
+            A dictionary mapping ticket numbers to user IDs.
+        """
         owners: Dict[str, int] = {}
         user_ids = await r.smembers(USERS_SET)
         for uid_raw in user_ids:
@@ -185,12 +243,28 @@ def register_routes(app: FastAPI):
         return owners
 
     async def get_ticket_owners(r) -> Dict[str, int]:
+        """Gets the ticket owners mapping.
+
+        Args:
+            r: The Redis connection.
+
+        Returns:
+            A dictionary mapping ticket numbers to user IDs.
+        """
         owners = await r.hgetall(key_ticket_owners())
         if owners:
             return {k: safe_int(v) for k, v in owners.items()}
         return await rebuild_ticket_owners(r)
 
     async def get_prizes(r):
+        """Gets the list of raffle prizes.
+
+        Args:
+            r: The Redis connection.
+
+        Returns:
+            A list of prize dictionaries.
+        """
         ids = await r.smembers(key_prizes_set())
         prizes = []
         for pid_raw in ids:
@@ -209,15 +283,41 @@ def register_routes(app: FastAPI):
         return prizes
 
     async def get_raffle_status(r) -> str:
+    """Gets the current status of the raffle.
+
+    Args:
+        r: The Redis connection.
+
+    Returns:
+        The current status of the raffle.
+    """
         status = await r.get(key_raffle_status())
         return (status or "preparing").lower()
 
     def normalize_nickname(name: str) -> str:
+    """Normalizes a nickname.
+
+    Args:
+        name: The nickname to normalize.
+
+    Returns:
+        The normalized nickname.
+    """
         return (name or "").strip().lower()
 
     async def find_user_by_nick(
         r, nickname: str, skip_user_id: Optional[int] = None
     ) -> Optional[Dict[str, Any]]:
+    """Finds a user by their nickname.
+
+    Args:
+        r: The Redis connection.
+        nickname: The nickname to search for.
+        skip_user_id: A user ID to skip in the search.
+
+    Returns:
+        A dictionary containing the user's data if found, otherwise None.
+    """
         target = normalize_nickname(nickname)
         if not target:
             return None
@@ -235,6 +335,15 @@ def register_routes(app: FastAPI):
         return None
 
     async def resolve_winner_name(r, uid: Optional[int]) -> str:
+    """Resolves the name of a raffle winner.
+
+    Args:
+        r: The Redis connection.
+        uid: The user ID of the winner.
+
+    Returns:
+        The winner's name.
+    """
         if not uid:
             return ""
         profile = await r.hgetall(key_profile(uid))
@@ -244,10 +353,20 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/ping")
     async def api_ping() -> Dict[str, Any]:
+    """A simple ping endpoint to check if the API is running."""
         return {"ok": True, "message": "pong"}
 
     @app.post("/api/admin/login")
     async def api_admin_login(body: AdminLoginRequest, response: Response) -> Dict[str, Any]:
+    """Logs in an admin.
+
+    Args:
+        body: The request body, containing the admin's credentials.
+        response: The response object.
+
+    Returns:
+        A dictionary indicating whether the login was successful.
+    """
         if body.username != ADMIN_USER or body.password != ADMIN_PASS:
             raise HTTPException(status_code=401, detail="bad credentials")
 
@@ -266,11 +385,13 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/balance")
     async def api_balance(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current user's balance."""
         bal = await get_balance(auth.user_id)
         return {"ok": True, "balance": bal}
 
     @app.get("/api/profile")
     async def api_profile(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current user's profile."""
         if not auth.from_telegram:
             raise HTTPException(status_code=403, detail="webapp only")
 
@@ -298,6 +419,7 @@ def register_routes(app: FastAPI):
         body: AddPointRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Adds a point to the current user's balance."""
         game = (body.game or "").strip().lower()
         if game not in ALLOWED_GAMES:
             return {"ok": False, "error": "bad game"}
@@ -326,6 +448,19 @@ def register_routes(app: FastAPI):
         body: DiceExternalAwardRequest,
         _conserve_token: str = Depends(require_conserve_auth),
     ) -> Dict[str, Any]:
+    """Awards points for an external dice game.
+
+    This endpoint is used to award points to a user for a dice game that is
+    played outside of the main application.
+
+    Args:
+        body: The request body, containing the user's nickname and the sum of
+            the dice roll.
+        _conserve_token: The ConServe authentication token.
+
+    Returns:
+        A dictionary containing the result of the award.
+    """
         # Внешний запрос не обязан передавать количество кубиков: используем
         # фиксированное значение для проверки корректности суммы.
         dice_count = 2
@@ -368,6 +503,7 @@ def register_routes(app: FastAPI):
         body: ReportGameRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Reports the result of a game."""
         game = (body.game or "").strip().lower()
         result = (body.result or "").strip().lower()
 
@@ -392,6 +528,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/stats")
     async def api_stats(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current user's stats."""
         r = await get_redis()
         await ensure_user(auth.user_id)
 
@@ -410,6 +547,7 @@ def register_routes(app: FastAPI):
         body: UpdateProfileRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Updates the current user's profile."""
         if not auth.from_telegram:
             raise HTTPException(status_code=403, detail="webapp only")
 
@@ -474,6 +612,7 @@ def register_routes(app: FastAPI):
         limit: int = 100,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Gets the leaderboard."""
         r = await get_redis()
 
         game = (game or "all").lower()
@@ -545,6 +684,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/leaderboard/positions")
     async def api_leaderboard_positions(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the positions of all users on the leaderboard."""
         r = await get_redis()
 
         raw = await r.zrevrange(USERS_ZSET, 0, -1, withscores=True)
@@ -553,6 +693,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/leaderboard/extended")
     async def api_leaderboard_extended(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets an extended leaderboard with user profiles."""
         r = await get_redis()
 
         raw = await r.zrevrange(USERS_ZSET, 0, -1, withscores=True)
@@ -564,6 +705,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/rpg/state")
     async def api_rpg_state(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current user's RPG state."""
         uid = auth.user_id
         st = await rpg_state(uid)
         return {"ok": True, "state": st}
@@ -573,6 +715,7 @@ def register_routes(app: FastAPI):
         body: RpgGatherRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Gathers resources in the RPG."""
         uid = auth.user_id
 
         r = await get_redis()
@@ -616,6 +759,7 @@ def register_routes(app: FastAPI):
         body: RpgBuyRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Buys an item in the RPG."""
         uid = auth.user_id
         cat = (body.category or "").lower()
         item_id = (body.item_id or "").lower()
@@ -679,6 +823,7 @@ def register_routes(app: FastAPI):
         body: RpgConvertRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Converts resources in the RPG."""
         uid = auth.user_id
         from_r = (body.from_ or "").lower()
         to_r = (body.to or "").lower()
@@ -749,6 +894,7 @@ def register_routes(app: FastAPI):
         body: RpgAutoRequest,
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Manages auto-miners in the RPG."""
         uid = auth.user_id
         action = (body.action or "").lower()
         miner_id = (body.miner_id or "").lower()
@@ -838,6 +984,7 @@ def register_routes(app: FastAPI):
         body: BuyRaffleTicketRequest = Body(default_factory=BuyRaffleTicketRequest),
         auth: AuthContext = Depends(get_current_auth),
     ) -> Dict[str, Any]:
+    """Buys a raffle ticket."""
         uid = auth.user_id
 
         try:
@@ -884,6 +1031,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/cabinet")
     async def api_cabinet(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current user's cabinet data."""
         uid = auth.user_id
         r = await get_redis()
         await ensure_user(uid)
@@ -900,6 +1048,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/raffle/state")
     async def api_raffle_state(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+    """Gets the current state of the raffle."""
         r = await get_redis()
         status = await get_raffle_status(r)
 
@@ -960,6 +1109,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/admin/raffle/prizes")
     async def api_admin_get_prizes(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
+    """Gets the list of raffle prizes."""
         r = await get_redis()
         prizes = await get_prizes(r)
         visible = bool(safe_int(await r.get(key_prizes_visible()), 0))
@@ -969,6 +1119,7 @@ def register_routes(app: FastAPI):
     async def api_admin_create_prize(
         body: AdminPrizeRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Creates a new raffle prize."""
         r = await get_redis()
         prizes = await get_prizes(r)
         prizes_count = len(prizes)
@@ -994,6 +1145,7 @@ def register_routes(app: FastAPI):
         body: AdminPrizeUpdateRequest,
         admin_token: str = Depends(require_admin),
     ) -> Dict[str, Any]:
+    """Updates a raffle prize."""
         r = await get_redis()
         exists = await r.sismember(key_prizes_set(), prize_id)
         if not exists:
@@ -1010,6 +1162,7 @@ def register_routes(app: FastAPI):
     async def api_admin_delete_prize(
         prize_id: int, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Deletes a raffle prize."""
         r = await get_redis()
         pipe = r.pipeline()
         pipe.srem(key_prizes_set(), prize_id)
@@ -1022,6 +1175,7 @@ def register_routes(app: FastAPI):
     async def api_admin_publish_prizes(
         body: AdminPublishPrizesRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Publishes or unpublishes the raffle prizes."""
         r = await get_redis()
         flag = "1" if body.visible else "0"
         await r.set(key_prizes_visible(), flag)
@@ -1029,6 +1183,7 @@ def register_routes(app: FastAPI):
 
     @app.get("/api/admin/raffle/winners")
     async def api_admin_winners(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
+    """Gets the list of raffle winners."""
         r = await get_redis()
         status = await get_raffle_status(r)
         if status == "closed":
@@ -1060,6 +1215,7 @@ def register_routes(app: FastAPI):
         body: AdminDrawRequest,
         admin_token: str = Depends(require_admin),
     ) -> Dict[str, Any]:
+    """Draws the raffle winners."""
         r = await get_redis()
         prizes = await get_prizes(r)
         if not prizes:
@@ -1117,6 +1273,7 @@ def register_routes(app: FastAPI):
 
     @app.post("/api/admin/raffle/finish_payout")
     async def api_admin_finish_payout(admin_token: str = Depends(require_admin)) -> Dict[str, Any]:
+    """Finishes the raffle payout and resets the raffle state."""
         r = await get_redis()
         winners = await r.lrange(key_raffle_winners(), 0, -1)
         owners = await r.hgetall(key_ticket_owners())
@@ -1147,6 +1304,7 @@ def register_routes(app: FastAPI):
     async def api_admin_user_by_nick(
         body: AdminFindUserRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Finds a user by their nickname."""
         r = await get_redis()
         user = await find_user_by_nick(r, body.nickname)
         if not user:
@@ -1164,6 +1322,7 @@ def register_routes(app: FastAPI):
     async def api_admin_set_points(
         body: AdminSetPointsRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Sets a user's points."""
         r = await get_redis()
         uid = body.user_id
         if (not uid or uid <= 0) and body.nickname:
@@ -1204,6 +1363,7 @@ def register_routes(app: FastAPI):
     async def api_admin_grant_resources(
         body: AdminGrantResourcesRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Grants RPG resources to a user."""
         r = await get_redis()
         uid = body.user_id
         if (not uid or uid <= 0) and body.nickname:
@@ -1242,6 +1402,7 @@ def register_routes(app: FastAPI):
     async def api_admin_get_economy(
         admin_token: str = Depends(require_admin),
     ) -> Dict[str, Any]:
+    """Gets the RPG economy settings."""
         economy = await get_rpg_economy()
         return {"ok": True, "economy": economy}
 
@@ -1249,6 +1410,7 @@ def register_routes(app: FastAPI):
     async def api_admin_update_economy(
         body: AdminEconomyUpdateRequest, admin_token: str = Depends(require_admin)
     ) -> Dict[str, Any]:
+    """Updates the RPG economy settings."""
         payload: Dict[str, Any] = {}
         if body.convert_rate is not None:
             payload["convert_rate"] = body.convert_rate

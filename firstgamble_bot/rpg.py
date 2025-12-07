@@ -319,18 +319,48 @@ RPG_CHAIN = [
 
 
 def key_rpg_res(uid: int) -> str:
+    """Gets the Redis key for a user's RPG resources.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG resources.
+    """
     return f"user:{uid}:rpg:res"  # hash
 
 
 def key_rpg_cd(uid: int) -> str:
+    """Gets the Redis key for a user's RPG cooldown.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's RPG cooldown.
+    """
     return f"user:{uid}:rpg:cd"  # unix next gather time
 
 
 def key_rpg_owned(uid: int, cat: str) -> str:
+    """Gets the Redis key for a user's owned RPG items in a category.
+
+    Args:
+        uid: The user's unique identifier.
+        cat: The item category.
+
+    Returns:
+        The Redis key for the user's owned RPG items.
+    """
     return f"user:{uid}:rpg:owned:{cat}"  # set
 
 
 async def rpg_ensure(uid: int):
+    """Ensures that a user has the necessary data structures for the RPG.
+
+    Args:
+        uid: The user's unique identifier.
+    """
     r = await get_redis()
     pipe = r.pipeline()
     for res in RPG_RESOURCES:
@@ -340,6 +370,14 @@ async def rpg_ensure(uid: int):
 
 
 async def rpg_get_owned(uid: int):
+    """Gets a user's owned RPG items.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        A dictionary of the user's owned items, categorized by type.
+    """
     r = await get_redis()
     tools = await r.smembers(key_rpg_owned(uid, "tools"))
     acc = await r.smembers(key_rpg_owned(uid, "acc"))
@@ -348,6 +386,14 @@ async def rpg_get_owned(uid: int):
 
 
 def rpg_calc_buffs(owned: Dict):
+    """Calculates a user's RPG buffs based on their owned items.
+
+    Args:
+        owned: A dictionary of the user's owned items.
+
+    Returns:
+        A tuple containing the user's calculated buffs.
+    """
     cd_mult = 1.0
     yield_add = 0.0
     cap_add = {r: 0 for r in RPG_RESOURCES}
@@ -382,6 +428,14 @@ def rpg_calc_buffs(owned: Dict):
 
 
 async def rpg_state(uid: int):
+    """Gets the complete RPG state for a user.
+
+    Args:
+        uid: The user's unique identifier.
+
+    Returns:
+        A dictionary representing the user's RPG state.
+    """
     r = await get_redis()
     await rpg_ensure(uid)
     bal = await get_balance(uid)
@@ -410,6 +464,14 @@ async def rpg_state(uid: int):
 
 
 def rpg_roll_gather(extra_drops=None):
+    """Rolls for resource gathering in the RPG.
+
+    Args:
+        extra_drops: A list of potential extra drops.
+
+    Returns:
+        A dictionary of the gathered resources and their amounts.
+    """
     res = {
         "wood": random.randint(2, 5),
         "stone": random.randint(1, 4),

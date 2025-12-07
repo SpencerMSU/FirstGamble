@@ -24,16 +24,23 @@ dp = Dispatcher()
 
 
 async def on_startup(app: web.Application):
+    """Initializes the Redis connection on startup."""
     await get_redis()
     logging.info("Redis connected")
 
 
 async def on_cleanup(app: web.Application):
+    """Closes the Redis connection on cleanup."""
     if rds:
         await rds.close()
 
 
 async def start_http(dp: Dispatcher):
+    """Starts the HTTP server and the bot.
+
+    Args:
+        dp: The bot's dispatcher.
+    """
     app = web.Application()
     app.add_routes(routes)
     app.on_startup.append(on_startup)
@@ -50,6 +57,7 @@ async def start_http(dp: Dispatcher):
 
 
 async def main():
+    """The main function of the bot."""
     register_handlers(dp)
     await start_http(dp)
 

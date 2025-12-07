@@ -1,17 +1,37 @@
 #include <vector>
 #include <cmath>
 
+/**
+ * @brief Represents a note in the Pulse game.
+ */
 struct Note {
-    int lane;      // 0..2
-    double y;      // current position
-    double speed;  // px per second
+    int lane;      /**< The lane of the note (0-2). */
+    double y;      /**< The current y-position of the note. */
+    double speed;  /**< The speed of the note in pixels per second. */
 };
 
+/**
+ * @brief Checks if a note is within the hit window.
+ * @param n The note to check.
+ * @param targetY The target y-position for hitting a note.
+ * @param window The size of the hit window.
+ * @return True if the note is within the hit window, false otherwise.
+ */
 bool isHit(const Note& n, double targetY, double window){
     return std::abs(n.y - targetY) <= window;
 }
 
-// Advance all notes by dt seconds and remove those that flew away.
+/**
+ * @brief Advances the state of all notes by a given time step.
+ *
+ * This function updates the position of each note based on its speed and the
+ * time step. Notes that have moved past the target area are removed.
+ *
+ * @param notes A vector of notes to update.
+ * @param dt The time step in seconds.
+ * @param targetY The target y-position for hitting a note.
+ * @param window The size of the hit window.
+ */
 void step(std::vector<Note>& notes, double dt, double targetY, double window){
     auto it = notes.begin();
     while(it != notes.end()){

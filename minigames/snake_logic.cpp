@@ -3,11 +3,27 @@
 #include <string>
 #include <random>
 
+/**
+ * @brief Represents a point on the game grid.
+ */
 struct Point{int x;int y;};
+
+/**
+ * @brief Represents the result of a single step in the Snake game.
+ */
 struct StepResult{bool dead;bool ate;std::vector<Point> snake;Point food;};
 
 static std::mt19937 rng{std::random_device{}()};
 
+/**
+ * @brief Advances the state of the Snake game by one step.
+ *
+ * @param snake The current state of the snake.
+ * @param dir The direction in which the snake is moving.
+ * @param food The current position of the food.
+ * @param gridSize The size of the game grid.
+ * @return A StepResult object containing the new state of the game.
+ */
 StepResult snake_step(std::vector<Point> snake, Point dir, Point food, int gridSize){
     Point head{snake[0].x + dir.x, snake[0].y + dir.y};
     if(head.x < 0 || head.y < 0 || head.x >= gridSize || head.y >= gridSize){

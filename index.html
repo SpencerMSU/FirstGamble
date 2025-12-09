@@ -40,9 +40,18 @@ background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);cursor:point
 .muted{color:var(--muted);font-size:13px;}
 .admin-fab{position:sticky;top:8px;width:46px;height:46px;border-radius:50%;border:1px solid var(--stroke);background:linear-gradient(180deg,var(--card) 0%,var(--card2) 100%);box-shadow:var(--shadow);color:var(--text);display:flex;align-items:center;justify-content:center;font-weight:900;cursor:pointer;z-index:5;transition:.15s ease;align-self:flex-start;}
 .admin-fab:hover{border-color:var(--stroke2);transform:translateY(-1px);} .admin-fab:active{transform:scale(.98);}
+.vpn-toast{
+  position:fixed;top:20px;left:50%;transform:translateX(-50%) translateY(-20px);
+  background:rgba(239,68,68,0.9);color:white;padding:12px 20px;border-radius:12px;
+  box-shadow:0 8px 24px rgba(0,0,0,0.5);font-weight:600;font-size:14px;z-index:9999;
+  opacity:0;pointer-events:none;transition:all 0.4s ease;text-align:center;max-width:90%;
+  border:1px solid rgba(255,255,255,0.2);backdrop-filter:blur(8px);
+}
+.vpn-toast.visible{opacity:1;transform:translateX(-50%) translateY(0);pointer-events:auto;}
 </style>
 </head>
 <body>
+<div id="vpnToast" class="vpn-toast">Мини-приложение может быть недоступно. Отключите VPN или переключитесь на сервер Россия.</div>
 <div class="app">
 <header>
 <button id="admin-gear-btn" class="admin-fab" type="button" title="Админка">⚙️</button>
@@ -143,6 +152,22 @@ async function openAdminPanel(){
 }
 document.getElementById("admin-gear-btn")?.addEventListener("click", openAdminPanel);
 
+async function checkRegion(){
+  try{
+    const r = await fetch("/api/check_region");
+    if(r.ok){
+      const d = await r.json();
+      if(d.ok && d.countryCode !== "RU"){
+        const toast = document.getElementById("vpnToast");
+        toast.classList.add("visible");
+        setTimeout(()=>{
+          toast.classList.remove("visible");
+        }, 7000);
+      }
+    }
+  }catch(e){console.error(e);}
+}
+
 (async () => {
   if(!tgInstance) return;
   const prof = await fetchProfile();
@@ -155,6 +180,7 @@ document.getElementById("admin-gear-btn")?.addEventListener("click", openAdminPa
     }
   }
   loadBalance();
+  checkRegion();
 })();
 </script>
 </body>

@@ -1,0 +1,374 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Прыгун — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06); --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --green:#22c55e; --red:#ef4444;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:none;}
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,sans-serif;color:var(--text);
+      background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      display:flex;flex-direction:column;
+    }
+    .header-overlay{
+      position:absolute;top:0;left:0;width:100%;padding:10px 16px;z-index:10;
+      display:flex;align-items:center;justify-content:space-between;
+      pointer-events:none;
+    }
+    .back-btn{
+      pointer-events:auto;
+      background:rgba(0,0,0,0.3);backdrop-filter:blur(4px);
+      border:1px solid rgba(255,255,255,0.1);color:white;
+      padding:6px 12px;border-radius:8px;text-decoration:none;font-weight:700;font-size:14px;
+    }
+    .score{
+      font-size:32px;font-weight:900;color:white;text-shadow:0 2px 8px rgba(0,0,0,0.5);
+    }
+    canvas{display:block;width:100%;height:100%;}
+
+    .menu{
+      position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,0.7);
+      backdrop-filter:blur(5px);z-index:20;display:flex;flex-direction:column;
+      align-items:center;justify-content:center;transition:opacity 0.3s;
+    }
+    .menu.hidden{opacity:0;pointer-events:none;}
+    .menu h1{font-size:36px;margin:0 0 8px;color:white;}
+    .menu p{color:var(--muted);margin-bottom:24px;text-align:center;max-width:300px;line-height:1.5;}
+    .btn{
+      padding:14px 32px;border-radius:14px;background:linear-gradient(180deg,var(--blue) 0%,var(--blue2) 100%);
+      color:white;font-weight:800;font-size:20px;border:none;box-shadow:0 0 20px rgba(37,99,235,0.4);
+      cursor:pointer;transition:.2s;
+    }
+    .btn:active{transform:scale(0.95);}
+
+    /* Touch controls visualization */
+    .controls{
+      position:absolute;bottom:0;left:0;width:100%;height:100%;display:flex;pointer-events:none;
+    }
+    .control-zone{flex:1;border-right:1px solid rgba(255,255,255,0.02);}
+    .control-zone:last-child{border:none;}
+  </style>
+</head>
+<body>
+
+  <div class="header-overlay">
+    <a href="/minigames" class="back-btn">← Выход</a>
+    <div class="score" id="scoreDisp">0</div>
+  </div>
+
+  <div class="menu" id="menu">
+    <h1>Прыгун</h1>
+    <p>Тапай влево или вправо, чтобы двигаться. Прыгай по платформам и не падай!</p>
+    <div style="font-size:14px;color:#cbd5e1;margin-bottom:12px;">Рекорд: <span id="bestDisp">0</span></div>
+    <button class="btn" id="playBtn">Играть</button>
+  </div>
+
+  <div class="menu hidden" id="gameOverMenu">
+    <h1 id="endTitle">Упал!</h1>
+    <p>Твой счет: <span id="finalScore">0</span></p>
+    <button class="btn" id="retryBtn">Снова</button>
+  </div>
+
+  <canvas id="game"></canvas>
+  <div class="controls">
+    <div class="control-zone"></div>
+    <div class="control-zone"></div>
+  </div>
+
+<script>
+const tgInstance = initTelegramGuard();
+const searchUid = new URLSearchParams(window.location.search).get('uid');
+
+const canvas = document.getElementById('game');
+const ctx = canvas.getContext('2d');
+const scoreDisp = document.getElementById('scoreDisp');
+const menu = document.getElementById('menu');
+const gameOverMenu = document.getElementById('gameOverMenu');
+const bestDisp = document.getElementById('bestDisp');
+const finalScore = document.getElementById('finalScore');
+const endTitle = document.getElementById('endTitle');
+
+let width, height;
+let player = {x:0, y:0, vx:0, vy:0, r:12};
+let platforms = [];
+let cameraY = 0;
+let score = 0;
+let best = Number(localStorage.getItem('jumper_best')||0);
+bestDisp.textContent = best;
+let state = 'menu'; // menu, game, dead
+let input = {left:false, right:false};
+let gravity = 0.5;
+let jumpForce = 11;
+let resultSent = false;
+
+function resize(){
+  width = window.innerWidth;
+  height = window.innerHeight;
+  canvas.width = width * window.devicePixelRatio;
+  canvas.height = height * window.devicePixelRatio;
+  ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
+}
+window.addEventListener('resize', resize);
+resize();
+
+function init(){
+  player = {x: width/2, y: height - 150, vx:0, vy:0, r:10};
+  cameraY = 0;
+  score = 0;
+  scoreDisp.textContent = 0;
+  platforms = [];
+  resultSent = false;
+
+  // Start platform
+  platforms.push({x: width/2 - 40, y: height - 50, w: 80, type:'normal'});
+
+  // Fill initial screen
+  let y = height - 150;
+  while(y > -height){
+    spawnPlatform(y);
+    y -= 80 + Math.random()*40;
+  }
+
+  state = 'game';
+  menu.classList.add('hidden');
+  gameOverMenu.classList.add('hidden');
+  lastTime = performance.now();
+  loop();
+}
+
+function spawnPlatform(y){
+  const w = 60 + Math.random()*40;
+  const x = Math.random()*(width - w);
+  platforms.push({x, y, w, type:'normal', hit:false});
+}
+
+function drawPseudo3DPlatform(p, relY){
+  // Draw as cylinder/slab
+  const thickness = 10;
+
+  // Side
+  ctx.fillStyle = '#1e3a8a'; // dark blue side
+  ctx.fillRect(p.x, relY + thickness/2, p.w, thickness);
+
+  // Top
+  const grad = ctx.createLinearGradient(p.x, relY, p.x, relY+thickness);
+  grad.addColorStop(0, '#60a5fa');
+  grad.addColorStop(1, '#2563eb');
+  ctx.fillStyle = grad;
+
+  // Ellipse illusion
+  ctx.beginPath();
+  // rounded rect
+  ctx.roundRect(p.x, relY, p.w, thickness, 4);
+  ctx.fill();
+
+  // Highlight top edge
+  ctx.fillStyle = 'rgba(255,255,255,0.2)';
+  ctx.fillRect(p.x+2, relY+2, p.w-4, 2);
+}
+
+function drawPlayer(relY){
+  const {x, r} = player;
+
+  // Shadow
+  ctx.fillStyle = 'rgba(0,0,0,0.3)';
+  ctx.beginPath();
+  ctx.ellipse(x, relY + r + 15, r, r*0.3, 0, 0, Math.PI*2);
+  ctx.fill();
+
+  // Ball Body 3D
+  const grad = ctx.createRadialGradient(x-3, relY-3, 2, x, relY, r);
+  grad.addColorStop(0, '#fcd34d');
+  grad.addColorStop(1, '#d97706');
+  ctx.fillStyle = grad;
+
+  ctx.beginPath();
+  ctx.arc(x, relY, r, 0, Math.PI*2);
+  ctx.fill();
+
+  // Eyes
+  if(player.vy < -2) { // jumping up - looking up
+     // ..
+  }
+  ctx.fillStyle = '#0f172a';
+  ctx.beginPath();
+  ctx.arc(x - 4, relY - 2, 2, 0, Math.PI*2);
+  ctx.arc(x + 4, relY - 2, 2, 0, Math.PI*2);
+  ctx.fill();
+}
+
+let lastTime = 0;
+function loop(time){
+  if(state !== 'game' && state !== 'dead') return;
+  const dt = (time - lastTime)/16;
+  lastTime = time;
+
+  ctx.fillStyle = '#0f172a';
+  ctx.fillRect(0,0,width,height);
+
+  // BG Grid
+  ctx.strokeStyle = 'rgba(255,255,255,0.03)';
+  ctx.lineWidth = 1;
+  const offY = cameraY % 40;
+  for(let i=0; i<height/40 + 1; i++){
+    ctx.beginPath();
+    ctx.moveTo(0, i*40 + offY);
+    ctx.lineTo(width, i*40 + offY);
+    ctx.stroke();
+  }
+  for(let i=0; i<width/40 + 1; i++){
+    ctx.beginPath();
+    ctx.moveTo(i*40, 0);
+    ctx.lineTo(i*40, height);
+    ctx.stroke();
+  }
+
+  if(state === 'game'){
+    // Physics
+    if(input.left) player.vx -= 0.8 * (dt||1);
+    if(input.right) player.vx += 0.8 * (dt||1);
+    player.vx *= 0.85; // friction
+
+    player.x += player.vx * (dt||1);
+
+    // Wrap around
+    if(player.x < -player.r) player.x = width + player.r;
+    if(player.x > width + player.r) player.x = -player.r;
+
+    player.vy += gravity * (dt||1);
+    player.y += player.vy * (dt||1);
+
+    // Collision
+    if(player.vy > 0){ // only falling
+      platforms.forEach(p => {
+        if(player.x > p.x - 5 && player.x < p.x + p.w + 5 &&
+           player.y + player.r > p.y && player.y + player.r < p.y + 15){
+             player.vy = -jumpForce;
+             // Sound?
+        }
+      });
+    }
+
+    // Camera follow
+    if(player.y < cameraY + height * 0.4){
+      const diff = (cameraY + height * 0.4) - player.y;
+      cameraY -= diff;
+      score += Math.floor(diff * 0.1);
+      scoreDisp.textContent = score;
+
+      // Spawn new
+      const topP = platforms[platforms.length-1];
+      if(topP.y > cameraY - 100){
+        spawnPlatform(topP.y - (80 + Math.random()*60));
+      }
+    }
+
+    // Death
+    if(player.y > cameraY + height + 50){
+      gameOver();
+    }
+
+    // Cleanup
+    platforms = platforms.filter(p => p.y < cameraY + height + 100);
+  }
+
+  // Draw World
+  platforms.forEach(p => {
+    drawPseudo3DPlatform(p, p.y - cameraY);
+  });
+
+  drawPlayer(player.y - cameraY);
+
+  if(state === 'game'){
+    requestAnimationFrame(loop);
+  }
+}
+
+function gameOver(){
+  state = 'dead';
+  if(score > best){
+    best = score;
+    localStorage.setItem('jumper_best', best);
+    bestDisp.textContent = best;
+  }
+  finalScore.textContent = score;
+
+  const win = score >= 500; // e.g. 500 points target
+  endTitle.textContent = win ? "Высота взята!" : "Упал!";
+  endTitle.style.color = win ? "#4ade80" : "#ef4444";
+
+  gameOverMenu.classList.remove('hidden');
+
+  if(!resultSent){
+      resultSent = true;
+      const res = win ? 'win' : 'loss';
+      const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+      if(uid){
+         fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', result:res})});
+         if(win){
+           fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', delta:1})});
+         }
+      }
+  }
+}
+
+document.getElementById('playBtn').addEventListener('click', init);
+document.getElementById('retryBtn').addEventListener('click', init);
+
+// Touch areas
+window.addEventListener('touchstart', (e)=>{
+  for(let i=0; i<e.touches.length; i++){
+    const t = e.touches[i];
+    if(t.clientX < width/2) input.left = true;
+    else input.right = true;
+  }
+});
+window.addEventListener('touchend', (e)=>{
+  input.left = false;
+  input.right = false;
+  // re-check remaining touches
+  for(let i=0; i<e.touches.length; i++){
+    const t = e.touches[i];
+    if(t.clientX < width/2) input.left = true;
+    else input.right = true;
+  }
+});
+// Mouse fallback
+window.addEventListener('mousedown', (e)=>{
+  if(e.target.tagName==='BUTTON') return;
+  if(e.clientX < width/2) input.left = true;
+  else input.right = true;
+});
+window.addEventListener('mouseup', ()=>{
+  input.left = false;
+  input.right = false;
+});
+window.addEventListener('keydown', (e)=>{
+  if(e.code==='ArrowLeft') input.left = true;
+  if(e.code==='ArrowRight') input.right = true;
+});
+window.addEventListener('keyup', (e)=>{
+  if(e.code==='ArrowLeft') input.left = false;
+  if(e.code==='ArrowRight') input.right = false;
+});
+
+(async()=>{
+  if(!tgInstance) return;
+  await ensureNicknameOrRedirect();
+})();
+</script>
+</body>
+</html>

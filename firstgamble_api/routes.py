@@ -5,6 +5,7 @@ import re
 import time
 from secrets import token_urlsafe
 from typing import Any, Dict, Optional
+import httpx
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
 from fastapi.responses import JSONResponse
@@ -1434,7 +1435,32 @@ def register_routes(app: FastAPI):
         logger.info("admin update rpg economy: %s", payload)
         return {"ok": True, "economy": economy}
 
-    exposed_paths = {"/api/dice/award"}
+    @app.get("/api/check_region")
+    async def api_check_region(request: Request) -> Dict[str, Any]:
+        """Checks the user's region based on IP."""
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+        else:
+            ip = request.client.host if request.client else ""
+
+        # Localhost or empty
+        if not ip or ip in ("127.0.0.1", "::1", "localhost"):
+            return {"ok": True, "countryCode": "RU"}
+
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"http://ip-api.com/json/{ip}")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {"ok": True, "countryCode": data.get("countryCode", "RU")}
+        except Exception:
+            # Fallback to RU on error to avoid blocking valid users
+            pass
+
+        return {"ok": True, "countryCode": "RU"}
+
+    exposed_paths = {"/api/dice/award", "/api/check_region"}
     for route in app.routes:
         if isinstance(route, APIRoute) and route.path not in exposed_paths:
             route.include_in_schema = False

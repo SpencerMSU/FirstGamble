@@ -372,41 +372,18 @@ def register_routes(app: FastAPI):
         Returns:
             A dictionary indicating whether the login was successful.
         """
-        client_ip = request.client.host if request.client else "unknown"
-        ban_key = f"admin_ban:{client_ip}"
-        attempts_key = f"admin_attempts:{client_ip}"
-
         r = await get_redis()
-
-        # Check if banned
-        if await r.exists(ban_key):
-            raise HTTPException(status_code=403, detail="Доступ заблокирован на 24 часа")
 
         logger.info(f"Admin Login attempt: user='{body.username}' (expected '{ADMIN_USER}'), pass='***' (match={body.password == ADMIN_PASS})")
 
         if body.username != ADMIN_USER or body.password != ADMIN_PASS:
-            # Increment attempts
-            attempts = await r.incr(attempts_key)
-            if attempts == 1:
-                await r.expire(attempts_key, 3600)  # Reset attempts after 1 hour if not banned
-
-            if attempts >= 5:
-                await r.set(ban_key, "1", ex=86400) # Ban for 1 day
-                await r.delete(attempts_key)
-                raise HTTPException(status_code=403, detail="Доступ заблокирован на 24 часа")
-
-            remaining = 5 - attempts
-            raise HTTPException(status_code=401, detail=f"Неверный логин или пароль. Осталось попыток: {remaining}")
-
-        # Success - clear attempts
-        await r.delete(attempts_key)
+            raise HTTPException(status_code=401, detail="Неверный логин или пароль")
 
         token = ADMIN_TOKEN or token_urlsafe(32)
         await r.set(key_admin_session(token), ADMIN_USER, ex=ADMIN_SESSION_TTL)
         response.set_cookie(
             ADMIN_COOKIE_NAME,
             token,
-            max_age=ADMIN_SESSION_TTL,
             httponly=True,
             samesite="lax",
             secure=True,

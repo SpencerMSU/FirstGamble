@@ -143,7 +143,6 @@
       <div data-view="profile" style="display:none;">
         <div class="title-row">
           <h3 style="margin:0;font-size:16px;">Профиль</h3>
-          <span class="tag" id="profileId">—</span>
         </div>
         <div class="list">
           <div class="list-item"><span>Последняя добыча</span><span id="lastGather">—</span></div>
@@ -389,8 +388,8 @@
     }
 
     function renderProfile(){
-      const uid = tg?.initDataUnsafe?.user?.id;
-      document.getElementById('profileId').textContent = uid ? `UID: ${uid}` : '—';
+      // const uid = tg?.initDataUnsafe?.user?.id;
+      // document.getElementById('profileId').textContent = uid ? `UID: ${uid}` : '—';
     }
 
     function applyState(state){

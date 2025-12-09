@@ -266,7 +266,9 @@
       "⚠️ TG id не пришёл. Открой миниаппку через кнопку бота.\n" +
       "Если тестируешь в браузере — добавь ?uid=123 в адресную строку.";
   } else {
-    tgWarn.textContent = "TG id: " + uid;
+    // Hide TG ID display as requested
+    tgWarn.textContent = "";
+    tgWarn.style.display = 'none';
   }
 
   loadBalance();
@@ -339,7 +341,19 @@
     }else{
       resultTextEl.textContent = `Ничья! ${youSum} = ${botSum}`;
       resultTextEl.classList.add("draw");
-      if(userId) await reportGame(userId, "dice", "draw");
+      if(userId){
+        await reportGame(userId, "dice", "draw");
+        // Award 1 point for draw
+        const res = await sendPoint(userId, "dice", 1);
+        if(res.ok){
+          awardTextEl.textContent = "✅ +1 очко за ничью";
+          document.getElementById("balanceValue").textContent = res.balance;
+          localStorage.setItem("balance_local", res.balance);
+          showToast("+1 очко");
+        } else {
+          awardTextEl.textContent = "⚠️ Сервер не принял очко: " + (res.error||"unknown");
+        }
+      }
     }
 
     rollBtn.disabled = false;

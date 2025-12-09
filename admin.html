@@ -19,10 +19,18 @@
     .hidden{display:none;}
     .tag{padding:4px 10px;border-radius:999px;background:#0f1624;border:1px solid var(--stroke);font-weight:800;}
     .error{color:#f87171;}
+    .back-btn{
+      text-align:center; margin-bottom:12px;
+      color:var(--muted); text-decoration:none; font-size:14px; font-weight:700;
+      cursor:pointer; display:inline-block;
+    }
+    .back-btn:hover{color:var(--text);}
   </style>
 </head>
 <body>
   <div class="app">
+    <a href="/" class="back-btn">← На главную</a>
+
     <div id="loginForm" class="hidden" style="display:flex; flex-direction:column; gap:12px; max-width:300px; margin:0 auto;">
       <h2 style="text-align:center;">Вход в админку</h2>
       <input id="admUser" placeholder="Логин">
@@ -435,7 +443,11 @@
     qs('admLoginBtn').addEventListener('click', doLogin);
 
     async function initAdmin(){
+      // We try to load prizes. If 401, we MUST show login.
+      // If success, we show admin.
       try{
+        // Explicitly check auth via a lightweight call if possible, or just catch the 401
+        // But loadPrizes is fine.
         await loadPrizes();
         await loadWinners();
         await loadEconomy();
@@ -444,12 +456,18 @@
         if(e.message === 'unauthorized'){
           showLogin();
         }else{
+          // If other error (network), maybe show error but definitely NOT admin
           console.error("Init error", e);
-          // showAdmin(); // Try to show admin anyway? No, probably login.
-          // If 401 happened during loadPrizes, it throws unauthorized
+          // showLogin(); // Safer to show login if something broke?
+          // Or show error message.
+          qs('loginError').textContent = "Ошибка загрузки: " + e.message;
+          showLogin();
         }
       }
     }
+
+    // Delay init to avoid "flash" if possible, or ensure elements are hidden.
+    // They are hidden by class.
 
     (async()=>{
       await initAdmin();

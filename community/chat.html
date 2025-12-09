@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Чат — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06); --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;}
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,sans-serif;color:var(--text);
+      background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      display:flex;flex-direction:column;
+    }
+    header{display:flex;align-items:center;justify-content:space-between;padding:12px;border-bottom:1px solid var(--stroke);background:var(--panel);}
+    .back{
+      color:var(--text);text-decoration:none;font-weight:700;
+      background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:10px;
+    }
+    .chat-area{
+      flex:1;overflow-y:auto;padding:12px;display:flex;flex-direction:column;gap:8px;
+    }
+    .msg{
+      max-width:80%;padding:10px 14px;border-radius:14px;font-size:14px;line-height:1.4;word-wrap:break-word;
+      animation:pop 0.2s ease-out;
+    }
+    .msg.mine{
+      align-self:flex-end;background:linear-gradient(135deg,var(--blue),var(--blue2));color:white;
+      border-bottom-right-radius:2px;
+    }
+    .msg.other{
+      align-self:flex-start;background:var(--card);border:1px solid var(--stroke);
+      border-bottom-left-radius:2px;
+    }
+    .sender{font-size:11px;opacity:0.6;margin-bottom:2px;font-weight:700;}
+    .input-area{
+      padding:12px;background:var(--panel);border-top:1px solid var(--stroke);display:flex;gap:10px;
+    }
+    input{
+      flex:1;background:var(--bg);border:1px solid var(--stroke);color:var(--text);
+      padding:10px 14px;border-radius:999px;font-size:15px;outline:none;
+    }
+    input:focus{border-color:var(--blue);}
+    button{
+      background:var(--blue);color:white;border:none;border-radius:999px;width:40px;height:40px;
+      display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;
+    }
+    @keyframes pop{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/community" class="back">← Назад</a>
+    <div style="font-weight:800;">Общий чат</div>
+    <div style="width:50px"></div>
+  </header>
+
+  <div class="chat-area" id="chat">
+    <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:20px;">
+      Добро пожаловать в чат!<br>Запрещены оскорбления, нацизм, экстремизм.
+    </div>
+  </div>
+
+  <div class="input-area">
+    <input type="text" id="inp" placeholder="Сообщение..." maxlength="200">
+    <button id="send">➤</button>
+  </div>
+
+  <script>
+    const tgInstance = initTelegramGuard();
+    const searchUid = new URLSearchParams(window.location.search).get('uid');
+
+    let ws;
+    const chat = document.getElementById('chat');
+    const inp = document.getElementById('inp');
+    const sendBtn = document.getElementById('send');
+    let myName = "Player";
+
+    async function init(){
+      const prof = await fetchProfile();
+      if(prof && prof.ok){
+         myName = prof.username || prof.name || "Anon";
+      }
+
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/ws/chat?name=${encodeURIComponent(myName)}`;
+
+      ws = new WebSocket(wsUrl);
+
+      ws.onmessage = (event) => {
+        const data = JSON.parse(event.data);
+        if(data.type === 'message'){
+          addMessage(data.sender, data.text);
+        }
+      };
+
+      ws.onclose = () => {
+        setTimeout(init, 3000); // reconnect
+      };
+    }
+
+    function addMessage(sender, text){
+      const el = document.createElement('div');
+      const isMe = sender === myName;
+      el.className = `msg ${isMe ? 'mine' : 'other'}`;
+
+      if(!isMe){
+        const s = document.createElement('div');
+        s.className = 'sender';
+        s.textContent = sender;
+        el.appendChild(s);
+      }
+
+      const t = document.createElement('div');
+      t.textContent = text; // Content is already escaped by backend but textContent double escapes?
+      // Backend returned clean text. textContent renders it as text. Correct.
+      el.appendChild(t);
+
+      chat.appendChild(el);
+      chat.scrollTop = chat.scrollHeight;
+    }
+
+    function send(){
+      const txt = inp.value.trim();
+      if(!txt || !ws) return;
+      ws.send(txt);
+      inp.value = '';
+    }
+
+    sendBtn.addEventListener('click', send);
+    inp.addEventListener('keydown', (e)=>{if(e.key==='Enter') send();});
+
+    init();
+  </script>
+</body>
+</html>

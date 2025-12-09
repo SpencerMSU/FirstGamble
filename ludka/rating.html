@@ -106,6 +106,66 @@
     .muted{color:var(--muted); font-weight:700;}
     .me{outline:2px solid var(--stroke2);}
 
+    /* Mobile Responsive Logic */
+    @media (max-width: 600px) {
+      thead { display: none; }
+      tbody tr {
+        display: grid;
+        grid-template-columns: 40px 1fr auto;
+        grid-template-rows: auto auto;
+        gap: 4px 12px;
+        padding: 8px;
+        border-radius: 12px;
+      }
+      tbody tr td:first-child {
+        grid-row: 1 / -1;
+        width: auto;
+        border: none;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+      }
+      tbody td {
+        padding: 0;
+        border: none;
+      }
+      /* Name */
+      tbody td:nth-child(2) {
+        grid-column: 2;
+        grid-row: 1;
+        font-size: 15px;
+      }
+      /* Points */
+      tbody td:nth-child(3) {
+        grid-column: 3;
+        grid-row: 1;
+        text-align: right;
+        font-size: 15px;
+      }
+      /* W/L/D pills */
+      tbody td:nth-child(4) {
+        grid-column: 2 / -1;
+        grid-row: 2;
+        display: flex;
+        gap: 6px;
+        flex-wrap: wrap;
+      }
+      /* Hidden cols on mobile if needed, or moved */
+      tbody td:nth-child(5), tbody td:nth-child(6) {
+        display: none;
+      }
+    }
+
+    /* Fix for dropdown colors */
+    select {
+      background-color: var(--card) !important;
+      color: var(--text) !important;
+    }
+    option {
+      background-color: var(--card);
+      color: var(--text);
+    }
+
     .empty{
       text-align:center; color:var(--muted); padding:20px 0; font-weight:800;
     }

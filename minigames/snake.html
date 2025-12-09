@@ -212,8 +212,12 @@
 
       ctx.beginPath();
       ctx.moveTo(head.x, head.y);
-      for(let i=1;i<points.length;i++){
-        ctx.lineTo(points[i].x, points[i].y);
+      if(points.length > 1){
+        for(let i=1;i<points.length;i++){
+          ctx.lineTo(points[i].x, points[i].y);
+        }
+      } else {
+        ctx.lineTo(head.x, head.y);
       }
       ctx.stroke();
 

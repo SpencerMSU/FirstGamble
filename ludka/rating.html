@@ -96,26 +96,27 @@
     }
     .pill{
       display:inline-flex; align-items:center; gap:6px;
-      padding:4px 8px; border-radius:999px; font-size:12px; font-weight:900;
-      border:1px solid var(--stroke);
-      background:color-mix(in oklab, var(--panel) 75%, transparent);
+      padding:6px 10px; border-radius:999px; font-size:12px; font-weight:900;
+      border:1px solid var(--stroke2); /* Slightly brighter border */
+      background:color-mix(in oklab, var(--card) 50%, transparent); /* Darker background */
     }
-    .pill.win{color:var(--green)}
-    .pill.lose{color:var(--red)}
-    .pill.draw{color:var(--amber)}
+    .pill.win{color:var(--green); background:rgba(34, 197, 94, 0.1);}
+    .pill.lose{color:var(--red); background:rgba(239, 68, 68, 0.1);}
+    .pill.draw{color:var(--amber); background:rgba(245, 158, 11, 0.1);}
     .muted{color:var(--muted); font-weight:700;}
     .me{outline:2px solid var(--stroke2);}
 
     /* Mobile Responsive Logic */
     @media (max-width: 600px) {
       thead { display: none; }
+      table { border-spacing: 0 12px; } /* Increased spacing between blocks */
       tbody tr {
         display: grid;
         grid-template-columns: 40px 1fr auto;
-        grid-template-rows: auto auto;
-        gap: 4px 12px;
-        padding: 8px;
-        border-radius: 12px;
+        grid-template-rows: auto auto auto; /* Added 3rd row for Winrate */
+        gap: 6px 12px;
+        padding: 12px;
+        border-radius: 16px;
       }
       tbody tr td:first-child {
         grid-row: 1 / -1;
@@ -124,6 +125,7 @@
         display: flex;
         align-items: center;
         justify-content: center;
+        font-size: 18px; /* Larger rank number */
       }
       tbody td {
         padding: 0;
@@ -133,14 +135,16 @@
       tbody td:nth-child(2) {
         grid-column: 2;
         grid-row: 1;
-        font-size: 15px;
+        font-size: 16px;
+        align-self: end;
       }
       /* Points */
       tbody td:nth-child(3) {
         grid-column: 3;
         grid-row: 1;
         text-align: right;
-        font-size: 15px;
+        font-size: 16px;
+        align-self: end;
       }
       /* W/L/D pills */
       tbody td:nth-child(4) {
@@ -149,10 +153,20 @@
         display: flex;
         gap: 6px;
         flex-wrap: wrap;
+        margin-top: 4px;
       }
-      /* Hidden cols on mobile if needed, or moved */
-      tbody td:nth-child(5), tbody td:nth-child(6) {
+      /* Games (hidden) */
+      tbody td:nth-child(5) {
         display: none;
+      }
+      /* Winrate (shown) */
+      tbody td:nth-child(6) {
+        display: block;
+        grid-column: 2 / -1;
+        grid-row: 3;
+        font-size: 12px;
+        color: var(--muted);
+        margin-top: 2px;
       }
     }
 
@@ -265,7 +279,7 @@
         <span class="pill draw">D ${r.draws}</span>
       </td>
       <td>${r.games_total}</td>
-      <td>${fmtRate(r.winrate)}</td>
+      <td>Винрейт: ${fmtRate(r.winrate)}</td>
     `;
     return tr;
   }

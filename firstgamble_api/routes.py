@@ -382,6 +382,8 @@ def register_routes(app: FastAPI):
         if await r.exists(ban_key):
             raise HTTPException(status_code=403, detail="Доступ заблокирован на 24 часа")
 
+        logger.info(f"Admin Login attempt: user='{body.username}' (expected '{ADMIN_USER}'), pass='***' (match={body.password == ADMIN_PASS})")
+
         if body.username != ADMIN_USER or body.password != ADMIN_PASS:
             # Increment attempts
             attempts = await r.incr(attempts_key)

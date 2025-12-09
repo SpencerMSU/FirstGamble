@@ -643,6 +643,10 @@ def register_routes(app: FastAPI):
         for uid, score in top:
             profile = await r.hgetall(key_profile(int(uid)))
 
+            name = profile.get("name", "")
+            if not name:
+                continue
+
             if game == "all":
                 stats_key = key_stats(int(uid))
             else:
@@ -669,7 +673,7 @@ def register_routes(app: FastAPI):
                     "draws": draws,
                     "games_total": games_total,
                     "winrate": winrate,
-                    "name": profile.get("name", ""),
+                    "name": name,
                     "username": profile.get("username", ""),
                 }
             )

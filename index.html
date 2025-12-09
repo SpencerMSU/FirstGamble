@@ -138,30 +138,8 @@ async function loadBalance(){
   }
 }
 
-async function openAdminPanel(){
-  const username = prompt("Логин администратора")?.trim();
-  if(!username) return;
-  const password = prompt("Пароль администратора") || "";
-  try{
-    const res = await fetch(API_BASE + "/api/admin/login", {
-      method: "POST",
-      headers: {"Content-Type": "application/json"},
-      credentials: "include",
-      body: JSON.stringify({username, password}),
-    });
-    if(!res.ok){
-      let msg = "";
-      try{ const data = await res.json(); msg = data?.detail || data?.error || ""; }catch(e){}
-      throw new Error(msg || "Ошибка авторизации");
-    }
-    const data = await res.json();
-    if(!data.ok){
-      throw new Error(data.error || "Ошибка авторизации");
-    }
-    window.location.href = "/admin";
-  }catch(e){
-    alert("Не удалось войти: " + (e?.message || e));
-  }
+function openAdminPanel(){
+  window.location.href = "/login.html";
 }
 document.getElementById("admin-gear-btn")?.addEventListener("click", openAdminPanel);
 

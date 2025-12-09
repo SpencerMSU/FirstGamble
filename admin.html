@@ -23,7 +23,15 @@
 </head>
 <body>
   <div class="app">
-    <div id="adminApp">
+    <div id="loginForm" class="hidden" style="display:flex; flex-direction:column; gap:12px; max-width:300px; margin:0 auto;">
+      <h2 style="text-align:center;">Вход в админку</h2>
+      <input id="admUser" placeholder="Логин">
+      <input id="admPass" type="password" placeholder="Пароль">
+      <button id="admLoginBtn">Войти</button>
+      <div id="loginError" class="error" style="text-align:center;"></div>
+    </div>
+
+    <div id="adminApp" class="hidden">
       <div class="row" style="justify-content:space-between;align-items:center;">
         <div>
           <h1>Розыгрыши • Admin</h1>
@@ -149,7 +157,6 @@
       if(body) opts.body = JSON.stringify(body);
       const res = await fetch(API_BASE + path, opts);
       if(res.status === 401){
-        window.location.href = "/";
         throw new Error('unauthorized');
       }
       if(!res.ok){
@@ -381,10 +388,71 @@
     qs('saveEconomyBtn').addEventListener('click', saveEconomy);
     qs('reloadEconomyBtn').addEventListener('click', loadEconomy);
     qs('adminUser').textContent = 'Доступ открыт из WebApp';
+
+    function showLogin(){
+      qs('loginForm').style.display='flex';
+      qs('adminApp').style.display='none';
+    }
+
+    function showAdmin(){
+      qs('loginForm').style.display='none';
+      qs('adminApp').style.display='block';
+    }
+
+    async function doLogin(){
+      const username = qs('admUser').value.trim();
+      const password = qs('admPass').value;
+      const errEl = qs('loginError');
+      errEl.textContent = '';
+      if(!username) return;
+
+      const btn = qs('admLoginBtn');
+      btn.disabled = true;
+
+      try{
+        const res = await fetch(API_BASE + "/api/admin/login", {
+          method: "POST",
+          headers: {"Content-Type": "application/json"},
+          credentials: "include",
+          body: JSON.stringify({username, password}),
+        });
+
+        if(!res.ok){
+          let msg = "Ошибка авторизации";
+          try{ const d=await res.json(); msg=d.detail||d.error||msg; }catch(e){}
+          throw new Error(msg);
+        }
+
+        showAdmin();
+        await initAdmin();
+      }catch(e){
+        errEl.textContent = e.message || "Ошибка входа";
+      }finally{
+        btn.disabled = false;
+      }
+    }
+
+    qs('admLoginBtn').addEventListener('click', doLogin);
+
+    async function initAdmin(){
+      try{
+        await loadPrizes();
+        await loadWinners();
+        await loadEconomy();
+        showAdmin();
+      }catch(e){
+        if(e.message === 'unauthorized'){
+          showLogin();
+        }else{
+          console.error("Init error", e);
+          // showAdmin(); // Try to show admin anyway? No, probably login.
+          // If 401 happened during loadPrizes, it throws unauthorized
+        }
+      }
+    }
+
     (async()=>{
-      await loadPrizes();
-      await loadWinners();
-      await loadEconomy();
+      await initAdmin();
     })();
   </script>
 </body>

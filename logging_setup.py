@@ -50,4 +50,8 @@ def configure_logging(service_name: str, env: Optional[str] = None, level: int =
         level=level,
         format="%(asctime)s %(levelname)s [%(service)s] [env=%(env)s] %(name)s: %(message)s",
     )
-    logging.getLogger().addFilter(ServiceFilter(service_name, env_name))
+    # Important: attach filter to the HANDLERs, not just the logger.
+    # This ensures that when records propagate from child loggers (which don't use the root logger's filter),
+    # the handler still applies the filter before formatting.
+    for handler in logging.getLogger().handlers:
+        handler.addFilter(ServiceFilter(service_name, env_name))

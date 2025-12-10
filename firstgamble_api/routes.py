@@ -5,7 +5,7 @@ import re
 import time
 from secrets import token_urlsafe
 from typing import Any, Dict, Optional
-import httpx
+import aiohttp
 
 from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
@@ -1544,11 +1544,12 @@ def register_routes(app: FastAPI):
             return {"ok": True, "countryCode": "RU"}
 
         try:
-            async with httpx.AsyncClient(timeout=3.0) as client:
-                resp = await client.get(f"http://ip-api.com/json/{ip}")
-                if resp.status_code == 200:
-                    data = resp.json()
-                    return {"ok": True, "countryCode": data.get("countryCode", "RU")}
+            timeout = aiohttp.ClientTimeout(total=3.0)
+            async with aiohttp.ClientSession(timeout=timeout) as session:
+                async with session.get(f"http://ip-api.com/json/{ip}") as resp:
+                    if resp.status == 200:
+                        data = await resp.json()
+                        return {"ok": True, "countryCode": data.get("countryCode", "RU")}
         except Exception:
             # Fallback to RU on error to avoid blocking valid users
             pass

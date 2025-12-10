@@ -1,13 +1,21 @@
 import re
 import html
+import json
+import asyncio
+import logging
 from typing import List, Set
 from fastapi import WebSocket
+
+from redis.asyncio import Redis
+
+from .config import REDIS_HOST, REDIS_PORT, REDIS_DB
+from .redis_utils import get_redis
+
+logger = logging.getLogger(__name__)
 
 class ChatManager:
     def __init__(self):
         self.active_connections: List[WebSocket] = []
-        # Basic list of banwords (regex patterns for flexibility)
-        # Includes common variations, simple example set.
         self.ban_patterns = [
             re.compile(r"fascis[mt]", re.IGNORECASE),
             re.compile(r"nazi", re.IGNORECASE),
@@ -15,10 +23,11 @@ class ChatManager:
             re.compile(r"swastika", re.IGNORECASE),
             re.compile(r"zig\s*heil", re.IGNORECASE),
             re.compile(r"white\s*power", re.IGNORECASE),
-            # Add more specific RU/EN terms as needed for "forbidden in the world"
             re.compile(r"terroris[mt]", re.IGNORECASE),
             re.compile(r"isis", re.IGNORECASE),
         ]
+        self.pubsub_task = None
+        self.channel_name = "chat:global"
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -29,24 +38,28 @@ class ChatManager:
             self.active_connections.remove(websocket)
 
     def filter_message(self, text: str) -> str:
-        """
-        Returns the text if allowed, or None/Empty if banned.
-        User asked to block: 'fascism/nazism etc'.
-        Allowed: 'negr', 'mat'.
-        """
-        # 1. Clean HTML
         clean_text = html.escape(text)
-
-        # 2. Check ban patterns
         for pattern in self.ban_patterns:
             if pattern.search(clean_text):
-                return None # Blocked
-
+                return None
         return clean_text
 
     async def broadcast(self, message: str, sender: str):
-        # We broadcast a JSON structure
+        """
+        Publishes the message to Redis.
+        The listener task will pick it up and call broadcast_local.
+        """
         payload = {"type": "message", "sender": sender, "text": message}
+        try:
+            r = await get_redis()
+            await r.publish(self.channel_name, json.dumps(payload))
+        except Exception as e:
+            logger.error(f"Error publishing chat message: {e}")
+
+    async def broadcast_local(self, payload: dict):
+        """
+        Sends the message to all locally connected websockets.
+        """
         to_remove = []
         for connection in self.active_connections:
             try:
@@ -56,5 +69,51 @@ class ChatManager:
 
         for conn in to_remove:
             self.disconnect(conn)
+
+    async def start_redis_listener(self):
+        """
+        Starts a background task that listens to Redis channel and broadcasts locally.
+        """
+        if self.pubsub_task:
+            return
+
+        self.pubsub_task = asyncio.create_task(self._redis_listener())
+        logger.info("Chat Redis listener started.")
+
+    async def stop_redis_listener(self):
+        """
+        Stops the background listener task.
+        """
+        if self.pubsub_task:
+            self.pubsub_task.cancel()
+            try:
+                await self.pubsub_task
+            except asyncio.CancelledError:
+                pass
+            self.pubsub_task = None
+            logger.info("Chat Redis listener stopped.")
+
+    async def _redis_listener(self):
+        # Create a dedicated connection for PubSub
+        r = Redis(host=REDIS_HOST, port=REDIS_PORT, db=REDIS_DB, decode_responses=True)
+        pubsub = r.pubsub()
+        await pubsub.subscribe(self.channel_name)
+
+        try:
+            async for message in pubsub.listen():
+                if message["type"] == "message":
+                    data = message["data"]
+                    try:
+                        payload = json.loads(data)
+                        await self.broadcast_local(payload)
+                    except json.JSONDecodeError:
+                        logger.error(f"Invalid JSON in chat channel: {data}")
+        except asyncio.CancelledError:
+            pass
+        except Exception as e:
+            logger.error(f"Error in chat Redis listener: {e}")
+        finally:
+            await pubsub.unsubscribe(self.channel_name)
+            await r.close()
 
 chat_manager = ChatManager()

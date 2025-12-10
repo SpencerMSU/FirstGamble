@@ -179,6 +179,20 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
   <div id="tab-achievements" style="display:none;">
     <section class="section">
       <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Достижения</h3>
+
+      <!-- Sub-tabs for games -->
+      <div class="tabs" style="margin-bottom:12px; gap:4px;">
+        <div class="tab subtab active" data-subtab="all">Все</div>
+        <div class="tab subtab" data-subtab="general">Общие</div>
+        <div class="tab subtab" data-subtab="dice">Dice</div>
+        <div class="tab subtab" data-subtab="slot">Slots</div>
+        <div class="tab subtab" data-subtab="bj">Blackjack</div>
+        <div class="tab subtab" data-subtab="stack">Stack</div>
+        <div class="tab subtab" data-subtab="runner">Runner</div>
+        <div class="tab subtab" data-subtab="pulse">Pulse</div>
+        <div class="tab subtab" data-subtab="doodle">Doodle</div>
+      </div>
+
       <div id="achievementsList" class="ach-grid">
          <div style="text-align:center;color:var(--muted);padding:20px;">Загрузка...</div>
       </div>
@@ -326,6 +340,20 @@ tabs.forEach(t => {
   };
 });
 
+let allAchievements = [];
+let currentSubTab = 'all';
+
+// Init subtabs
+const subtabs = document.querySelectorAll('.subtab');
+subtabs.forEach(t => {
+  t.onclick = () => {
+    subtabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    currentSubTab = t.dataset.subtab;
+    renderAchievements(allAchievements);
+  };
+});
+
 async function loadAchievements(){
   const list = document.getElementById('achievementsList');
   try{
@@ -334,7 +362,8 @@ async function loadAchievements(){
       list.innerHTML = `<div style="color:var(--red);">Ошибка загрузки</div>`;
       return;
     }
-    renderAchievements(res.items);
+    allAchievements = res.items || [];
+    renderAchievements(allAchievements);
   }catch(e){
     list.innerHTML = `<div style="color:var(--red);">Ошибка сети</div>`;
   }
@@ -343,12 +372,18 @@ async function loadAchievements(){
 function renderAchievements(items){
   const list = document.getElementById('achievementsList');
   list.innerHTML = '';
-  if(!items || !items.length){
-    list.innerHTML = `<div style="text-align:center;color:var(--muted);">Нет достижений</div>`;
+
+  const filtered = items.filter(i => {
+    if(currentSubTab === 'all') return true;
+    return (i.game || 'general') === currentSubTab;
+  });
+
+  if(!filtered || !filtered.length){
+    list.innerHTML = `<div style="text-align:center;color:var(--muted);">Нет достижений в этой категории</div>`;
     return;
   }
 
-  items.forEach(item => {
+  filtered.forEach(item => {
     const el = document.createElement('div');
     el.className = 'ach-item';
 

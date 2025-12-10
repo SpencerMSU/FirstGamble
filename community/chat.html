@@ -92,8 +92,14 @@
          myName = prof.username || prof.name || "Anon";
       }
 
-      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
-      const wsUrl = `${protocol}//${window.location.host}/ws/chat?name=${encodeURIComponent(myName)}`;
+      // Use API_BASE to determine WebSocket URL
+      // If API_BASE is absolute (https://api...), replace protocol
+      let wsBase = "wss://api.firstgamble.ru";
+      if (typeof API_BASE !== 'undefined' && API_BASE) {
+         wsBase = API_BASE.replace(/^http/, 'ws');
+      }
+
+      const wsUrl = `${wsBase}/ws/chat?name=${encodeURIComponent(myName)}`;
 
       ws = new WebSocket(wsUrl);
 

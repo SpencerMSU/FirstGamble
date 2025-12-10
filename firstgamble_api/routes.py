@@ -1480,6 +1480,9 @@ def register_routes(app: FastAPI):
         stats = {k: safe_int(v) for k, v in stats_raw.items()}
         balance = await get_balance(uid)
 
+        # Cache for game stats
+        gamestats_cache = {}
+
         result = []
         for ach_id, ach in ACHIEVEMENTS.items():
             is_claimed = ach_id in claimed_ids
@@ -1487,15 +1490,28 @@ def register_routes(app: FastAPI):
             progress = 0
             target = ach.get("threshold", 0)
 
-            if ach.get("type") == "stat_threshold":
+            ach_type = ach.get("type")
+
+            if ach_type == "stat_threshold":
                 stat_key = ach.get("stat_key")
                 val = stats.get(stat_key, 0)
                 progress = val
                 if val >= target:
                     is_unlocked = True
-            elif ach.get("type") == "balance_threshold":
+            elif ach_type == "balance_threshold":
                 progress = balance
                 if balance >= target:
+                    is_unlocked = True
+            elif ach_type == "gamestat_threshold":
+                gid = ach.get("game_id")
+                stat_key = ach.get("stat_key")
+                if gid not in gamestats_cache:
+                     gs_raw = await r.hgetall(key_gamestats(uid, gid))
+                     gamestats_cache[gid] = {k: safe_int(v) for k, v in gs_raw.items()}
+
+                val = gamestats_cache[gid].get(stat_key, 0)
+                progress = val
+                if val >= target:
                     is_unlocked = True
 
             result.append({
@@ -1506,7 +1522,8 @@ def register_routes(app: FastAPI):
                 "is_claimed": is_claimed,
                 "is_unlocked": is_unlocked,
                 "progress": progress,
-                "target": target
+                "target": target,
+                "game": ach.get("game", "general")
             })
 
         return {"ok": True, "items": result}
@@ -1537,13 +1554,21 @@ def register_routes(app: FastAPI):
         balance = await get_balance(uid)
 
         unlocked = False
-        if ach.get("type") == "stat_threshold":
+        ach_type = ach.get("type")
+
+        if ach_type == "stat_threshold":
             val = stats.get(ach.get("stat_key"), 0)
             if val >= ach.get("threshold", 0):
                 unlocked = True
-        elif ach.get("type") == "balance_threshold":
+        elif ach_type == "balance_threshold":
              if balance >= ach.get("threshold", 0):
                  unlocked = True
+        elif ach_type == "gamestat_threshold":
+            gid = ach.get("game_id")
+            gs_raw = await r.hgetall(key_gamestats(uid, gid))
+            val = safe_int(gs_raw.get(ach.get("stat_key"), 0))
+            if val >= ach.get("threshold", 0):
+                unlocked = True
 
         if not unlocked:
             return {"ok": False, "error": "Not unlocked"}

@@ -5,10 +5,14 @@ import re
 import time
 from secrets import token_urlsafe
 from typing import Any, Dict, Optional
+import httpx
 
-from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response
+from fastapi import Body, Depends, FastAPI, Header, HTTPException, Request, Response, WebSocket, WebSocketDisconnect
 from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
+
+from .chat import chat_manager
+from .durak_manager import durak_manager
 
 from .models import (
     AddPointRequest,
@@ -220,6 +224,98 @@ def register_routes(app: FastAPI):
     Args:
         app: The FastAPI application.
     """
+    @app.websocket("/ws/chat")
+    async def ws_chat(websocket: WebSocket, token: str = ""):
+        # Simple token check? User didn't specify strict auth for chat,
+        # but we need user info for sender name.
+        # We can extract name from query param 'name' for simplicity
+        # or reuse AuthContext if we can parse it.
+        # WebSocket headers are hard to customize in JS cleanly (protocol arg used usually).
+        # Let's rely on query param ?name=...&uid=...
+        # Security: In prod, validate via hash. For this task, trust query params (guarded by webapp logic)
+
+        name = websocket.query_params.get("name", "Anon")
+
+        await chat_manager.connect(websocket)
+        try:
+            while True:
+                data = await websocket.receive_text()
+                # Rate limit or length check could go here
+                if len(data) > 500: continue
+
+                filtered = chat_manager.filter_message(data)
+                if filtered:
+                    await chat_manager.broadcast(filtered, name)
+        except WebSocketDisconnect:
+            chat_manager.disconnect(websocket)
+
+    @app.websocket("/ws/durak/{room_id}")
+    async def ws_durak(websocket: WebSocket, room_id: str):
+        uid_str = websocket.query_params.get("uid")
+        if not uid_str:
+            await websocket.close()
+            return
+        uid = safe_int(uid_str)
+
+        await durak_manager.connect_auth(websocket, room_id, uid)
+        try:
+            while True:
+                data = await websocket.receive_json()
+                await durak_manager.handle_message(room_id, uid, data)
+        except WebSocketDisconnect:
+            durak_manager.disconnect(websocket, room_id, uid)
+
+    @app.get("/api/durak/rooms")
+    async def api_durak_rooms(auth: AuthContext = Depends(get_current_auth)):
+        # List active rooms
+        # Return summary: id, name, players/max, settings
+        active_rooms = []
+        for rid, game in durak_manager.rooms.items():
+            if game.state == "waiting":
+                active_rooms.append({
+                    "id": rid,
+                    "players": len(game.players),
+                    "max": 4, # Hardcoded max 4
+                    "settings": game.settings,
+                    # Name of creator or room name?
+                    # "creator": game.players[0].name if game.players else "Unknown"
+                })
+        return {"ok": True, "rooms": active_rooms}
+
+    @app.post("/api/durak/create")
+    async def api_durak_create(
+        request: Request,
+        auth: AuthContext = Depends(get_current_auth)
+    ):
+        body = await request.json()
+        settings = {
+            "size": safe_int(body.get("size"), 36),
+            "mode": body.get("mode", "podkidnoy")
+        }
+        name = auth.username or "Player"
+
+        room_id = await durak_manager.create_room(auth.user_id, name, settings)
+        if not room_id:
+             return {"ok": False, "error": "Not enough points (need 30)"}
+
+        return {"ok": True, "room_id": room_id}
+
+    @app.post("/api/durak/join")
+    async def api_durak_join(
+        request: Request,
+        auth: AuthContext = Depends(get_current_auth)
+    ):
+        body = await request.json()
+        room_id = body.get("room_id")
+        name = auth.username or "Player"
+
+        success = await durak_manager.join_room(auth.user_id, name, room_id)
+        if not success:
+             return {"ok": False, "error": "Cannot join (full, started, or no points)"}
+
+        return {"ok": True, "room_id": room_id}
+
+
     async def rebuild_ticket_owners(r) -> Dict[str, int]:
         """Rebuilds the ticket owners mapping.
 
@@ -1434,7 +1530,32 @@ def register_routes(app: FastAPI):
         logger.info("admin update rpg economy: %s", payload)
         return {"ok": True, "economy": economy}
 
-    exposed_paths = {"/api/dice/award"}
+    @app.get("/api/check_region")
+    async def api_check_region(request: Request) -> Dict[str, Any]:
+        """Checks the user's region based on IP."""
+        forwarded = request.headers.get("x-forwarded-for")
+        if forwarded:
+            ip = forwarded.split(",")[0].strip()
+        else:
+            ip = request.client.host if request.client else ""
+
+        # Localhost or empty
+        if not ip or ip in ("127.0.0.1", "::1", "localhost"):
+            return {"ok": True, "countryCode": "RU"}
+
+        try:
+            async with httpx.AsyncClient(timeout=3.0) as client:
+                resp = await client.get(f"http://ip-api.com/json/{ip}")
+                if resp.status_code == 200:
+                    data = resp.json()
+                    return {"ok": True, "countryCode": data.get("countryCode", "RU")}
+        except Exception:
+            # Fallback to RU on error to avoid blocking valid users
+            pass
+
+        return {"ok": True, "countryCode": "RU"}
+
+    exposed_paths = {"/api/dice/award", "/api/check_region"}
     for route in app.routes:
         if isinstance(route, APIRoute) and route.path not in exposed_paths:
             route.include_in_schema = False

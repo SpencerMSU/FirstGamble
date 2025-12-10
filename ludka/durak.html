@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Дурак Онлайн — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <script src="/webapp_guard.js"></script>
+  <style>
+    :root{
+      --bg:#0a0d12; --bg2:#0e1117; --panel:#0d1117;
+      --card:#111722; --card2:#0f1520;
+      --stroke:rgba(255,255,255,.06); --stroke2:rgba(100,160,255,.25);
+      --blue:#3b82f6; --blue2:#1d4ed8;
+      --text:#e6edf3; --muted:#98a2b3;
+      --shadow:0 0 0 1px var(--stroke),0 8px 30px rgba(0,0,0,.6);
+    }
+    html,body{height:100%;overflow:hidden;overscroll-behavior:none;touch-action:manipulation;}
+    *{box-sizing:border-box}
+    body{
+      margin:0;font-family:system-ui,-apple-system,sans-serif;color:var(--text);
+      background:linear-gradient(180deg,var(--bg2) 0%,var(--bg) 100%);
+      display:flex;flex-direction:column;padding:14px;
+    }
+    header{display:flex;align-items:center;justify-content:space-between;padding-bottom:14px;}
+    .back{
+      color:var(--text);text-decoration:none;font-weight:700;
+      background:rgba(255,255,255,0.05);padding:8px 12px;border-radius:10px;
+    }
+    h1{margin:0;font-size:22px;}
+
+    .lobby-list{flex:1;overflow-y:auto;display:flex;flex-direction:column;gap:10px;}
+    .room-card{
+      background:var(--card);border:1px solid var(--stroke);border-radius:12px;padding:14px;
+      display:flex;justify-content:space-between;align-items:center;
+    }
+    .room-info h3{margin:0 0 4px;font-size:16px;}
+    .room-info p{margin:0;font-size:12px;color:var(--muted);}
+    .join-btn{
+      background:var(--blue);color:white;border:none;padding:8px 16px;border-radius:8px;
+      font-weight:700;cursor:pointer;
+    }
+
+    .create-fab{
+      position:fixed;bottom:20px;right:20px;width:56px;height:56px;border-radius:28px;
+      background:var(--blue);color:white;font-size:32px;display:flex;align-items:center;
+      justify-content:center;box-shadow:0 4px 12px rgba(37,99,235,0.4);cursor:pointer;
+    }
+
+    /* Modal */
+    .modal-overlay{
+      position:fixed;inset:0;background:rgba(0,0,0,0.6);backdrop-filter:blur(4px);
+      display:flex;align-items:center;justify-content:center;z-index:99;
+      opacity:0;pointer-events:none;transition:0.2s;
+    }
+    .modal-overlay.open{opacity:1;pointer-events:auto;}
+    .modal{
+      background:var(--panel);border:1px solid var(--stroke);border-radius:20px;
+      padding:20px;width:90%;max-width:320px;box-shadow:var(--shadow);
+    }
+    .modal h2{margin:0 0 16px;font-size:18px;}
+    .form-group{margin-bottom:14px;}
+    .form-group label{display:block;margin-bottom:6px;font-size:13px;color:var(--muted);}
+    select{
+      width:100%;padding:10px;background:var(--bg);border:1px solid var(--stroke);
+      border-radius:10px;color:var(--text);font-size:15px;outline:none;
+    }
+    .actions{display:flex;gap:10px;margin-top:20px;}
+    .btn{flex:1;padding:12px;border-radius:10px;border:none;font-weight:700;cursor:pointer;}
+    .btn-primary{background:var(--blue);color:white;}
+    .btn-sec{background:rgba(255,255,255,0.1);color:var(--text);}
+  </style>
+</head>
+<body>
+  <header>
+    <a href="/ludka" class="back">← Назад</a>
+    <h1>Лобби Дурака</h1>
+    <div style="width:50px"></div>
+  </header>
+
+  <div class="lobby-list" id="list">
+    <!-- populated via JS -->
+    <div style="text-align:center;color:var(--muted);margin-top:40px;">Загрузка комнат...</div>
+  </div>
+
+  <div class="create-fab" id="fab">+</div>
+
+  <div class="modal-overlay" id="modal">
+    <div class="modal">
+      <h2>Создать комнату</h2>
+      <div class="form-group">
+        <label>Колода</label>
+        <select id="deckSize">
+          <option value="24">24 карты</option>
+          <option value="36" selected>36 карт</option>
+          <option value="52">52 карты</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Режим</label>
+        <select id="mode">
+          <option value="podkidnoy">Подкидной</option>
+          <option value="perevodnoy">Переводной</option>
+        </select>
+      </div>
+      <div style="font-size:12px;color:var(--muted);">Стоимость: 30 очков. Победа: +100.</div>
+      <div class="actions">
+        <button class="btn btn-sec" id="cancelBtn">Отмена</button>
+        <button class="btn btn-primary" id="createBtn">Создать</button>
+      </div>
+    </div>
+  </div>
+
+<script>
+  const tgInstance = initTelegramGuard();
+  const searchUid = new URLSearchParams(window.location.search).get("uid");
+  const list = document.getElementById('list');
+  const fab = document.getElementById('fab');
+  const modal = document.getElementById('modal');
+  const cancelBtn = document.getElementById('cancelBtn');
+  const createBtn = document.getElementById('createBtn');
+
+  async function loadRooms(){
+    try{
+      const res = await apiGet('/api/durak/rooms');
+      if(res.ok){
+        renderRooms(res.rooms);
+      }
+    }catch(e){
+      list.innerHTML = `<div style="text-align:center;color:var(--red);">Ошибка: ${e}</div>`;
+    }
+  }
+
+  function renderRooms(rooms){
+    list.innerHTML = '';
+    if(rooms.length === 0){
+      list.innerHTML = '<div style="text-align:center;color:var(--muted);margin-top:40px;">Нет активных комнат.<br>Создай первую!</div>';
+      return;
+    }
+    rooms.forEach(r => {
+      const el = document.createElement('div');
+      el.className = 'room-card';
+      el.innerHTML = `
+        <div class="room-info">
+          <h3>Комната #${r.id}</h3>
+          <p>${r.settings.size} карт, ${r.settings.mode === 'perevodnoy' ? 'Переводной' : 'Подкидной'}</p>
+          <p>${r.players}/${r.max} игроков</p>
+        </div>
+        <button class="join-btn" onclick="joinRoom('${r.id}')">Войти</button>
+      `;
+      list.appendChild(el);
+    });
+  }
+
+  window.joinRoom = async (rid) => {
+    if(!confirm("Войти за 30 очков?")) return;
+    try{
+      const res = await apiPost('/api/durak/join', {room_id: rid});
+      if(res.ok){
+        window.location.href = `/ludka/durak_room.html?room=${rid}`;
+      } else {
+        alert(res.error || "Ошибка входа");
+      }
+    }catch(e){alert(e);}
+  };
+
+  createBtn.onclick = async () => {
+    const size = document.getElementById('deckSize').value;
+    const mode = document.getElementById('mode').value;
+    try{
+      const res = await apiPost('/api/durak/create', {size, mode});
+      if(res.ok){
+        window.location.href = `/ludka/durak_room.html?room=${res.room_id}`;
+      } else {
+        alert(res.error || "Не удалось создать (мало очков?)");
+      }
+    }catch(e){alert(e);}
+  };
+
+  fab.onclick = () => modal.classList.add('open');
+  cancelBtn.onclick = () => modal.classList.remove('open');
+
+  // Poll rooms every 5s
+  loadRooms();
+  setInterval(loadRooms, 5000);
+
+  (async()=>{
+     if(!tgInstance) return;
+     await ensureNicknameOrRedirect();
+  })();
+</script>
+</body>
+</html>

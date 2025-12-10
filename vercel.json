@@ -91,6 +91,18 @@
     {
       "source": "/rpg-shop",
       "destination": "/minigames/rpg_shop.html"
+    },
+    {
+      "source": "/durak",
+      "destination": "/ludka/durak.html"
+    },
+    {
+      "source": "/stack",
+      "destination": "/minigames/stack.html"
+    },
+    {
+      "source": "/doodle",
+      "destination": "/minigames/doodle.html"
     }
   ]
 }

@@ -1546,10 +1546,10 @@ def register_routes(app: FastAPI):
         try:
             timeout = aiohttp.ClientTimeout(total=3.0)
             async with aiohttp.ClientSession(timeout=timeout) as session:
-                async with session.get(f"http://ip-api.com/json/{ip}") as resp:
+                async with session.get(f"https://api.country.is/{ip}") as resp:
                     if resp.status == 200:
                         data = await resp.json()
-                        return {"ok": True, "countryCode": data.get("countryCode", "RU")}
+                        return {"ok": True, "countryCode": data.get("country", "RU")}
         except Exception:
             # Fallback to RU on error to avoid blocking valid users
             pass

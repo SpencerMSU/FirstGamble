@@ -65,6 +65,10 @@
       "destination": "/community/community.html"
     },
     {
+      "source": "/chat",
+      "destination": "/community/chat.html"
+    },
+    {
       "source": "/admin",
       "destination": "/admin.html"
     },
@@ -91,10 +95,6 @@
     {
       "source": "/rpg-shop",
       "destination": "/minigames/rpg_shop.html"
-    },
-    {
-      "source": "/durak",
-      "destination": "/ludka/durak.html"
     },
     {
       "source": "/stack",

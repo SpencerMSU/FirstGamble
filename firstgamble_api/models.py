@@ -228,3 +228,12 @@ class AdminGrantResourcesRequest(BaseModel):
     nickname: Optional[str] = None
     resource: str
     amount: int
+
+
+class AchievementClaimRequest(BaseModel):
+    """Request model for claiming an achievement reward.
+
+    Attributes:
+        achievement_id: The ID of the achievement to claim.
+    """
+    achievement_id: str

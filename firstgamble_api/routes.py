@@ -12,7 +12,7 @@ from fastapi.responses import JSONResponse
 from fastapi.routing import APIRoute
 
 from .chat import chat_manager
-from .durak_manager import durak_manager
+from .achievements_config import ACHIEVEMENTS
 
 from .models import (
     AddPointRequest,
@@ -34,6 +34,7 @@ from .models import (
     RpgConvertRequest,
     RpgGatherRequest,
     UpdateProfileRequest,
+    AchievementClaimRequest,
 )
 from .config import (
     ADMIN_PASS,
@@ -58,6 +59,7 @@ from .redis_utils import (
     key_gamestats,
     key_profile,
     key_stats,
+    key_achievements,
     safe_int,
     sanitize_redis_string,
     find_user_by_game_nick,
@@ -248,73 +250,6 @@ def register_routes(app: FastAPI):
                     await chat_manager.broadcast(filtered, name)
         except WebSocketDisconnect:
             chat_manager.disconnect(websocket)
-
-    @app.websocket("/ws/durak/{room_id}")
-    async def ws_durak(websocket: WebSocket, room_id: str):
-        uid_str = websocket.query_params.get("uid")
-        if not uid_str:
-            await websocket.close()
-            return
-        uid = safe_int(uid_str)
-
-        await durak_manager.connect_auth(websocket, room_id, uid)
-        try:
-            while True:
-                data = await websocket.receive_json()
-                await durak_manager.handle_message(room_id, uid, data)
-        except WebSocketDisconnect:
-            durak_manager.disconnect(websocket, room_id, uid)
-
-    @app.get("/api/durak/rooms")
-    async def api_durak_rooms(auth: AuthContext = Depends(get_current_auth)):
-        # List active rooms
-        # Return summary: id, name, players/max, settings
-        active_rooms = []
-        for rid, game in durak_manager.rooms.items():
-            if game.state == "waiting":
-                active_rooms.append({
-                    "id": rid,
-                    "players": len(game.players),
-                    "max": 4, # Hardcoded max 4
-                    "settings": game.settings,
-                    # Name of creator or room name?
-                    # "creator": game.players[0].name if game.players else "Unknown"
-                })
-        return {"ok": True, "rooms": active_rooms}
-
-    @app.post("/api/durak/create")
-    async def api_durak_create(
-        request: Request,
-        auth: AuthContext = Depends(get_current_auth)
-    ):
-        body = await request.json()
-        settings = {
-            "size": safe_int(body.get("size"), 36),
-            "mode": body.get("mode", "podkidnoy")
-        }
-        name = auth.username or "Player"
-
-        room_id = await durak_manager.create_room(auth.user_id, name, settings)
-        if not room_id:
-             return {"ok": False, "error": "Not enough points (need 30)"}
-
-        return {"ok": True, "room_id": room_id}
-
-    @app.post("/api/durak/join")
-    async def api_durak_join(
-        request: Request,
-        auth: AuthContext = Depends(get_current_auth)
-    ):
-        body = await request.json()
-        room_id = body.get("room_id")
-        name = auth.username or "Player"
-
-        success = await durak_manager.join_room(auth.user_id, name, room_id)
-        if not success:
-             return {"ok": False, "error": "Cannot join (full, started, or no points)"}
-
-        return {"ok": True, "room_id": room_id}
-
 
     async def rebuild_ticket_owners(r) -> Dict[str, int]:
         """Rebuilds the ticket owners mapping.
@@ -1529,6 +1464,101 @@ def register_routes(app: FastAPI):
         economy = await save_rpg_economy(payload)
         logger.info("admin update rpg economy: %s", payload)
         return {"ok": True, "economy": economy}
+
+    @app.get("/api/achievements")
+    async def api_achievements(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+        """Gets the user's achievements status."""
+        uid = auth.user_id
+        r = await get_redis()
+        await ensure_user(uid)
+
+        # Get claimed set
+        claimed_ids = await r.smembers(key_achievements(uid))
+
+        # Get stats for calculations
+        stats_raw = await r.hgetall(key_stats(uid))
+        stats = {k: safe_int(v) for k, v in stats_raw.items()}
+        balance = await get_balance(uid)
+
+        result = []
+        for ach_id, ach in ACHIEVEMENTS.items():
+            is_claimed = ach_id in claimed_ids
+            is_unlocked = False
+            progress = 0
+            target = ach.get("threshold", 0)
+
+            if ach.get("type") == "stat_threshold":
+                stat_key = ach.get("stat_key")
+                val = stats.get(stat_key, 0)
+                progress = val
+                if val >= target:
+                    is_unlocked = True
+            elif ach.get("type") == "balance_threshold":
+                progress = balance
+                if balance >= target:
+                    is_unlocked = True
+
+            result.append({
+                "id": ach_id,
+                "name": ach["name"],
+                "description": ach["description"],
+                "reward": ach["reward"],
+                "is_claimed": is_claimed,
+                "is_unlocked": is_unlocked,
+                "progress": progress,
+                "target": target
+            })
+
+        return {"ok": True, "items": result}
+
+    @app.post("/api/achievements/claim")
+    async def api_achievements_claim(
+        body: AchievementClaimRequest,
+        auth: AuthContext = Depends(get_current_auth)
+    ) -> Dict[str, Any]:
+        """Claims an achievement reward."""
+        uid = auth.user_id
+        ach_id = body.achievement_id
+
+        if ach_id not in ACHIEVEMENTS:
+            return {"ok": False, "error": "Unknown achievement"}
+
+        ach = ACHIEVEMENTS[ach_id]
+
+        r = await get_redis()
+        await ensure_user(uid)
+
+        if await r.sismember(key_achievements(uid), ach_id):
+            return {"ok": False, "error": "Already claimed"}
+
+        # Verify condition
+        stats_raw = await r.hgetall(key_stats(uid))
+        stats = {k: safe_int(v) for k, v in stats_raw.items()}
+        balance = await get_balance(uid)
+
+        unlocked = False
+        if ach.get("type") == "stat_threshold":
+            val = stats.get(ach.get("stat_key"), 0)
+            if val >= ach.get("threshold", 0):
+                unlocked = True
+        elif ach.get("type") == "balance_threshold":
+             if balance >= ach.get("threshold", 0):
+                 unlocked = True
+
+        if not unlocked:
+            return {"ok": False, "error": "Not unlocked"}
+
+        reward = ach.get("reward", 0)
+
+        # Optimistic claiming: mark as claimed first to prevent double-claim during processing
+        await r.sadd(key_achievements(uid), ach_id)
+
+        # Award points using the standard function which handles clamping and leaderboard updates
+        new_balance = await add_points(uid, reward, "achievement")
+
+        logger.info(f"User {uid} claimed achievement {ach_id} (+{reward} points)")
+
+        return {"ok": True, "balance": new_balance, "claimed": ach_id}
 
     @app.get("/api/check_region")
     async def api_check_region(request: Request) -> Dict[str, Any]:

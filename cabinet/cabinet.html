@@ -126,6 +126,15 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
 .profile-action {display:inline-flex;align-items:center;gap:8px;padding:8px 10px;border-radius:10px;border:1px dashed var(--stroke2);background:linear-gradient(180deg,var(--card),var(--card2));font-weight:800;font-size:12px;color:var(--text);cursor:pointer;max-width:fit-content;transition:.15s;}
 .profile-action:hover{border-style:solid;}
 .profile-subtext{font-size:12px;color:var(--muted);}
+.ach-grid{display:grid;grid-template-columns:1fr;gap:10px;}
+.ach-item{background:linear-gradient(180deg,var(--card),var(--card2));border:1px solid var(--stroke);border-radius:12px;padding:12px;display:flex;align-items:center;justify-content:space-between;gap:12px;}
+.ach-info{flex:1;}
+.ach-info h4{margin:0;font-size:14px;font-weight:900;}
+.ach-info p{margin:4px 0 0;font-size:12px;color:var(--muted);}
+.ach-status{font-size:12px;font-weight:800;padding:6px 10px;border-radius:10px;border:1px solid var(--stroke2);background:var(--panel);}
+.ach-status.locked{color:var(--muted);border-style:dashed;}
+.ach-status.claimable{background:linear-gradient(180deg,var(--blue),var(--blue2));color:white;cursor:pointer;box-shadow:0 4px 12px rgba(37,99,235,.4);}
+.ach-status.claimed{color:var(--green);border-color:var(--green);background:rgba(34,197,94,0.1);}
 </style>
 </head>
 <body>
@@ -139,26 +148,42 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
   </header>
 
-  <section class="section">
-    <div class="inline-row">
-      <div class="pill">Telegram ID: <span id="tgid">—</span></div>
-      <div class="pill">Билетов: <span id="ticketCount">0</span></div>
-    </div>
-    <div class="profile-block">
-      <div>Никнейм: <b id="profileName">—</b></div>
-      <div class="muted">Telegram: <span id="profileUsername">—</span></div>
-      <button class="profile-action" id="gameNickBtn" type="button">Игровой Nick_Name: <span id="gameNickValue">добавить</span></button>
-      <div class="profile-subtext">Нужен для тесной интеграции игры и бота.</div>
-      <div class="muted">ID: <span id="profileTgId">—</span></div>
-    </div>
-  </section>
+  <div class="tabs" style="margin-bottom:12px;justify-content:center;">
+    <div class="tab active" data-tab="profile">Профиль</div>
+    <div class="tab" data-tab="achievements">Достижения</div>
+  </div>
 
-  <section class="section">
-    <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Твои билеты</h3>
-    <div id="ticketGrid" class="ticket-grid"></div>
-    <div id="emptyNote" class="note" style="margin-top:8px;">Билетов пока нет. Купи первый!</div>
-    <a class="bigbtn" style="margin-top:12px;" href="/shop">Перейти в магазин</a>
-  </section>
+  <div id="tab-profile">
+    <section class="section">
+      <div class="inline-row">
+        <div class="pill">Telegram ID: <span id="tgid">—</span></div>
+        <div class="pill">Билетов: <span id="ticketCount">0</span></div>
+      </div>
+      <div class="profile-block">
+        <div>Никнейм: <b id="profileName">—</b></div>
+        <div class="muted">Telegram: <span id="profileUsername">—</span></div>
+        <button class="profile-action" id="gameNickBtn" type="button">Игровой Nick_Name: <span id="gameNickValue">добавить</span></button>
+        <div class="profile-subtext">Нужен для тесной интеграции игры и бота.</div>
+        <div class="muted">ID: <span id="profileTgId">—</span></div>
+      </div>
+    </section>
+
+    <section class="section">
+      <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Твои билеты</h3>
+      <div id="ticketGrid" class="ticket-grid"></div>
+      <div id="emptyNote" class="note" style="margin-top:8px;">Билетов пока нет. Купи первый!</div>
+      <a class="bigbtn" style="margin-top:12px;" href="/shop">Перейти в магазин</a>
+    </section>
+  </div>
+
+  <div id="tab-achievements" style="display:none;">
+    <section class="section">
+      <h3 style="margin:0 0 8px;font-size:16px;font-weight:900;">Достижения</h3>
+      <div id="achievementsList" class="ach-grid">
+         <div style="text-align:center;color:var(--muted);padding:20px;">Загрузка...</div>
+      </div>
+    </section>
+  </div>
 </div>
 
 <script>
@@ -287,6 +312,82 @@ async function loadProfile(){
 })();
 
 document.getElementById("gameNickBtn")?.addEventListener("click", promptGameNick);
+
+// Tabs
+const tabs = document.querySelectorAll('.tab');
+tabs.forEach(t => {
+  t.onclick = () => {
+    tabs.forEach(x => x.classList.remove('active'));
+    t.classList.add('active');
+    const target = t.dataset.tab;
+    document.getElementById('tab-profile').style.display = target === 'profile' ? 'block' : 'none';
+    document.getElementById('tab-achievements').style.display = target === 'achievements' ? 'block' : 'none';
+    if(target === 'achievements') loadAchievements();
+  };
+});
+
+async function loadAchievements(){
+  const list = document.getElementById('achievementsList');
+  try{
+    const res = await apiGet('/api/achievements');
+    if(!res.ok){
+      list.innerHTML = `<div style="color:var(--red);">Ошибка загрузки</div>`;
+      return;
+    }
+    renderAchievements(res.items);
+  }catch(e){
+    list.innerHTML = `<div style="color:var(--red);">Ошибка сети</div>`;
+  }
+}
+
+function renderAchievements(items){
+  const list = document.getElementById('achievementsList');
+  list.innerHTML = '';
+  if(!items || !items.length){
+    list.innerHTML = `<div style="text-align:center;color:var(--muted);">Нет достижений</div>`;
+    return;
+  }
+
+  items.forEach(item => {
+    const el = document.createElement('div');
+    el.className = 'ach-item';
+
+    let btnHtml = '';
+    if(item.is_claimed){
+      btnHtml = `<div class="ach-status claimed">Получено</div>`;
+    } else if(item.is_unlocked){
+      btnHtml = `<div class="ach-status claimable" onclick="claimAchievement('${item.id}')">Забрать ${item.reward}</div>`;
+    } else {
+      const p = Math.min(100, Math.round((item.progress / item.target) * 100)) || 0;
+      btnHtml = `<div class="ach-status locked">${p}%</div>`;
+    }
+
+    el.innerHTML = `
+      <div class="ach-info">
+        <h4>${item.name}</h4>
+        <p>${item.description}</p>
+      </div>
+      ${btnHtml}
+    `;
+    list.appendChild(el);
+  });
+}
+
+window.claimAchievement = async (id) => {
+  try{
+    const res = await apiPost('/api/achievements/claim', {achievement_id: id});
+    if(res.ok){
+       setBalance(res.balance);
+       // Refresh list to show claimed status
+       loadAchievements();
+       tg?.showPopup?.({message: `Награда получена! +${res.reward || ''}`});
+    } else {
+       tg?.showAlert?.(res.error || "Ошибка получения");
+    }
+  }catch(e){
+    tg?.showAlert?.("Ошибка сети");
+  }
+};
 </script>
 </body>
 </html>

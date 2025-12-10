@@ -107,6 +107,18 @@ def key_gamestats(user_id: int, game: str) -> str:
     return f"user:{user_id}:game:{game}"  # hash: wins, losses, draws, games_total
 
 
+def key_achievements(user_id: int) -> str:
+    """Gets the Redis key for a user's claimed achievements.
+
+    Args:
+        user_id: The user's unique identifier.
+
+    Returns:
+        The Redis key (Set) for the user's claimed achievements.
+    """
+    return f"user:{user_id}:achievements"
+
+
 def key_admin_session(token: str) -> str:
     """Gets the Redis key for an admin session.
 

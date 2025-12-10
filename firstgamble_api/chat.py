@@ -3,6 +3,8 @@ import html
 import json
 import asyncio
 import logging
+import time
+from uuid import uuid4
 from typing import List, Set
 from fastapi import WebSocket
 
@@ -28,6 +30,7 @@ class ChatManager:
         ]
         self.pubsub_task = None
         self.channel_name = "chat:global"
+        self.history_key = "chat:history"
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -49,12 +52,34 @@ class ChatManager:
         Publishes the message to Redis.
         The listener task will pick it up and call broadcast_local.
         """
-        payload = {"type": "message", "sender": sender, "text": message}
+        payload = {
+            "type": "message",
+            "id": str(uuid4()),
+            "timestamp": int(time.time()),
+            "sender": sender,
+            "text": message
+        }
+        json_payload = json.dumps(payload)
         try:
             r = await get_redis()
-            await r.publish(self.channel_name, json.dumps(payload))
+            # Store history (keep last 50)
+            await r.lpush(self.history_key, json_payload)
+            await r.ltrim(self.history_key, 0, 49)
+
+            await r.publish(self.channel_name, json_payload)
         except Exception as e:
             logger.error(f"Error publishing chat message: {e}")
+
+    async def get_history(self) -> List[dict]:
+        """Returns the recent chat history."""
+        try:
+            r = await get_redis()
+            raw = await r.lrange(self.history_key, 0, -1)
+            # Stored with lpush (index 0 is newest), so we reverse to have oldest first
+            return [json.loads(x) for x in reversed(raw)]
+        except Exception as e:
+            logger.error(f"Error getting chat history: {e}")
+            return []
 
     async def broadcast_local(self, payload: dict):
         """

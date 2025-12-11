@@ -237,3 +237,14 @@ class AchievementClaimRequest(BaseModel):
         achievement_id: The ID of the achievement to claim.
     """
     achievement_id: str
+
+
+class ChatSendRequest(BaseModel):
+    """Request model for sending a chat message.
+
+    Attributes:
+        text: The content of the message.
+        sender_name: Optional sender name (used if not authenticated or overridden).
+    """
+    text: str
+    sender_name: Optional[str] = None

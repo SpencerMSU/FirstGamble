@@ -55,6 +55,7 @@
       background:var(--blue);color:white;border:none;border-radius:999px;width:40px;height:40px;
       display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;
     }
+    button:disabled{opacity:0.6;cursor:not-allowed;}
     @keyframes pop{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
   </style>
 </head>
@@ -78,13 +79,12 @@
 
   <script>
     const tgInstance = initTelegramGuard();
-    const searchUid = new URLSearchParams(window.location.search).get('uid');
-
-    let ws;
     const chat = document.getElementById('chat');
     const inp = document.getElementById('inp');
     const sendBtn = document.getElementById('send');
     let myName = "Player";
+    let displayedMessages = new Set();
+    let pollInterval = null;
 
     async function init(){
       const prof = await fetchProfile();
@@ -92,27 +92,32 @@
          myName = prof.username || prof.name || "Anon";
       }
 
-      // Use API_BASE to determine WebSocket URL
-      // If API_BASE is absolute (https://api...), replace protocol
-      let wsBase = "wss://api.firstgamble.ru";
-      if (typeof API_BASE !== 'undefined' && API_BASE) {
-         wsBase = API_BASE.replace(/^http/, 'ws');
-      }
+      await loadHistory();
+      pollInterval = setInterval(loadHistory, 2000);
+    }
 
-      const wsUrl = `${wsBase}/ws/chat?name=${encodeURIComponent(myName)}`;
+    async function loadHistory(){
+        try {
+            const res = await apiGet('/api/chat/history');
+            if (res && res.ok && res.messages) {
+                // Determine if we are at bottom to auto-scroll
+                const isAtBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 50;
 
-      ws = new WebSocket(wsUrl);
+                res.messages.forEach(msg => {
+                    const key = msg.id || JSON.stringify(msg);
+                    if (!displayedMessages.has(key)) {
+                        displayedMessages.add(key);
+                        addMessage(msg.sender, msg.text);
+                    }
+                });
 
-      ws.onmessage = (event) => {
-        const data = JSON.parse(event.data);
-        if(data.type === 'message'){
-          addMessage(data.sender, data.text);
+                if (isAtBottom) {
+                    chat.scrollTop = chat.scrollHeight;
+                }
+            }
+        } catch (e) {
+            console.error('Chat poll error', e);
         }
-      };
-
-      ws.onclose = () => {
-        setTimeout(init, 3000); // reconnect
-      };
     }
 
     function addMessage(sender, text){
@@ -128,19 +133,38 @@
       }
 
       const t = document.createElement('div');
-      t.textContent = text; // Content is already escaped by backend but textContent double escapes?
-      // Backend returned clean text. textContent renders it as text. Correct.
+      t.textContent = text;
       el.appendChild(t);
 
       chat.appendChild(el);
-      chat.scrollTop = chat.scrollHeight;
     }
 
-    function send(){
+    async function send(){
       const txt = inp.value.trim();
-      if(!txt || !ws) return;
-      ws.send(txt);
-      inp.value = '';
+      if(!txt) return;
+
+      inp.disabled = true;
+      sendBtn.disabled = true;
+
+      try {
+        const res = await apiPost('/api/chat/send', { text: txt });
+        if(res && res.ok){
+            inp.value = '';
+            // Immediately fetch history to show own message faster?
+            // Or just append locally if we trust backend?
+            // Let's poll to be consistent.
+            setTimeout(loadHistory, 100);
+        } else {
+            if(res.error === 'filtered') alert('Сообщение содержит запрещенные слова.');
+            else alert('Ошибка отправки: ' + (res.error || 'Unknown'));
+        }
+      } catch (e) {
+          alert('Ошибка соединения');
+      } finally {
+          inp.disabled = false;
+          sendBtn.disabled = false;
+          inp.focus();
+      }
     }
 
     sendBtn.addEventListener('click', send);

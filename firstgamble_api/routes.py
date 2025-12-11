@@ -35,6 +35,7 @@ from .models import (
     RpgGatherRequest,
     UpdateProfileRequest,
     AchievementClaimRequest,
+    ChatSendRequest,
 )
 from .config import (
     ADMIN_PASS,
@@ -226,30 +227,53 @@ def register_routes(app: FastAPI):
     Args:
         app: The FastAPI application.
     """
-    @app.websocket("/ws/chat")
-    async def ws_chat(websocket: WebSocket, token: str = ""):
-        # Simple token check? User didn't specify strict auth for chat,
-        # but we need user info for sender name.
-        # We can extract name from query param 'name' for simplicity
-        # or reuse AuthContext if we can parse it.
-        # WebSocket headers are hard to customize in JS cleanly (protocol arg used usually).
-        # Let's rely on query param ?name=...&uid=...
-        # Security: In prod, validate via hash. For this task, trust query params (guarded by webapp logic)
+    # WebSocket route removed as it is not supported by current infrastructure
 
-        name = websocket.query_params.get("name", "Anon")
+    @app.get("/api/chat/history")
+    async def api_chat_history(auth: AuthContext = Depends(get_current_auth)) -> Dict[str, Any]:
+        """Gets the chat history."""
+        # Optional: strictly require webapp/auth, or allow everyone.
+        # Chat is public within the app.
+        msgs = await chat_manager.get_history()
+        return {"ok": True, "messages": msgs}
 
-        await chat_manager.connect(websocket)
-        try:
-            while True:
-                data = await websocket.receive_text()
-                # Rate limit or length check could go here
-                if len(data) > 500: continue
+    @app.post("/api/chat/send")
+    async def api_chat_send(
+        body: ChatSendRequest,
+        auth: AuthContext = Depends(get_current_auth)
+    ) -> Dict[str, Any]:
+        """Sends a message to the chat via HTTP."""
+        if not auth.from_telegram:
+            # Maybe allow if we have a way to verify identity?
+            # For now strict check to avoid spam from outside.
+            raise HTTPException(status_code=403, detail="webapp only")
 
-                filtered = chat_manager.filter_message(data)
-                if filtered:
-                    await chat_manager.broadcast(filtered, name)
-        except WebSocketDisconnect:
-            chat_manager.disconnect(websocket)
+        # Get name from profile to be consistent with profile updates
+        r = await get_redis()
+        profile = await r.hgetall(key_profile(auth.user_id))
+        sender_name = profile.get("username") or profile.get("name") or "Anon"
+
+        if body.sender_name:
+             # Ideally we ignore client-sent name if authenticated to prevent impersonation,
+             # but keeping logic similar to existing:
+             pass
+
+        # Enforce name from profile for authenticated users
+        # sender_name is already derived above.
+
+        text = body.text.strip()
+        if not text:
+            return {"ok": False, "error": "empty message"}
+
+        if len(text) > 500:
+             return {"ok": False, "error": "too long"}
+
+        filtered = chat_manager.filter_message(text)
+        if filtered:
+            await chat_manager.broadcast(filtered, sender_name)
+            return {"ok": True}
+        else:
+            return {"ok": False, "error": "filtered"}
 
     async def rebuild_ticket_owners(r) -> Dict[str, int]:
         """Rebuilds the ticket owners mapping.

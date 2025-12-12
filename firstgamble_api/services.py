@@ -19,6 +19,7 @@ from .redis_utils import (
     key_profile,
     key_stats,
     safe_int,
+    key_ban,
 )
 
 RPG_RESOURCES = [
@@ -1141,3 +1142,81 @@ def build_auth_context_from_headers(
         return AuthContext(user_id=uid_val, from_telegram=False, from_conserve=True)
 
     raise ValueError("unauthorized")
+
+
+async def check_ban(user_id: int):
+    """Checks if a user is banned.
+
+    Args:
+        user_id: The user's unique identifier.
+
+    Raises:
+        ValueError: If the user is banned (with details).
+    """
+    r = await get_redis()
+    ban_data_raw = await r.get(key_ban(user_id))
+    if not ban_data_raw:
+        return
+
+    try:
+        ban_info = json.loads(ban_data_raw)
+    except Exception:
+        return
+
+    until = ban_info.get("until")
+    if until == "forever":
+        # Always banned
+        pass
+    else:
+        # Check expiration
+        exp = safe_int(until)
+        if exp < time.time():
+            # Expired
+            await r.delete(key_ban(user_id))
+            return
+
+    # User is banned
+    reason = ban_info.get("reason", "No reason")
+    raise ValueError(f"banned: {reason}|{until}")
+
+
+async def ban_user(user_id: int, duration_days: int, reason: str = None) -> Dict[str, Any]:
+    """Bans a user.
+
+    Args:
+        user_id: The user's unique identifier.
+        duration_days: Duration in days. -1 for forever.
+        reason: Optional reason.
+
+    Returns:
+        The ban info dictionary.
+    """
+    r = await get_redis()
+
+    if duration_days == 0:
+        await r.delete(key_ban(user_id))
+        return {"banned": False}
+
+    until = "forever"
+    if duration_days > 0:
+        until = int(time.time() + duration_days * 86400)
+
+    ban_info = {
+        "user_id": user_id,
+        "until": until,
+        "reason": reason or "Admin ban",
+        "banned_at": int(time.time()),
+    }
+
+    await r.set(key_ban(user_id), json.dumps(ban_info))
+    return {"banned": True, "info": ban_info}
+
+
+async def unban_user(user_id: int):
+    """Unbans a user.
+
+    Args:
+        user_id: The user's unique identifier.
+    """
+    r = await get_redis()
+    await r.delete(key_ban(user_id))

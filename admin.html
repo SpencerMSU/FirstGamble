@@ -91,6 +91,29 @@
         <div id="balanceStatus" class="muted" style="margin-top:8px;"></div>
       </div>
 
+      <div class="card" style="margin-top:12px;border-color:var(--danger);">
+        <h2 style="color:var(--danger);">Блокировка игроков</h2>
+        <div class="muted">Бан закрывает доступ к WebApp (проверяется при каждом запросе).</div>
+        <div class="row" style="margin-top:8px;gap:8px;align-items:flex-start;">
+           <div style="display:flex;flex-direction:column;gap:6px;">
+             <input id="banUid" placeholder="ID или Никнейм" style="min-width:200px;">
+             <input id="banReason" placeholder="Причина бана" style="min-width:200px;">
+           </div>
+           <div style="display:flex;flex-direction:column;gap:6px;">
+             <select id="banDuration" style="min-width:140px;">
+               <option value="1">1 день</option>
+               <option value="3">3 дня</option>
+               <option value="7">7 дней</option>
+               <option value="30">30 дней</option>
+               <option value="-1">Навсегда</option>
+               <option value="0">Разбанить</option>
+             </select>
+             <button id="banBtn" class="danger">Применить</button>
+           </div>
+        </div>
+        <div id="banStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
+
       <div class="card" style="margin-top:12px;">
         <h2>Ресурсы RPG</h2>
         <div class="row" style="margin-top:8px;gap:8px;">
@@ -360,6 +383,40 @@
       qs('balanceStatus').textContent = `Новый баланс: ${res.balance}`;
     }, (e)=>{
       qs('balanceStatus').textContent = 'Не удалось сохранить: '+(e?.message||e);
+    }));
+
+    qs('banBtn').addEventListener('click', ()=>runAction(qs('banBtn'), async ()=>{
+        const target = qs('banUid').value.trim();
+        const reason = qs('banReason').value.trim();
+        const duration = Number(qs('banDuration').value);
+        qs('banStatus').textContent = '';
+
+        if(!target){
+            qs('banStatus').textContent = 'Введите ID или никнейм';
+            return;
+        }
+
+        const payload = {
+            duration_days: duration,
+            reason: reason || undefined
+        };
+
+        // Check if target is int (ID) or string (nickname)
+        if(/^\d+$/.test(target)){
+            payload.user_id = Number(target);
+        } else {
+            payload.nickname = target;
+        }
+
+        const res = await api('/api/admin/users/ban', 'POST', payload);
+        if(res.banned === false){
+            qs('banStatus').textContent = `Пользователь разблокирован.`;
+        } else {
+            const until = res.info.until === 'forever' ? 'Навсегда' : new Date(res.info.until*1000).toLocaleString();
+            qs('banStatus').textContent = `Пользователь заблокирован. Срок: ${until}`;
+        }
+    }, (e)=>{
+        qs('banStatus').textContent = 'Ошибка: ' + (e?.message||e);
     }));
 
     const resSelect = qs('resType');

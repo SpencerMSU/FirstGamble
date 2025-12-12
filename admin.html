@@ -114,6 +114,16 @@
         <div id="banStatus" class="muted" style="margin-top:8px;"></div>
       </div>
 
+      <div class="card" style="margin-top:12px;border-color:var(--blue);">
+        <h2 style="color:var(--blue);">Чат: Закрепленное сообщение</h2>
+        <div class="row" style="margin-top:8px;gap:8px;">
+          <input id="pinText" placeholder="Текст сообщения" style="flex:1;">
+          <button id="pinBtn">Закрепить</button>
+          <button id="unpinBtn" class="danger">Убрать</button>
+        </div>
+        <div id="pinStatus" class="muted" style="margin-top:8px;"></div>
+      </div>
+
       <div class="card" style="margin-top:12px;">
         <h2>Ресурсы RPG</h2>
         <div class="row" style="margin-top:8px;gap:8px;">
@@ -418,6 +428,25 @@
     }, (e)=>{
         qs('banStatus').textContent = 'Ошибка: ' + (e?.message||e);
     }));
+
+    qs('pinBtn').addEventListener('click', ()=>runAction(qs('pinBtn'), async ()=>{
+        const text = qs('pinText').value.trim();
+        qs('pinStatus').textContent = '';
+        if(!text){
+            qs('pinStatus').textContent = 'Введите текст.';
+            return;
+        }
+        await api('/api/admin/chat/pin', 'POST', {text});
+        qs('pinStatus').textContent = 'Сообщение закреплено.';
+    }, (e)=>qs('pinStatus').textContent='Ошибка: '+(e?.message||e)));
+
+    qs('unpinBtn').addEventListener('click', ()=>runAction(qs('unpinBtn'), async ()=>{
+        if(!confirm('Убрать закрепленное сообщение?')) return;
+        qs('pinStatus').textContent = '';
+        await api('/api/admin/chat/pin', 'DELETE');
+        qs('pinStatus').textContent = 'Закрепленное сообщение удалено.';
+        qs('pinText').value = '';
+    }, (e)=>qs('pinStatus').textContent='Ошибка: '+(e?.message||e)));
 
     const resSelect = qs('resType');
     rpgResources.forEach(r=>{

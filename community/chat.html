@@ -61,6 +61,30 @@
     }
     button:disabled{opacity:0.6;cursor:not-allowed;}
     @keyframes pop{from{transform:scale(0.9);opacity:0;}to{transform:scale(1);opacity:1;}}
+
+    .pinned-msg {
+        background: var(--card2);
+        border-bottom: 1px solid var(--stroke);
+        padding: 8px 12px;
+        font-size: 13px;
+        color: var(--text);
+        display: none; /* hidden by default */
+        align-items: center;
+        gap: 8px;
+        position: sticky;
+        top: 0;
+        z-index: 10;
+    }
+    .pinned-icon {
+        font-size: 16px;
+    }
+    .pinned-content {
+        flex: 1;
+        white-space: nowrap;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        font-weight: 500;
+    }
   </style>
 </head>
 <body>
@@ -69,6 +93,11 @@
     <div style="font-weight:800;">Общий чат</div>
     <div style="width:50px"></div>
   </header>
+
+  <div class="pinned-msg" id="pinnedMsg">
+      <div class="pinned-icon">📌</div>
+      <div class="pinned-content" id="pinnedText"></div>
+  </div>
 
   <div class="chat-area" id="chat">
     <div style="text-align:center;color:var(--muted);font-size:12px;margin-top:20px;">
@@ -87,6 +116,8 @@
     const chat = document.getElementById('chat');
     const inp = document.getElementById('inp');
     const sendBtn = document.getElementById('send');
+    const pinnedEl = document.getElementById('pinnedMsg');
+    const pinnedTextEl = document.getElementById('pinnedText');
     let myName = "Player";
     let displayedMessages = new Set();
     let pollInterval = null;
@@ -105,20 +136,29 @@
     async function loadHistory(){
         try {
             const res = await apiGet('/api/chat/history');
-            if (res && res.ok && res.messages) {
-                // Determine if we are at bottom to auto-scroll
-                const isAtBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 50;
+            if (res && res.ok) {
+                if (res.pinned) {
+                    pinnedTextEl.textContent = res.pinned;
+                    pinnedEl.style.display = 'flex';
+                } else {
+                    pinnedEl.style.display = 'none';
+                }
 
-                res.messages.forEach(msg => {
-                    const key = msg.id || JSON.stringify(msg);
-                    if (!displayedMessages.has(key)) {
-                        displayedMessages.add(key);
-                        addMessage(msg);
+                if (res.messages) {
+                    // Determine if we are at bottom to auto-scroll
+                    const isAtBottom = chat.scrollHeight - chat.scrollTop - chat.clientHeight < 50;
+
+                    res.messages.forEach(msg => {
+                        const key = msg.id || JSON.stringify(msg);
+                        if (!displayedMessages.has(key)) {
+                            displayedMessages.add(key);
+                            addMessage(msg);
+                        }
+                    });
+
+                    if (isAtBottom) {
+                        chat.scrollTop = chat.scrollHeight;
                     }
-                });
-
-                if (isAtBottom) {
-                    chat.scrollTop = chat.scrollHeight;
                 }
             }
         } catch (e) {

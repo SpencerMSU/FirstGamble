@@ -263,3 +263,12 @@ class ChatSendRequest(BaseModel):
     """
     text: str
     sender_name: Optional[str] = None
+
+
+class AdminPinMessageRequest(BaseModel):
+    """Request model for setting a pinned message.
+
+    Attributes:
+        text: The text of the pinned message.
+    """
+    text: str

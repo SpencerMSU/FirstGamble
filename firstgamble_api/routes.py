@@ -37,6 +37,7 @@ from .models import (
     AchievementClaimRequest,
     ChatSendRequest,
     AdminBanRequest,
+    AdminPinMessageRequest,
 )
 from .config import (
     ADMIN_PASS,
@@ -250,7 +251,8 @@ def register_routes(app: FastAPI):
         # Optional: strictly require webapp/auth, or allow everyone.
         # Chat is public within the app.
         msgs = await chat_manager.get_history()
-        return {"ok": True, "messages": msgs}
+        pinned = await chat_manager.get_pinned()
+        return {"ok": True, "messages": msgs, "pinned": pinned}
 
     @app.post("/api/chat/send")
     async def api_chat_send(
@@ -1409,6 +1411,24 @@ def register_routes(app: FastAPI):
             user.get("balance"),
         )
         return {"ok": True, **user}
+
+    @app.post("/api/admin/chat/pin")
+    async def api_admin_chat_pin(
+        body: AdminPinMessageRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        """Sets the pinned message in chat."""
+        await chat_manager.set_pinned(body.text.strip())
+        logger.info(f"Admin set pinned message: {body.text}")
+        return {"ok": True, "pinned": body.text}
+
+    @app.delete("/api/admin/chat/pin")
+    async def api_admin_chat_unpin(
+        admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        """Removes the pinned message in chat."""
+        await chat_manager.set_pinned("")
+        logger.info("Admin removed pinned message")
+        return {"ok": True}
 
     @app.post("/api/admin/users/ban")
     async def api_admin_ban_user(

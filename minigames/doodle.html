@@ -154,6 +154,7 @@ function init(){
 function spawnPlatform(y){
   const w = 60 + Math.random()*40;
   const x = Math.random()*(width - w);
+  // Ensure y gap is reachable. Reduced random gap slightly.
   platforms.push({x, y, w, type:'normal', hit:false});
 }
 
@@ -275,7 +276,8 @@ function loop(time){
       // Spawn new
       const topP = platforms[platforms.length-1];
       if(topP.y > cameraY - 100){
-        spawnPlatform(topP.y - (80 + Math.random()*60));
+        // Gap was 80-140. Reduced to 60-100 to ensure reachability.
+        spawnPlatform(topP.y - (60 + Math.random()*40));
       }
     }
 
@@ -323,7 +325,7 @@ function gameOver(){
   if(!resultSent){
       resultSent = true;
       const res = win ? 'win' : 'loss';
-      const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+      const uid = tgInstance?.initDataUnsafe?.user?.id || searchUid;
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', result:res})});
 

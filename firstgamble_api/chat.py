@@ -47,7 +47,7 @@ class ChatManager:
                 return None
         return clean_text
 
-    async def broadcast(self, message: str, sender: str):
+    async def broadcast(self, message: str, sender: str, timestamp: int = None):
         """
         Publishes the message to Redis.
         The listener task will pick it up and call broadcast_local.
@@ -55,7 +55,7 @@ class ChatManager:
         payload = {
             "type": "message",
             "id": str(uuid4()),
-            "timestamp": int(time.time()),
+            "timestamp": timestamp or int(time.time()),
             "sender": sender,
             "text": message
         }
@@ -66,9 +66,16 @@ class ChatManager:
             await r.lpush(self.history_key, json_payload)
             await r.ltrim(self.history_key, 0, 49)
 
+            # Only publish if there are active listeners (optimization) or just publish always
+            # but we catch errors if redis publish fails for some reason
             await r.publish(self.channel_name, json_payload)
         except Exception as e:
-            logger.error(f"Error publishing chat message: {e}")
+            logger.exception(f"Error publishing chat message: {e}")
+            # Re-raise so the API knows it failed?
+            # Or suppress? If we suppress, user pays points but msg not sent.
+            # Ideally we should refund or fail earlier.
+            # Given the user sees 500, it's raising.
+            raise e
 
     async def get_history(self) -> List[dict]:
         """Returns the recent chat history."""

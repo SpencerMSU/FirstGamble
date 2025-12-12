@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Башня — FirstClub</title>
+  <title>City Bloxx — FirstClub</title>
   <script src="https://telegram.org/js/telegram-web-app.js"></script>
   <script src="/webapp_guard.js"></script>
   <style>
@@ -65,7 +65,6 @@
       color:white;text-shadow:0 4px 12px rgba(0,0,0,0.5);pointer-events:none;z-index:5;}
     .best-score{position:absolute;top:16px;right:16px;font-size:14px;color:var(--muted);font-weight:700;
       background:rgba(0,0,0,0.4);padding:4px 8px;border-radius:6px;pointer-events:none;z-index:5;}
-
   </style>
 </head>
 <body>
@@ -73,7 +72,7 @@
     <header>
       <a class="back" href="/minigames">← Назад</a>
       <div class="title">
-        <h1>Башня</h1>
+        <h1>City Bloxx</h1>
         <span>Строй выше облаков!</span>
       </div>
       <div style="width:64px"></div>
@@ -84,7 +83,7 @@
       <div class="score-hud" id="scoreVal">0</div>
       <canvas id="gameCanvas"></canvas>
       <div class="overlay" id="startScreen">
-        <h2>Башня</h2>
+        <h2>City Bloxx</h2>
         <button class="btn" id="startBtn">Играть</button>
       </div>
       <div class="overlay hidden" id="endScreen">
@@ -108,23 +107,25 @@
   const finalScore = document.getElementById('finalScore');
   const endTitle = document.getElementById('endTitle');
 
-  // Game config
-  const BLOCK_H = 30; // height of block
-  const BLOCK_START_W = 200; // starting width
+  // Game Constants
+  const BLOCK_W = 100;
+  const BLOCK_H = 60;
+  const ROPE_LEN = 150;
+  const SWING_SPEED_BASE = 0.05;
 
   let width, height;
   let blocks = [];
-  let currentBlock = null;
+  let currentBlock = null; // {x, y, w, h, angle, state} state: 'swing', 'drop', 'landed'
   let score = 0;
   let best = Number(localStorage.getItem('stack_best')||0);
   bestVal.textContent = best;
   let state = 'menu'; // menu, playing, gameover
   let cameraY = 0;
   let hue = 0;
-  let speed = 4;
-  let direction = 1; // 1 or -1
+  let time = 0;
+  let swingSpeed = SWING_SPEED_BASE;
   let resultSent = false;
-  let bonusGiven = false;
+  let residents = []; // Particles
 
   function resize(){
     width = canvas.parentElement.clientWidth;
@@ -132,42 +133,13 @@
     canvas.width = width * window.devicePixelRatio;
     canvas.height = height * window.devicePixelRatio;
     ctx.scale(window.devicePixelRatio, window.devicePixelRatio);
-    width = width; // logical width
+    width = width; // logical
     height = height;
   }
   window.addEventListener('resize', resize);
   resize();
 
-  function drawBlock(b){
-    const {x, y, w, color} = b;
-    // 2D simple rect
-    // Centered relative to width/2
-    // Screen coords: x is offset from center
-    // We'll treat b.x as center offset? Or left edge?
-    // Let's use b.x as the Left edge relative to screen left for 2D simplicity.
-
-    // Actually, to keep it centered like the old phone game:
-    // Screen Center = width/2.
-    // We map logical coordinate system to screen.
-    // Let's just use raw screen coordinates for X.
-
-    const screenY = height - (y - cameraY) - BLOCK_H - 50; // 50 padding bottom
-
-    ctx.fillStyle = color;
-    ctx.fillRect(x, screenY, w, BLOCK_H);
-
-    // Highlight
-    ctx.fillStyle = "rgba(255,255,255,0.2)";
-    ctx.fillRect(x, screenY, w, 4);
-
-    // Border
-    ctx.strokeStyle = "rgba(0,0,0,0.2)";
-    ctx.lineWidth = 1;
-    ctx.strokeRect(x, screenY, w, BLOCK_H);
-  }
-
   function adjustColor(hex, percent) {
-    // Simple hex darken
     let num = parseInt(hex.replace("#",""),16),
     amt = Math.round(2.55 * percent),
     R = (num >> 16) + amt,
@@ -181,16 +153,19 @@
     score = 0;
     cameraY = 0;
     hue = Math.random() * 360;
-    speed = 3.5;
+    swingSpeed = SWING_SPEED_BASE; // Reset speed!
+    time = 0;
     resultSent = false;
+    residents = [];
 
-    // Base block centered
-    // width/2 - BLOCK_START_W/2
+    // Base block
     blocks.push({
-      x: width/2 - BLOCK_START_W/2,
+      x: width/2 - BLOCK_W/2,
       y: 0,
-      w: BLOCK_START_W,
-      color: `hsl(${hue}, 70%, 50%)`
+      w: BLOCK_W,
+      h: BLOCK_H,
+      color: `hsl(${hue}, 70%, 50%)`,
+      windows: true
     });
 
     spawnNext();
@@ -198,30 +173,27 @@
     state = 'playing';
     startScreen.classList.add('hidden');
     endScreen.classList.add('hidden');
-    loop();
   }
 
   function spawnNext(){
-    const prev = blocks[blocks.length-1];
     score = blocks.length - 1;
     scoreVal.textContent = score;
-    hue += 10;
-    direction = Math.random() > 0.5 ? 1 : -1;
+    hue += 15;
 
-    // Start off-screen
-    // If direction 1 (left to right), start at -w
-    // If direction -1 (right to left), start at width
-    let nx = direction === 1 ? -prev.w : width;
+    // Increase swing speed with score
+    swingSpeed = SWING_SPEED_BASE + (score * 0.005);
+    if(swingSpeed > 0.15) swingSpeed = 0.15;
 
     currentBlock = {
-      x: nx,
-      y: (score+1) * BLOCK_H,
-      w: prev.w,
-      color: `hsl(${hue}, 70%, 50%)`
+      w: BLOCK_W,
+      h: BLOCK_H,
+      color: `hsl(${hue}, 70%, 50%)`,
+      state: 'swing',
+      angle: 0,
+      x: 0,
+      y: 0,
+      vy: 0
     };
-
-    speed = 4 + score * 0.1;
-    if(speed > 12) speed = 12;
   }
 
   function gameOver(){
@@ -239,20 +211,12 @@
 
     endScreen.classList.remove('hidden');
 
-    // Report
     if(!resultSent){
       resultSent = true;
       const res = win ? 'win' : 'loss';
-      const uid = tg?.initDataUnsafe?.user?.id || searchUid;
+      const uid = tgInstance?.initDataUnsafe?.user?.id || searchUid;
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', result:res})});
-
-         // 2 points per floor logic:
-         // We can send total points at end?
-         // Request says: "За каждый построенный этаж в башне даеться 2 очка"
-         // If we send it incrementally, it's safer against crash but spams API.
-         // If we send at end, we calculate total.
-         // Let's send at end. score = floors built.
          if(score > 0){
              fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', delta: score * 2})});
          }
@@ -260,126 +224,302 @@
     }
   }
 
-  function placeBlock(){
+  function dropBlock(){
+    if(state !== 'playing') return;
+    if(currentBlock.state === 'swing'){
+      currentBlock.state = 'drop';
+      currentBlock.vy = 0;
+    }
+  }
+
+  function spawnResidents(bx, by, count){
+    // Spawn little dots flying towards the block
+    for(let i=0; i<count; i++){
+      residents.push({
+        x: Math.random() < 0.5 ? -20 : width+20,
+        y: height - (by - cameraY) + Math.random()*40,
+        tx: bx + BLOCK_W/2 + (Math.random()*40 - 20),
+        ty: by + BLOCK_H/2,
+        speed: 4 + Math.random()*2,
+        color: '#fbbf24', // amber
+        life: 60
+      });
+    }
+  }
+
+  function update(){
+    time++;
+
+    // Residents
+    for(let i=residents.length-1; i>=0; i--){
+      const r = residents[i];
+      // Target in screen coords
+      // Block y is logical Y (0 is bottom).
+      // Screen Y = height - (y - cameraY) - ...
+      // Let's map target to logical first.
+
+      const dx = r.tx - r.x;
+      const dy = (height - (r.ty - cameraY) - BLOCK_H - 100) - r.y; // approximate visual target
+      const dist = Math.sqrt(dx*dx + dy*dy);
+
+      if(dist < 10) {
+        residents.splice(i,1);
+        continue;
+      }
+
+      r.x += (dx/dist) * r.speed;
+      r.y += (dy/dist) * r.speed;
+      r.life--;
+      if(r.life <= 0) residents.splice(i,1);
+    }
+
     if(state !== 'playing') return;
 
-    const prev = blocks[blocks.length-1];
-    const curr = currentBlock;
+    // Crane position (top of stack + rope)
+    // The crane pivot point moves up as we build
+    const topBlock = blocks[blocks.length-1];
+    const stackTopY = topBlock.y + topBlock.h;
 
-    let bonus = false;
+    // Crane pivot logic
+    // We want the block to swing above the current stack.
+    // Pivot Y should be somewhat above.
+    const pivotY = stackTopY + ROPE_LEN + 150;
+    const pivotX = width / 2;
 
-    // Check overlap on X
-    let dist = curr.x - prev.x;
-    // Perfect snap tolerance
-    if(Math.abs(dist) < 3) {
-      dist = 0;
-      curr.x = prev.x;
-      bonus = true;
+    if(currentBlock.state === 'swing'){
+       // Pendulum
+       // angle oscillation
+       currentBlock.angle = Math.sin(time * swingSpeed) * 1.2; // +/- 1.2 rad (~70 deg)
+
+       currentBlock.x = pivotX + Math.sin(currentBlock.angle) * ROPE_LEN - currentBlock.w/2;
+       currentBlock.y = pivotY - Math.cos(currentBlock.angle) * ROPE_LEN - currentBlock.h;
+       // Note: logical Y is up. Visual Y is down.
+       // Let's work in visual Y for pendulum and then map to logical?
+       // Easier: keep logical Y "up".
+       // If pivotY is "up" (e.g. 500), and block hangs down:
+       // y = pivotY - cos(a)*L.
+       // This matches.
+
+    } else if(currentBlock.state === 'drop'){
+       currentBlock.vy -= 0.8; // Gravity (logical Y up, so gravity is negative)
+       currentBlock.y += currentBlock.vy;
+
+       // Collision with top block
+       if(currentBlock.y <= stackTopY){
+         // Check X overlap
+         const prev = blocks[blocks.length-1];
+         // Allow some tolerance
+         const overlap = Math.min(currentBlock.x + currentBlock.w, prev.x + prev.w) - Math.max(currentBlock.x, prev.x);
+
+         if(overlap > 0){
+           // Landed
+           currentBlock.y = stackTopY;
+           currentBlock.state = 'landed';
+           currentBlock.windows = true; // Show windows only on landed blocks?
+
+           // Trim block if needed (classic implementation usually doesn't trim, but this one did)
+           // Classic City Bloxx: Block wobbles if off-center, stack can fall.
+           // This is "Stack" game renamed. Stack game usually trims.
+           // User asked for "Style of old game".
+           // Old game (City Bloxx) didn't trim size, it had balance.
+           // But changing core mechanics from "Trimming Stack" to "Balancing Stack" is risky and complex (physics engine).
+           // The user specifically mentioned "crane swinging" and "residents flying".
+           // I will keep the "Trimming" mechanic for simplicity and stability unless explicitly asked for physics balance.
+           // The user said "implement it in the style of...".
+           // Trimming is easier to play on mobile web.
+           // I will trim it to simulate "instability" reducing the platform size.
+
+           // Center correction if overlap is good?
+           if(Math.abs(currentBlock.x - prev.x) < 5){
+             currentBlock.x = prev.x; // Snap
+             // Bonus visual?
+             spawnResidents(currentBlock.x, currentBlock.y, 5);
+           } else {
+             spawnResidents(currentBlock.x, currentBlock.y, 2);
+           }
+
+           // Trimming logic
+           if(currentBlock.x < prev.x){
+              // Overlap is on the right side of current
+              // current X is left of prev X.
+              // Cut left part? No, cut the non-overlapping part.
+              // We keep the overlapping part.
+              // New width = overlap.
+              // New X = prev.x
+              currentBlock.w = overlap;
+              currentBlock.x = prev.x;
+           } else {
+              // Current is to the right
+              // Cut right part.
+              // New width = overlap.
+              // X remains currentBlock.x
+              currentBlock.w = overlap;
+           }
+
+           if(currentBlock.w < 10){
+             gameOver();
+           } else {
+             blocks.push(currentBlock);
+             spawnNext();
+           }
+         } else {
+           // Missed
+           if(currentBlock.y < stackTopY - 200){ // Fell below
+             gameOver();
+           }
+         }
+       }
     }
 
-    if(dist > 0){
-      // Block is to the right of prev
-      // Overlap = prev.x + prev.w - curr.x
-      // Since curr.x = prev.x + dist
-      // Overlap = prev.w - dist
-      const overlap = prev.w - dist;
-      if(overlap <= 0) return gameOver();
-      curr.w = overlap;
-      // curr.x remains same
+    // Camera
+    // Target: Top block + some margin
+    const targetCam = (blocks[blocks.length-1].y) - height * 0.3;
+    if(targetCam > 0){
+       cameraY += (targetCam - cameraY) * 0.1;
     } else {
-      // Block is to the left of prev (dist is negative)
-      // curr.x = prev.x + dist (e.g. prev=100, dist=-10 => curr=90)
-      // Overlap = curr.x + curr.w - prev.x
-      //         = (prev.x + dist) + prev.w - prev.x
-      //         = prev.w + dist
-      const overlap = prev.w + dist;
-      if(overlap <= 0) return gameOver();
-      curr.w = overlap;
-      curr.x = prev.x; // Trim from left side means we shift x to match prev x
+       cameraY += (0 - cameraY) * 0.1;
     }
-
-    blocks.push(curr);
-    spawnNext();
   }
 
-  function loop(){
-    if(state !== 'playing' && state !== 'gameover') return;
-
+  function draw(){
     ctx.clearRect(0,0,width,height);
 
-    // Update logic
-    if(state === 'playing'){
-      currentBlock.x += speed * direction;
+    // Draw Residents
+    residents.forEach(r => {
+      ctx.fillStyle = r.color;
+      // Convert to visual
+      const sx = r.x;
+      const sy = r.y; // Already visual-ish in spawn?
+      // Spawn y: height - (by-cam) ...
+      // Wait, spawn logic put it in visual coords.
+      ctx.beginPath();
+      ctx.arc(sx, sy, 3, 0, Math.PI*2);
+      ctx.fill();
+    });
 
-      // Ping pong
-      // If goes off screen too far, reverse?
-      // Standard stacker just bounces off walls or reverses at arbitrary point.
-      // Let's reverse if it clears the stack completely + margin
-      // stack width is variable.
-      // Let's just limit to screen width bounds roughly?
-      if(currentBlock.x > width - 20) direction = -1;
-      if(currentBlock.x < -currentBlock.w + 20) direction = 1;
-
-      // Target camera to center the stack top vertically
-      // We want the top block to be around 1/3 from bottom or so?
-      // Actually standard stacker: camera moves up as we build.
-      // block y increases by BLOCK_H.
-      // cameraY should track it.
-      // drawBlock uses: screenY = height - (y - cameraY) - ...
-      // If y increases, screenY decreases (goes up).
-      // We want screenY to stay roughly constant (e.g. 200px from bottom).
-      // height - (y - cameraY) ~ 200
-      // y - cameraY ~ height - 200
-      // cameraY ~ y - height + 200
-      let targetCam = currentBlock.y - height * 0.4;
-      if(targetCam < 0) targetCam = 0;
-
-      cameraY += (targetCam - cameraY) * 0.1;
-    }
-
-    // Draw
+    // Draw Blocks
     blocks.forEach(drawBlock);
-    if(currentBlock && state === 'playing') drawBlock(currentBlock);
 
-    // Overlay instructions if playing
-    if(state === 'playing'){
-      ctx.fillStyle = "rgba(255,255,255,0.7)";
-      ctx.font = "14px system-ui";
-      ctx.textAlign = "center";
-      ctx.fillText("ПК: Пробел | Телефон: Тап", width/2, height - 20);
+    // Draw Current
+    if(state === 'playing' && currentBlock){
+      if(currentBlock.state === 'swing'){
+        // Draw Rope
+        const topBlock = blocks[blocks.length-1];
+        const pivotY = topBlock.y + topBlock.h + ROPE_LEN + 150;
+
+        // Logical coords to Screen
+        const screenPivotY = height - (pivotY - cameraY) - 50; // Align with block logic
+        const screenBlockX = currentBlock.x + currentBlock.w/2;
+        const screenBlockY = height - (currentBlock.y - cameraY) - currentBlock.h - 50;
+
+        // Crane Hook
+        ctx.strokeStyle = "#94a3b8";
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.moveTo(width/2, screenPivotY); // Pivot is center
+        ctx.lineTo(screenBlockX, screenBlockY); // Top of block?
+        // Actually block.y is bottom of block. +h is top.
+        // screenBlockY is bottom edge visual.
+        // We want rope to attach to top of block.
+        const screenBlockTop = screenBlockY - currentBlock.h; // Y is inverted in screen?
+        // Wait. drawBlock uses: screenY = height - (y - cameraY) - BLOCK_H - 50.
+        // This puts the rect at screenY. Rect draws downwards? No fillRect(x,y,w,h).
+        // So screenY is Top-Left of rect.
+        // So y in logic is "bottom" of stack?
+        // blocks[0].y = 0.
+        // screenY = height - (0) - 30 - 50 = height - 80.
+        // So logic y=0 is drawn at bottom of screen. Correct.
+        // currentBlock.y is also logic Y.
+        // Pendulum calc sets currentBlock.y.
+
+        // Draw Rope to Top Center of block
+        const blockVisualX = currentBlock.x + currentBlock.w/2;
+        const blockVisualY = height - (currentBlock.y - cameraY) - currentBlock.h - 50;
+        // blockVisualY is Top of block.
+
+        // Pivot Visual
+        const pivotVisualY = height - (pivotY - cameraY) - 50;
+
+        ctx.moveTo(width/2, pivotVisualY);
+        ctx.lineTo(blockVisualX, blockVisualY);
+        ctx.stroke();
+
+        // Draw Crane Head (simple)
+        ctx.fillStyle = "#fbbf24";
+        ctx.beginPath();
+        ctx.arc(width/2, pivotVisualY, 10, 0, Math.PI*2);
+        ctx.fill();
+      }
+
+      drawBlock(currentBlock);
     }
 
-    if(state === 'playing' || state === 'gameover'){
-      requestAnimationFrame(loop);
-    }
+    // Overlay logic (residents etc)
+
+    requestAnimationFrame(() => {
+      update();
+      draw();
+    });
   }
 
-  // Input
-  document.getElementById('startBtn').addEventListener('click', initGame);
-  document.getElementById('restartBtn').addEventListener('click', initGame);
+  function drawBlock(b){
+    const screenY = height - (b.y - cameraY) - b.h - 50;
 
-  // Use pointerdown on container for taps
+    // Building body
+    ctx.fillStyle = b.color;
+    ctx.fillRect(b.x, screenY, b.w, b.h);
+
+    // Windows
+    if(b.windows){
+      ctx.fillStyle = "rgba(255,255,255,0.6)";
+      const cols = Math.floor(b.w / 20);
+      const rows = 2;
+      const marginX = (b.w - cols*10)/ (cols+1);
+
+      for(let r=0; r<rows; r++){
+        for(let c=0; c<cols; c++){
+             ctx.fillRect(b.x + marginX + c*(10+marginX), screenY + 10 + r*20, 10, 10);
+        }
+      }
+    }
+
+    // Highlight
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(b.x, screenY, b.w, 4);
+
+    // Border
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(b.x, screenY, b.w, b.h);
+  }
+
+  // Inputs
   const gameArea = document.getElementById('gameContainer');
   gameArea.addEventListener('pointerdown', (e)=>{
-    if(e.target.tagName === 'BUTTON') return;
-    if(state === 'playing'){
-      placeBlock();
-      e.preventDefault(); // prevent zoom etc
+     if(state === 'menu' || state === 'gameover') return;
+     dropBlock();
+  });
+
+  document.addEventListener('keydown', (e)=>{
+    if(e.code === 'Space' && state === 'playing'){
+      dropBlock();
+      e.preventDefault();
     }
   });
 
-  // Spacebar
-  document.addEventListener('keydown', (e)=>{
-    if(e.code === 'Space' && state === 'playing'){
-      placeBlock();
-      e.preventDefault(); // Prevent scrolling
-    }
-  });
+  document.getElementById('startBtn').addEventListener('click', initGame);
+  document.getElementById('restartBtn').addEventListener('click', initGame);
 
   (async()=>{
     if(!tgInstance) return;
     await ensureNicknameOrRedirect();
   })();
+
+  // Start loop
+  requestAnimationFrame(() => {
+      update();
+      draw();
+  });
 
 </script>
 </body>

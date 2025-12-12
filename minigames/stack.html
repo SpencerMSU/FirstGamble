@@ -109,9 +109,8 @@
   const endTitle = document.getElementById('endTitle');
 
   // Game config
-  const ISO_ANGLE = 0.5; // radians for isometric skew roughly
-  const BLOCK_H = 20; // visual height of block side
-  const LAYER_H = 30; // height step per layer
+  const BLOCK_H = 30; // height of block
+  const BLOCK_START_W = 200; // starting width
 
   let width, height;
   let blocks = [];
@@ -122,10 +121,10 @@
   let state = 'menu'; // menu, playing, gameover
   let cameraY = 0;
   let hue = 0;
-  let speed = 2;
+  let speed = 4;
   let direction = 1; // 1 or -1
-  let axis = 'x'; // 'x' or 'z'
   let resultSent = false;
+  let bonusGiven = false;
 
   function resize(){
     width = canvas.parentElement.clientWidth;
@@ -139,61 +138,32 @@
   window.addEventListener('resize', resize);
   resize();
 
-  // Isometric projection helper
-  function toIso(x, y, z){
-    return {
-      x: width/2 + (x - z) * Math.cos(ISO_ANGLE) * 1.5,
-      y: height/1.5 + (x + z) * Math.sin(ISO_ANGLE) - y * 1.0 + cameraY
-    };
-  }
-
   function drawBlock(b){
-    const {x, y, z, w, d, color} = b;
+    const {x, y, w, color} = b;
+    // 2D simple rect
+    // Centered relative to width/2
+    // Screen coords: x is offset from center
+    // We'll treat b.x as center offset? Or left edge?
+    // Let's use b.x as the Left edge relative to screen left for 2D simplicity.
 
-    // Top face
-    const p1 = toIso(x, y, z);
-    const p2 = toIso(x+w, y, z);
-    const p3 = toIso(x+w, y, z+d);
-    const p4 = toIso(x, y, z+d);
+    // Actually, to keep it centered like the old phone game:
+    // Screen Center = width/2.
+    // We map logical coordinate system to screen.
+    // Let's just use raw screen coordinates for X.
+
+    const screenY = height - (y - cameraY) - BLOCK_H - 50; // 50 padding bottom
 
     ctx.fillStyle = color;
-    ctx.beginPath();
-    ctx.moveTo(p1.x, p1.y);
-    ctx.lineTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
-    ctx.lineTo(p4.x, p4.y);
-    ctx.closePath();
-    ctx.fill();
-    // Highlight edges
-    ctx.strokeStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(x, screenY, w, BLOCK_H);
+
+    // Highlight
+    ctx.fillStyle = "rgba(255,255,255,0.2)";
+    ctx.fillRect(x, screenY, w, 4);
+
+    // Border
+    ctx.strokeStyle = "rgba(0,0,0,0.2)";
     ctx.lineWidth = 1;
-    ctx.stroke();
-
-    // Right face (visible if viewed from front-right)
-    const p2b = {x: p2.x, y: p2.y + BLOCK_H};
-    const p3b = {x: p3.x, y: p3.y + BLOCK_H};
-
-    ctx.fillStyle = adjustColor(color, -20);
-    ctx.beginPath();
-    ctx.moveTo(p2.x, p2.y);
-    ctx.lineTo(p3.x, p3.y);
-    ctx.lineTo(p3b.x, p3b.y);
-    ctx.lineTo(p2b.x, p2b.y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Left face
-    const p3c = {x: p3.x, y: p3.y + BLOCK_H};
-    const p4c = {x: p4.x, y: p4.y + BLOCK_H};
-
-    ctx.fillStyle = adjustColor(color, -40);
-    ctx.beginPath();
-    ctx.moveTo(p3.x, p3.y);
-    ctx.lineTo(p4.x, p4.y);
-    ctx.lineTo(p4c.x, p4c.y);
-    ctx.lineTo(p3c.x, p3c.y);
-    ctx.closePath();
-    ctx.fill();
+    ctx.strokeRect(x, screenY, w, BLOCK_H);
   }
 
   function adjustColor(hex, percent) {
@@ -211,12 +181,15 @@
     score = 0;
     cameraY = 0;
     hue = Math.random() * 360;
-    speed = 2.5;
+    speed = 3.5;
     resultSent = false;
 
-    // Base block
+    // Base block centered
+    // width/2 - BLOCK_START_W/2
     blocks.push({
-      x: -50, z: -50, y: 0, w: 100, d: 100,
+      x: width/2 - BLOCK_START_W/2,
+      y: 0,
+      w: BLOCK_START_W,
       color: `hsl(${hue}, 70%, 50%)`
     });
 
@@ -233,32 +206,22 @@
     score = blocks.length - 1;
     scoreVal.textContent = score;
     hue += 10;
+    direction = Math.random() > 0.5 ? 1 : -1;
 
-    axis = (score % 2 === 0) ? 'x' : 'z';
-    direction = -1; // always come from one side initially
-
-    // Starting pos
-    let nx = prev.x;
-    let nz = prev.z;
-    let startDist = 120 + score*2;
-
-    if(axis === 'x'){
-      nx -= startDist;
-    } else {
-      nz -= startDist;
-    }
+    // Start off-screen
+    // If direction 1 (left to right), start at -w
+    // If direction -1 (right to left), start at width
+    let nx = direction === 1 ? -prev.w : width;
 
     currentBlock = {
       x: nx,
-      z: nz,
-      y: (score+1) * LAYER_H,
+      y: (score+1) * BLOCK_H,
       w: prev.w,
-      d: prev.d,
       color: `hsl(${hue}, 70%, 50%)`
     };
 
-    speed = 2.5 + score * 0.1;
-    if(speed > 6) speed = 6;
+    speed = 4 + score * 0.1;
+    if(speed > 12) speed = 12;
   }
 
   function gameOver(){
@@ -283,8 +246,15 @@
       const uid = tg?.initDataUnsafe?.user?.id || searchUid;
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', result:res})});
-         if(win){
-           fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', delta:1})});
+
+         // 2 points per floor logic:
+         // We can send total points at end?
+         // Request says: "За каждый построенный этаж в башне даеться 2 очка"
+         // If we send it incrementally, it's safer against crash but spams API.
+         // If we send at end, we calculate total.
+         // Let's send at end. score = floors built.
+         if(score > 0){
+             fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', delta: score * 2})});
          }
       }
     }
@@ -296,44 +266,36 @@
     const prev = blocks[blocks.length-1];
     const curr = currentBlock;
 
-    let cut = 0;
-    let overlap = 0;
     let bonus = false;
 
-    if(axis === 'x'){
-      let dist = curr.x - prev.x;
-      if(Math.abs(dist) < 2) { dist = 0; curr.x = prev.x; bonus = true; } // perfect snap
+    // Check overlap on X
+    let dist = curr.x - prev.x;
+    // Perfect snap tolerance
+    if(Math.abs(dist) < 3) {
+      dist = 0;
+      curr.x = prev.x;
+      bonus = true;
+    }
 
-      if(dist > 0){
-        // moved too far positive x
-        overlap = prev.w - dist;
-        if(overlap <= 0) return gameOver(); // miss
-        curr.w = overlap;
-        // cut off part logic? visual only needed if physics.
-        // x stays same? No, x needs to shift if we cropped left?
-        // Actually: if prev at 0, w=100. curr at 10. overlap=90. curr should start at 10, width 90. Correct.
-      } else {
-        // negative x
-        overlap = prev.w + dist;
-        if(overlap <= 0) return gameOver();
-        curr.w = overlap;
-        curr.x = prev.x; // shift to align with previous left edge
-      }
+    if(dist > 0){
+      // Block is to the right of prev
+      // Overlap = prev.x + prev.w - curr.x
+      // Since curr.x = prev.x + dist
+      // Overlap = prev.w - dist
+      const overlap = prev.w - dist;
+      if(overlap <= 0) return gameOver();
+      curr.w = overlap;
+      // curr.x remains same
     } else {
-      // z axis
-      let dist = curr.z - prev.z;
-      if(Math.abs(dist) < 2) { dist = 0; curr.z = prev.z; bonus = true; }
-
-      if(dist > 0){
-        overlap = prev.d - dist;
-        if(overlap <= 0) return gameOver();
-        curr.d = overlap;
-      } else {
-        overlap = prev.d + dist;
-        if(overlap <= 0) return gameOver();
-        curr.d = overlap;
-        curr.z = prev.z;
-      }
+      // Block is to the left of prev (dist is negative)
+      // curr.x = prev.x + dist (e.g. prev=100, dist=-10 => curr=90)
+      // Overlap = curr.x + curr.w - prev.x
+      //         = (prev.x + dist) + prev.w - prev.x
+      //         = prev.w + dist
+      const overlap = prev.w + dist;
+      if(overlap <= 0) return gameOver();
+      curr.w = overlap;
+      curr.x = prev.x; // Trim from left side means we shift x to match prev x
     }
 
     blocks.push(curr);
@@ -347,30 +309,45 @@
 
     // Update logic
     if(state === 'playing'){
-      // Move current block
-      let range = 180;
-      if(axis === 'x'){
-        currentBlock.x += speed * direction;
-        // bounce logic not needed, just fly through and if miss loop back?
-        // User wants "stacker", usually it bounces back and forth.
-        const prev = blocks[blocks.length-1];
-        if(currentBlock.x > prev.x + 150) direction = -1;
-        if(currentBlock.x < prev.x - 150) direction = 1;
-      } else {
-        currentBlock.z += speed * direction;
-        const prev = blocks[blocks.length-1];
-        if(currentBlock.z > prev.z + 150) direction = -1;
-        if(currentBlock.z < prev.z - 150) direction = 1;
-      }
+      currentBlock.x += speed * direction;
 
-      // Target camera
-      let targetY = -(currentBlock.y - 150);
-      cameraY += (targetY - cameraY) * 0.1;
+      // Ping pong
+      // If goes off screen too far, reverse?
+      // Standard stacker just bounces off walls or reverses at arbitrary point.
+      // Let's reverse if it clears the stack completely + margin
+      // stack width is variable.
+      // Let's just limit to screen width bounds roughly?
+      if(currentBlock.x > width - 20) direction = -1;
+      if(currentBlock.x < -currentBlock.w + 20) direction = 1;
+
+      // Target camera to center the stack top vertically
+      // We want the top block to be around 1/3 from bottom or so?
+      // Actually standard stacker: camera moves up as we build.
+      // block y increases by BLOCK_H.
+      // cameraY should track it.
+      // drawBlock uses: screenY = height - (y - cameraY) - ...
+      // If y increases, screenY decreases (goes up).
+      // We want screenY to stay roughly constant (e.g. 200px from bottom).
+      // height - (y - cameraY) ~ 200
+      // y - cameraY ~ height - 200
+      // cameraY ~ y - height + 200
+      let targetCam = currentBlock.y - height * 0.4;
+      if(targetCam < 0) targetCam = 0;
+
+      cameraY += (targetCam - cameraY) * 0.1;
     }
 
     // Draw
     blocks.forEach(drawBlock);
     if(currentBlock && state === 'playing') drawBlock(currentBlock);
+
+    // Overlay instructions if playing
+    if(state === 'playing'){
+      ctx.fillStyle = "rgba(255,255,255,0.7)";
+      ctx.font = "14px system-ui";
+      ctx.textAlign = "center";
+      ctx.fillText("ПК: Пробел | Телефон: Тап", width/2, height - 20);
+    }
 
     if(state === 'playing' || state === 'gameover'){
       requestAnimationFrame(loop);
@@ -380,10 +357,14 @@
   // Input
   document.getElementById('startBtn').addEventListener('click', initGame);
   document.getElementById('restartBtn').addEventListener('click', initGame);
-  document.getElementById('gameContainer').addEventListener('pointerdown', (e)=>{
+
+  // Use pointerdown on container for taps
+  const gameArea = document.getElementById('gameContainer');
+  gameArea.addEventListener('pointerdown', (e)=>{
     if(e.target.tagName === 'BUTTON') return;
     if(state === 'playing'){
       placeBlock();
+      e.preventDefault(); // prevent zoom etc
     }
   });
 
@@ -391,6 +372,7 @@
   document.addEventListener('keydown', (e)=>{
     if(e.code === 'Space' && state === 'playing'){
       placeBlock();
+      e.preventDefault(); // Prevent scrolling
     }
   });
 

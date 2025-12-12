@@ -224,7 +224,7 @@
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', result:res})});
          if(score > 0){
-             fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', delta: score * 2})});
+             fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'stack', delta: score})});
          }
       }
     }

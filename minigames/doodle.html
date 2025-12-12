@@ -330,7 +330,7 @@ function gameOver(){
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', result:res})});
 
-         const points = Math.floor(Math.floor(score) * 0.3);
+         const points = Math.floor(score);
          if(points > 0){
              fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', delta: points})});
          }

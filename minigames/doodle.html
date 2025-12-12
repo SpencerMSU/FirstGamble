@@ -270,8 +270,8 @@ function loop(time){
     if(player.y < cameraY + height * 0.4){
       const diff = (cameraY + height * 0.4) - player.y;
       cameraY -= diff;
-      score += Math.floor(diff * 0.1);
-      scoreDisp.textContent = score;
+      score += diff * 0.1;
+      scoreDisp.textContent = Math.floor(score);
 
       // Spawn new
       const topP = platforms[platforms.length-1];
@@ -309,14 +309,15 @@ function loop(time){
 
 function gameOver(){
   state = 'dead';
-  if(score > best){
-    best = score;
+  const finalScoreVal = Math.floor(score);
+  if(finalScoreVal > best){
+    best = finalScoreVal;
     localStorage.setItem('jumper_best', best);
     bestDisp.textContent = best;
   }
-  finalScore.textContent = score;
+  finalScore.textContent = finalScoreVal;
 
-  const win = score >= 500; // e.g. 500 points target
+  const win = finalScoreVal >= 500; // e.g. 500 points target
   endTitle.textContent = win ? "Высота взята!" : "Упал!";
   endTitle.style.color = win ? "#4ade80" : "#ef4444";
 
@@ -329,23 +330,7 @@ function gameOver(){
       if(uid){
          fetch('/api/report_game',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', result:res})});
 
-         // 3 points per platform passed.
-         // 'score' variable tracks approximate height/platforms passed.
-         // Current score logic: score += Math.floor(diff * 0.1); where diff is pixels.
-         // It's not exactly per platform, but proportional to height.
-         // Let's assume score ~ height units.
-         // To be fair and consistent with request "3 points per floor":
-         // We should probably normalize score or just award points based on score directly if score ~= platforms.
-         // In loop: score += Math.floor(diff * 0.1). Platforms are ~80-120px apart.
-         // So 100px = 1 platform. diff*0.1 means 10 points per 100px.
-         // So score 10 ~= 1 platform.
-         // If request wants 3 points per platform, that's 0.3 points per score unit?
-         // Or we can just trust 'score' is "points".
-         // Let's award 3 points per platform.
-         // Platforms passed ~= score / 10.
-         // Total points = (score / 10) * 3 = score * 0.3.
-
-         const points = Math.floor(score * 0.3);
+         const points = Math.floor(Math.floor(score) * 0.3);
          if(points > 0){
              fetch('/api/add_point',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({user_id:String(uid), game:'doodle', delta: points})});
          }

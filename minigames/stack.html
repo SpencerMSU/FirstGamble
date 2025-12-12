@@ -111,7 +111,9 @@
   const BLOCK_W = 100;
   const BLOCK_H = 60;
   const ROPE_LEN = 150;
-  const SWING_SPEED_BASE = 0.05;
+  // Normalized speed for seconds:
+  // Old: 0.05 rad/frame @ 60fps = 3 rad/sec.
+  const SWING_SPEED_BASE = 3.0;
 
   let width, height;
   let blocks = [];
@@ -126,6 +128,7 @@
   let swingSpeed = SWING_SPEED_BASE;
   let resultSent = false;
   let residents = []; // Particles
+  let lastTime = 0;
 
   function resize(){
     width = canvas.parentElement.clientWidth;
@@ -155,6 +158,7 @@
     hue = Math.random() * 360;
     swingSpeed = SWING_SPEED_BASE; // Reset speed!
     time = 0;
+    lastTime = performance.now();
     resultSent = false;
     residents = [];
 
@@ -181,8 +185,10 @@
     hue += 15;
 
     // Increase swing speed with score
-    swingSpeed = SWING_SPEED_BASE + (score * 0.005);
-    if(swingSpeed > 0.15) swingSpeed = 0.15;
+    // Old: 0.005 per score per frame.
+    // 60fps -> 0.3 per score per sec.
+    swingSpeed = SWING_SPEED_BASE + (score * 0.3);
+    if(swingSpeed > 9.0) swingSpeed = 9.0; // Cap at ~3x base speed (equivalent to old 0.15*60=9)
 
     currentBlock = {
       w: BLOCK_W,
@@ -247,12 +253,15 @@
     }
   }
 
-  function update(){
-    time++;
+  function update(dt){
+    time += dt;
 
     // Residents
     for(let i=residents.length-1; i>=0; i--){
       const r = residents[i];
+      // Adjust speed for dt (assume r.speed was pixels/frame)
+      // r.speed is ~5. 5*60 = 300 pixels/sec.
+      const move = r.speed * 60 * dt;
       // Target in screen coords
       // Block y is logical Y (0 is bottom).
       // Screen Y = height - (y - cameraY) - ...
@@ -267,9 +276,9 @@
         continue;
       }
 
-      r.x += (dx/dist) * r.speed;
-      r.y += (dy/dist) * r.speed;
-      r.life--;
+      r.x += (dx/dist) * move;
+      r.y += (dy/dist) * move;
+      r.life -= 60 * dt;
       if(r.life <= 0) residents.splice(i,1);
     }
 
@@ -289,20 +298,24 @@
     if(currentBlock.state === 'swing'){
        // Pendulum
        // angle oscillation
-       currentBlock.angle = Math.sin(time * swingSpeed) * 1.2; // +/- 1.2 rad (~70 deg)
+       // time is now in seconds. swingSpeed is rad/sec.
+       currentBlock.angle = Math.sin(time * swingSpeed) * 1.2;
 
        currentBlock.x = pivotX + Math.sin(currentBlock.angle) * ROPE_LEN - currentBlock.w/2;
        currentBlock.y = pivotY - Math.cos(currentBlock.angle) * ROPE_LEN - currentBlock.h;
-       // Note: logical Y is up. Visual Y is down.
-       // Let's work in visual Y for pendulum and then map to logical?
-       // Easier: keep logical Y "up".
-       // If pivotY is "up" (e.g. 500), and block hangs down:
-       // y = pivotY - cos(a)*L.
-       // This matches.
 
     } else if(currentBlock.state === 'drop'){
-       currentBlock.vy -= 0.8; // Gravity (logical Y up, so gravity is negative)
-       currentBlock.y += currentBlock.vy;
+       // Gravity: 0.8 per frame -> 0.8 * 60 * 60 = ~2880 px/s^2 ?
+       // Let's stick to "units per frame at 60fps" logic for easy conversion.
+       // Velocity change per frame = 0.8.
+       // Velocity change per second = 0.8 * 60 = 48.
+       // Position change = velocity * dt.
+       // Wait, if I convert velocity to pixels/sec, it gets messy.
+       // Easier: keep logic in "per frame (60hz)" units and scale by (dt * 60).
+       const timeScale = dt * 60;
+
+       currentBlock.vy -= 0.8 * timeScale;
+       currentBlock.y += currentBlock.vy * timeScale;
 
        // Collision with top block
        if(currentBlock.y <= stackTopY){
@@ -374,24 +387,33 @@
     // Camera
     // Target: Top block + some margin
     const targetCam = (blocks[blocks.length-1].y) - height * 0.3;
+    const lerp = 1 - Math.pow(0.1, dt * 60); // approximate framerate independent lerp??
+    // Simplified: 0.1 per frame (60fps).
+    // cameraY += (target - cameraY) * (1 - 0.9^(dt*60));
+    const k = 1 - Math.pow(0.9, dt * 60);
+
     if(targetCam > 0){
-       cameraY += (targetCam - cameraY) * 0.1;
+       cameraY += (targetCam - cameraY) * k;
     } else {
-       cameraY += (0 - cameraY) * 0.1;
+       cameraY += (0 - cameraY) * k;
     }
   }
 
-  function draw(){
+  function draw(now){
+    // Delta time calculation
+    if(!lastTime) lastTime = now;
+    const dt = Math.min((now - lastTime) / 1000, 0.1); // cap dt at 0.1s to prevent huge jumps
+    lastTime = now;
+
+    update(dt);
+
     ctx.clearRect(0,0,width,height);
 
     // Draw Residents
     residents.forEach(r => {
       ctx.fillStyle = r.color;
-      // Convert to visual
       const sx = r.x;
-      const sy = r.y; // Already visual-ish in spawn?
-      // Spawn y: height - (by-cam) ...
-      // Wait, spawn logic put it in visual coords.
+      const sy = r.y;
       ctx.beginPath();
       ctx.arc(sx, sy, 3, 0, Math.PI*2);
       ctx.fill();
@@ -456,10 +478,7 @@
 
     // Overlay logic (residents etc)
 
-    requestAnimationFrame(() => {
-      update();
-      draw();
-    });
+    requestAnimationFrame(draw);
   }
 
   function drawBlock(b){
@@ -516,9 +535,9 @@
   })();
 
   // Start loop
-  requestAnimationFrame(() => {
-      update();
-      draw();
+  requestAnimationFrame((now) => {
+      lastTime = now;
+      draw(now);
   });
 
 </script>

@@ -251,7 +251,7 @@ def register_routes(app: FastAPI):
         # Get name from profile to be consistent with profile updates
         r = await get_redis()
         profile = await r.hgetall(key_profile(auth.user_id))
-        sender_name = profile.get("username") or profile.get("name") or "Anon"
+        sender_name = profile.get("name") or profile.get("username") or "Anon"
 
         if body.sender_name:
              # Ideally we ignore client-sent name if authenticated to prevent impersonation,

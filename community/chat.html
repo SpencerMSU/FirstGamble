@@ -94,7 +94,7 @@
     async function init(){
       const prof = await fetchProfile();
       if(prof && prof.ok){
-         myName = prof.username || prof.name || "Anon";
+         myName = prof.name || prof.username || "Anon";
       }
 
       await loadHistory();

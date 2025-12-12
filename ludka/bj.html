@@ -376,6 +376,7 @@
     }else{
       if(uid) await reportGame(uid,"bj","draw");
       setStatus(`Ничья (${p} = ${d})`, "draw");
+      await awardPoints(1, "Ничья");
     }
   }
 

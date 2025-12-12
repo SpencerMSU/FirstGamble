@@ -104,20 +104,8 @@ header{display:flex;align-items:center;justify-content:space-between;padding:10p
     <div class="balance-pill"><span>🪙</span><span id="balanceValue">0</span></div>
   </header>
 
-  <section class="section">
-    <div class="tabs" id="shopTabs">
-      <div class="tab active" data-tab="goods">🛒 Товары</div>
-      <div class="tab" data-tab="tickets">🎟 Билеты</div>
-    </div>
-  </section>
-
   <section class="section" id="goodsView">
     <div class="list" id="goodsList"></div>
-    <div class="note">Сюда можно будет добавить другие товары позже.</div>
-  </section>
-
-  <section class="section hidden" id="ticketsView">
-    <div class="list" id="ticketList"></div>
     <div class="note">Билеты закрепляются за твоим Telegram ID и участвуют в розыгрышах.</div>
   </section>
 </div>
@@ -168,22 +156,8 @@ function setBalance(v){
 function renderGoods(){
   const list = document.getElementById("goodsList");
   list.innerHTML = "";
-  GOODS.forEach(g=>{
-    const el=document.createElement("div");
-    el.className="item";
-    el.innerHTML = `
-      <h4>${g.name}</h4>
-      <div class="desc">${g.desc}</div>
-      <div class="cost">${g.cost>0?`Цена: 🪙 ${g.cost}`:""}</div>
-      <button class="buybtn" disabled>Скоро в продаже</button>
-    `;
-    list.appendChild(el);
-  });
-}
 
-function renderTickets(){
-  const list = document.getElementById("ticketList");
-  list.innerHTML = "";
+  // Render Tickets
   TICKETS.forEach(t=>{
     const canBuy = balance >= t.cost;
     const el=document.createElement("div");
@@ -198,6 +172,19 @@ function renderTickets(){
     el.querySelector("button").addEventListener("click", ()=>buyTicket(t.cost));
     list.appendChild(el);
   });
+
+  // Render other goods
+  GOODS.forEach(g=>{
+    const el=document.createElement("div");
+    el.className="item";
+    el.innerHTML = `
+      <h4>${g.name}</h4>
+      <div class="desc">${g.desc}</div>
+      <div class="cost">${g.cost>0?`Цена: 🪙 ${g.cost}`:""}</div>
+      <button class="buybtn" disabled>Скоро в продаже</button>
+    `;
+    list.appendChild(el);
+  });
 }
 
 async function buyTicket(price){
@@ -210,7 +197,7 @@ async function buyTicket(price){
   setBalance(res.balance);
   const bought = res.bought || res.ticket || (res.tickets?.slice(-1)?.[0]);
   tg?.showPopup?.({message: `Куплен билет #${bought}`});
-  renderTickets();
+  renderGoods();
 }
 
 async function loadBalance(){
@@ -220,34 +207,20 @@ async function loadBalance(){
   if(r && r.ok){
     setBalance(r.balance);
     localStorage.setItem('balance_local', r.balance);
-    renderTickets();
+    renderGoods();
   } else {
     const cached = localStorage.getItem('balance_local');
     if(cached!==null){
       setBalance(Number(cached)||0);
-      renderTickets();
+      renderGoods();
     }
   }
-}
-
-function setupTabs(){
-  document.querySelectorAll("#shopTabs .tab").forEach(tab=>{
-    tab.addEventListener("click", ()=>{
-      document.querySelectorAll("#shopTabs .tab").forEach(x=>x.classList.remove("active"));
-      tab.classList.add("active");
-      const k=tab.dataset.tab;
-      document.getElementById("goodsView").classList.toggle("hidden", k!=="goods");
-      document.getElementById("ticketsView").classList.toggle("hidden", k!=="tickets");
-    });
-  });
 }
 
 (async function main(){
   if(!tgInstance) return;
   await ensureNicknameOrRedirect(uid);
-  setupTabs();
   renderGoods();
-  renderTickets();
   if(uid) loadBalance();
 })();
 </script>

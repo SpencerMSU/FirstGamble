@@ -268,9 +268,20 @@ def register_routes(app: FastAPI):
         if len(text) > 500:
              return {"ok": False, "error": "too long"}
 
+        # Check and deduct balance (1 point)
+        balance = await get_balance(auth.user_id)
+        if balance < 1:
+            return {"ok": False, "error": "not_enough_points"}
+
         filtered = chat_manager.filter_message(text)
         if filtered:
-            await chat_manager.broadcast(filtered, sender_name)
+            # Deduct point only if message is sent
+            new_balance = await add_points(auth.user_id, -1, "chat")
+            logger.info(f"Chat message sent by {auth.user_id}, cost 1 point. New balance: {new_balance}")
+
+            # Use timestamp from server for consistency
+            timestamp = int(time.time())
+            await chat_manager.broadcast(filtered, sender_name, timestamp=timestamp)
             return {"ok": True}
         else:
             return {"ok": False, "error": "filtered"}

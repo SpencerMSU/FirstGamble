@@ -36,6 +36,8 @@ from .models import (
     UpdateProfileRequest,
     AchievementClaimRequest,
     ChatSendRequest,
+    AdminBanRequest,
+    AdminPinMessageRequest,
 )
 from .config import (
     ADMIN_PASS,
@@ -106,6 +108,9 @@ from .services import (
     save_rpg_economy,
     _ensure_profile_identity_fields,
     is_conserve_token,
+    check_ban,
+    ban_user,
+    unban_user,
 )
 
 
@@ -152,6 +157,17 @@ async def get_current_auth(
         )
     except ValueError as e:
         raise HTTPException(status_code=401, detail=str(e))
+
+    # Check ban status
+    try:
+        await check_ban(auth.user_id)
+    except ValueError as e:
+        # e.args[0] is "banned: reason|until"
+        detail = str(e)
+        if detail.startswith("banned:"):
+            # Clean up message for header if needed, but detail is sent in body
+            pass
+        raise HTTPException(status_code=403, detail=detail)
 
     r = await get_redis()
     if auth.from_telegram:
@@ -235,7 +251,8 @@ def register_routes(app: FastAPI):
         # Optional: strictly require webapp/auth, or allow everyone.
         # Chat is public within the app.
         msgs = await chat_manager.get_history()
-        return {"ok": True, "messages": msgs}
+        pinned = await chat_manager.get_pinned()
+        return {"ok": True, "messages": msgs, "pinned": pinned}
 
     @app.post("/api/chat/send")
     async def api_chat_send(
@@ -251,7 +268,7 @@ def register_routes(app: FastAPI):
         # Get name from profile to be consistent with profile updates
         r = await get_redis()
         profile = await r.hgetall(key_profile(auth.user_id))
-        sender_name = profile.get("username") or profile.get("name") or "Anon"
+        sender_name = profile.get("name") or profile.get("username") or "Anon"
 
         if body.sender_name:
              # Ideally we ignore client-sent name if authenticated to prevent impersonation,
@@ -1394,6 +1411,48 @@ def register_routes(app: FastAPI):
             user.get("balance"),
         )
         return {"ok": True, **user}
+
+    @app.post("/api/admin/chat/pin")
+    async def api_admin_chat_pin(
+        body: AdminPinMessageRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        """Sets the pinned message in chat."""
+        await chat_manager.set_pinned(body.text.strip())
+        logger.info(f"Admin set pinned message: {body.text}")
+        return {"ok": True, "pinned": body.text}
+
+    @app.delete("/api/admin/chat/pin")
+    async def api_admin_chat_unpin(
+        admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        """Removes the pinned message in chat."""
+        await chat_manager.set_pinned("")
+        logger.info("Admin removed pinned message")
+        return {"ok": True}
+
+    @app.post("/api/admin/users/ban")
+    async def api_admin_ban_user(
+        body: AdminBanRequest, admin_token: str = Depends(require_admin)
+    ) -> Dict[str, Any]:
+        """Bans or unbans a user."""
+        r = await get_redis()
+        uid = body.user_id
+        if (not uid or uid <= 0) and body.nickname:
+            user = await find_user_by_nick(r, body.nickname)
+            if user:
+                uid = user.get("user_id")
+
+        if not uid or uid <= 0:
+            raise HTTPException(status_code=400, detail="user_id required")
+
+        if body.duration_days == 0:
+            await unban_user(uid)
+            logger.info(f"Admin unbanned user {uid}")
+            return {"ok": True, "banned": False}
+        else:
+            res = await ban_user(uid, body.duration_days, body.reason)
+            logger.info(f"Admin banned user {uid} for {body.duration_days} days. Reason: {body.reason}")
+            return {"ok": True, **res}
 
     @app.post("/api/admin/users/set_points")
     async def api_admin_set_points(

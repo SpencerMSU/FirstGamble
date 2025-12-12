@@ -73,6 +73,14 @@ async function apiGet(path){
     headers,
     cache: "no-store",
   });
+
+  if(res.status === 403){
+      const data = await res.json().catch(()=>({}));
+      if(data.detail && String(data.detail).startsWith('banned:')){
+          throw new Error(data.detail);
+      }
+  }
+
   return await res.json();
 }
 
@@ -93,8 +101,24 @@ async function apiPost(path, body){
 
 async function fetchProfile(){
   try{
-    return await apiGet("/api/profile");
+    const res = await apiGet("/api/profile");
+    if(res && res.detail && typeof res.detail === 'string' && res.detail.startsWith('banned:')){
+       const parts = res.detail.split('|');
+       const reason = parts[0].replace('banned: ', '').trim();
+       const until = parts[1] || '';
+       window.location.href = `/banned.html?reason=${encodeURIComponent(reason)}&until=${encodeURIComponent(until)}`;
+       return null;
+    }
+    return res;
   }catch(e){
+    if(String(e).includes('banned:')){
+        const msg = String(e);
+        const parts = msg.split('|');
+        const reason = parts[0].replace('Error: banned: ', '').replace('banned: ', '').trim();
+        const until = parts[1] || '';
+        window.location.href = `/banned.html?reason=${encodeURIComponent(reason)}&until=${encodeURIComponent(until)}`;
+        return null;
+    }
     return {ok:false, error:String(e)};
   }
 }

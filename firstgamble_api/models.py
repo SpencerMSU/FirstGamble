@@ -215,6 +215,21 @@ class AdminSetPointsRequest(BaseModel):
     new_balance: Optional[int] = None
 
 
+class AdminBanRequest(BaseModel):
+    """Request model for banning/unbanning a user.
+
+    Attributes:
+        user_id: The user's unique identifier.
+        nickname: The user's nickname.
+        duration_days: Duration of ban in days. -1 for forever. 0 for unban.
+        reason: Optional reason for the ban.
+    """
+    user_id: Optional[int] = None
+    nickname: Optional[str] = None
+    duration_days: int
+    reason: Optional[str] = None
+
+
 class AdminGrantResourcesRequest(BaseModel):
     """Request model for granting RPG resources to a user.
 
@@ -248,3 +263,12 @@ class ChatSendRequest(BaseModel):
     """
     text: str
     sender_name: Optional[str] = None
+
+
+class AdminPinMessageRequest(BaseModel):
+    """Request model for setting a pinned message.
+
+    Attributes:
+        text: The text of the pinned message.
+    """
+    text: str

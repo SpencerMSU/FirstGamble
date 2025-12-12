@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Доступ ограничен — FirstClub</title>
+  <script src="https://telegram.org/js/telegram-web-app.js"></script>
+  <style>
+    :root{--bg:#0a0d12;--text:#e6edf3;--danger:#ef4444;}
+    body{
+      margin:0;font-family:system-ui,-apple-system,sans-serif;
+      background:var(--bg);color:var(--text);
+      display:flex;flex-direction:column;align-items:center;justify-content:center;
+      height:100vh;text-align:center;padding:20px;
+    }
+    h1{color:var(--danger);font-size:24px;margin-bottom:10px;}
+    p{font-size:16px;line-height:1.5;opacity:0.8;max-width:300px;}
+    .details{margin-top:20px;font-size:14px;background:rgba(255,255,255,0.05);padding:10px;border-radius:10px;}
+  </style>
+</head>
+<body>
+  <h1>Доступ ограничен</h1>
+  <p>Ваш аккаунт был заблокирован администрацией за нарушение правил сообщества.</p>
+  <div id="banDetails" class="details" style="display:none;"></div>
+
+  <script>
+    const tg = window.Telegram?.WebApp;
+    if(tg){
+      tg.ready();
+      tg.expand();
+    }
+
+    // Try to parse query params for reason
+    const params = new URLSearchParams(window.location.search);
+    const reason = params.get('reason');
+    const until = params.get('until');
+
+    const detailsEl = document.getElementById('banDetails');
+    let text = "";
+    if(reason) text += `Причина: ${decodeURIComponent(reason)}<br>`;
+    if(until){
+      if(until === 'forever'){
+        text += "Срок: Навсегда";
+      } else {
+        const date = new Date(parseInt(until) * 1000);
+        text += `Истекает: ${date.toLocaleString()}`;
+      }
+    }
+
+    if(text){
+      detailsEl.innerHTML = text;
+      detailsEl.style.display = 'block';
+    }
+  </script>
+</body>
+</html>

@@ -30,7 +30,8 @@ class ChatManager:
         ]
         self.pubsub_task = None
         self.channel_name = "chat:global"
-        self.history_key = "chat:history"
+        self.history_key = "chat:history:zset"
+        self.pinned_key = "chat:pinned"
 
     async def connect(self, websocket: WebSocket):
         await websocket.accept()
@@ -52,19 +53,23 @@ class ChatManager:
         Publishes the message to Redis.
         The listener task will pick it up and call broadcast_local.
         """
+        ts = timestamp or int(time.time())
         payload = {
             "type": "message",
             "id": str(uuid4()),
-            "timestamp": timestamp or int(time.time()),
+            "timestamp": ts,
             "sender": sender,
             "text": message
         }
         json_payload = json.dumps(payload)
         try:
             r = await get_redis()
-            # Store history (keep last 50)
-            await r.lpush(self.history_key, json_payload)
-            await r.ltrim(self.history_key, 0, 49)
+            # Store history using ZSET with timestamp as score
+            await r.zadd(self.history_key, {json_payload: ts})
+
+            # Remove messages older than 3 days
+            cutoff = int(time.time()) - (3 * 86400)
+            await r.zremrangebyscore(self.history_key, "-inf", cutoff)
 
             # Only publish if there are active listeners (optimization) or just publish always
             # but we catch errors if redis publish fails for some reason
@@ -81,12 +86,28 @@ class ChatManager:
         """Returns the recent chat history."""
         try:
             r = await get_redis()
-            raw = await r.lrange(self.history_key, 0, -1)
-            # Stored with lpush (index 0 is newest), so we reverse to have oldest first
-            return [json.loads(x) for x in reversed(raw)]
+            # Get all messages from ZSET (ordered by score/timestamp)
+            raw = await r.zrange(self.history_key, 0, -1)
+            return [json.loads(x) for x in raw]
         except Exception as e:
             logger.error(f"Error getting chat history: {e}")
             return []
+
+    async def get_pinned(self) -> str:
+        """Returns the current pinned message text or empty string."""
+        try:
+            r = await get_redis()
+            return (await r.get(self.pinned_key)) or ""
+        except Exception:
+            return ""
+
+    async def set_pinned(self, text: str):
+        """Sets the pinned message."""
+        r = await get_redis()
+        if not text:
+            await r.delete(self.pinned_key)
+        else:
+            await r.set(self.pinned_key, text)
 
     async def broadcast_local(self, payload: dict):
         """

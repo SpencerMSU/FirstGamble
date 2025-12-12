@@ -119,6 +119,18 @@ def key_achievements(user_id: int) -> str:
     return f"user:{user_id}:achievements"
 
 
+def key_ban(user_id: int) -> str:
+    """Gets the Redis key for a user's ban status.
+
+    Args:
+        user_id: The user's unique identifier.
+
+    Returns:
+        The Redis key for the user's ban status (string: JSON).
+    """
+    return f"user:{user_id}:ban"
+
+
 def key_admin_session(token: str) -> str:
     """Gets the Redis key for an admin session.
 
